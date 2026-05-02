@@ -84,7 +84,7 @@ skriv ålder från p"""
 
     def test_string_literal(self):
         """Example: setting a string literal."""
-        source_code = "sätt x till en lång fin text som innehåller skriv och kommer inte tolkas som keyword\n"
+        source_code = """sätt x till en lång fin text som innehåller skriv och kommer inte tolkas som keyword"""
         pass # Placeholder test
 
     def test_if_statements(self):
@@ -161,7 +161,7 @@ skriv y med 4"""
 
     def test_comments(self):
         """Example: handling comments."""
-        source_code = ". skriver en text
+        source_code = """. skriver en text
 skriv hej
 
 . jämför något
