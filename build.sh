@@ -23,7 +23,7 @@ echo "--- Running unit tests (Requirement check for core files) ---"
 # This ensures the unittest runner can find the 'hiuh' package within src/.
 export PYTHONPATH=$PYTHONPATH:src
 
-if python3 -m unittest tests/test_tokenizer.py; then
+if pytest 'tests/'; then
     echo "SUCCESS: All unit tests passed."
 else
     echo "FAILURE: Unit tests failed. Check test suite."
