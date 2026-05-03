@@ -5,8 +5,31 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.pos = 0
-        # Dynamic Scope Stack. Built-ins included.
+        # Dynamic Scope Stack
         self.scopes = [{"SANT", "FALSKT", "lista", "inmatning"}]
+        # New: Explicit registry for user-defined types
+        self.known_types = set()
+
+    def is_var_known(self, name):
+        # A name is known if it's in a scope OR if it's a registered Type
+        return any(name in scope for scope in self.scopes) or name in self.known_types
+
+    def parse_type_def(self):
+        self.consume("T_KEYWORD_TYPE")
+        name = self.consume("T_IDENTIFIER").value
+
+        # REGISTER THE TYPE: Now 'bil' is a valid expression trigger
+        self.known_types.add(name)
+        self.define_var(name)
+
+        fields = []
+        if self.peek() and self.peek().type == "T_KEYWORD_WITH":
+            self.consume()
+            while self.peek() and self.peek().type == "T_IDENTIFIER":
+                fields.append(self.consume().value)
+                if self.peek() and self.peek().type == "T_COMMA": self.consume()
+                else: break
+        return TypeDefNode(name, fields)
 
     def enter_scope(self):
         self.scopes.append(set())
@@ -16,9 +39,6 @@ class Parser:
 
     def define_var(self, name):
         self.scopes[-1].add(name)
-
-    def is_var_known(self, name):
-        return any(name in scope for scope in self.scopes)
 
     def peek(self, offset=0):
         if self.pos + offset >= len(self.tokens): return None
@@ -65,10 +85,10 @@ class Parser:
         target = None
         if self.peek() and self.peek().type == "T_KEYWORD_IN":
             self.consume()
-            target_parts = []
+            t_parts = []
             while self.peek() and self.peek().type == "T_IDENTIFIER":
-                target_parts.append(self.consume().value)
-            target = " ".join(target_parts)
+                t_parts.append(self.consume().value)
+            target = " ".join(t_parts)
 
         self.consume("T_KEYWORD_TO")
         val = self.parse_greedy_expression()
@@ -79,51 +99,48 @@ class Parser:
         self.consume("T_KEYWORD_PRINT")
         return PrintNode(self.parse_greedy_expression())
 
+    def _is_tree_known(self, node):
+        """Helper to validate if an expression tree only uses known variables."""
+        if isinstance(node, VarAccessNode):
+            if hasattr(node, 'target') and node.target:
+                return self.is_var_known(node.target)
+            return self.is_var_known(node.name)
+        if isinstance(node, (AddNode, SubNode, MulNode, DivNode, ComparisonNode)):
+            return self._is_tree_known(node.left) and self._is_tree_known(node.right)
+        if isinstance(node, FunctionCallNode):
+            return self.is_var_known(node.name)
+        return True
+
     def parse_greedy_expression(self):
         t = self.peek()
-        if not t: return None
+        if not t or t.type in ["T_NEWLINE", "T_DEDENT"]: return None
 
-        # STOP IMMEDIATELY if we see a newline or indent before we start
-        if t.type in ["T_NEWLINE", "T_INDENT"]:
-            return None
-
-        # 1. 'ny rad' check
         if t.type == "T_IDENTIFIER" and t.value == "ny":
             if self.peek(1) and self.peek(1).value == "rad":
                 self.consume(); self.consume(); return StringNode("\n")
 
-        # 2. Block/Function Priority: 'grej' must trigger expression parsing
-        if t.type == "T_KEYWORD_FUNC":
-            return self.expression()
+        # Trial Pass: Try parsing as a formal expression
+        checkpoint = self.pos
+        try:
+            expr = self.expression()
+            # Must hit end-of-line AND all vars must be known to count as expression
+            if (not self.peek() or self.peek().type in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]) and self._is_tree_known(expr):
+                return expr
+            self.pos = checkpoint
+        except:
+            self.pos = checkpoint
 
-        # 3. Decision Logic: Only try expression if it's a known literal or var
-        is_known = t.type == "T_IDENTIFIER" and self.is_var_known(t.value)
-        if t.type in ["T_LITERAL_INT", "T_LITERAL_FLOAT", "T_LITERAL_TRUE", "T_LITERAL_FALSE"] or is_known or t.value == "lista":
-            checkpoint = self.pos
-            try:
-                expr = self.expression()
-                # If the next token is a newline or indent, the expression is valid
-                if not self.peek() or self.peek().type in ["T_NEWLINE", "T_INDENT", "T_DEDENT", "T_COMMENT"]:
-                    return expr
-                self.pos = checkpoint
-            except:
-                self.pos = checkpoint
-
-        # 4. Fallback: Joined String
+        # Fallback Pass: Join everything until end of line as a String
         txt = []
-        # MUST stop at Newline/Indent to prevent dragging line 3 into line 2
-        while self.peek() and self.peek().type not in ["T_NEWLINE", "T_INDENT", "T_DEDENT", "T_COMMENT"]:
+        while self.peek() and self.peek().type not in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
             txt.append(str(self.consume().value))
         return StringNode(" ".join(txt))
-
 
     def expression(self):
         left = self.arithmetic()
         while True:
             t = self.peek()
-            # STOP if we hit a block start
             if not t or t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT"]: break
-
             if t.type == "T_OP_IS": self.consume(); t = self.peek()
             if t and (t.type in ["T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_OP_OR", "T_OP_AND"]):
                 op_parts = []
@@ -136,7 +153,6 @@ class Parser:
     def arithmetic(self):
         left = self.term()
         while self.peek() and self.peek().type in ["T_OP_ADD", "T_OP_SUB"]:
-            # STOP if next line starts
             if self.peek().type in ["T_INDENT"]: break
             op = self.consume().type
             left = AddNode(left, self.term()) if op == "T_OP_ADD" else SubNode(left, self.term())
@@ -145,7 +161,6 @@ class Parser:
     def term(self):
         left = self.primary()
         while self.peek() and self.peek().type in ["T_OP_MUL", "T_OP_DIV"]:
-            # STOP if next line starts
             if self.peek().type in ["T_INDENT"]: break
             op = self.consume().type
             if op == "T_OP_DIV" and self.peek() and self.peek().value == "med": self.consume()
@@ -157,32 +172,33 @@ class Parser:
         if not t: raise SyntaxError("Expected primary")
 
         if t.type == "T_KEYWORD_FUNC":
-            self.consume() # consume 'grej'
+            self.consume()
             p = []
             if self.peek() and self.peek().type == "T_KEYWORD_WITH":
-                self.consume() # consume 'med'
+                self.consume()
                 while self.peek() and self.peek().type == "T_IDENTIFIER":
                     p.append(self.consume().value)
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
-
             return FunctionDefNode(p, self.parse_block(params=p))
 
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL"]:
             name = self.consume().value
 
-            # IMPROVED: Look ahead for "i" immediately after an identifier
             if self.peek() and self.peek().type == "T_KEYWORD_IN":
-                self.consume() # consume 'i'
-                target_parts = []
-                # Greedily grab the object name (e.g., 'min', 'bil')
-                while self.peek() and self.peek().type == "T_IDENTIFIER":
-                    target_parts.append(self.consume().value)
-                return VarAccessNode(name, target=" ".join(target_parts))
+                self.consume()
+                t_parts = []
+                while self.peek() and self.peek().type == "T_IDENTIFIER": t_parts.append(self.consume().value)
+                return VarAccessNode(name, target=" ".join(t_parts))
 
-            # Call: 'hälsa med Hiuh'
+            while self.peek() and self.peek().type == "T_IDENTIFIER":
+                combined = name + " " + self.peek().value
+                if self.is_var_known(combined): name = combined; self.consume()
+                else: break
+
             if self.peek() and self.peek().type == "T_KEYWORD_WITH":
-                self.consume(); args = []
+                self.consume()
+                args = []
                 while True:
                     args.append(self.expression())
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
@@ -196,35 +212,19 @@ class Parser:
         if t.type == "T_LITERAL_FLOAT": return FloatNode(self.consume().value)
         if t.type == "T_LITERAL_TRUE": self.consume(); return BoolNode(True)
         if t.type == "T_LITERAL_FALSE": self.consume(); return BoolNode(False)
-        raise SyntaxError(f"Unexpected {t.type} at line {t.line}")
+        raise SyntaxError(f"Unexpected {t.type} ({t.value}) at line {t.line}")
 
     def parse_block(self, params=None):
-        # 1. Clear any and all newlines before the indentation starts
-        while self.peek() and self.peek().type == "T_NEWLINE":
-            self.consume("T_NEWLINE")
-
-        # 2. Consume the indentation
-        self.consume("T_INDENT")
-        self.enter_scope()
-
+        while self.peek() and self.peek().type == "T_NEWLINE": self.consume()
+        self.consume("T_INDENT"); self.enter_scope()
         if params:
-            for p in params:
-                self.define_var(p)
-
+            for p in params: self.define_var(p)
         stmts = []
-        # 3. Parse statements until we hit the matching DEDENT
         while self.peek() and self.peek().type != "T_DEDENT":
-            if self.peek().type in ["T_NEWLINE", "T_COMMENT"]:
-                self.consume()
-                continue
+            if self.peek().type in ["T_NEWLINE", "T_COMMENT"]: self.consume(); continue
             stmts.append(self.statement())
-
         self.exit_scope()
-
-        # 4. Clean up the dedent and any trailing newlines
-        if self.peek() and self.peek().type == "T_DEDENT":
-            self.consume("T_DEDENT")
-
+        if self.peek() and self.peek().type == "T_DEDENT": self.consume("T_DEDENT")
         return stmts
 
     def parse_if(self):
