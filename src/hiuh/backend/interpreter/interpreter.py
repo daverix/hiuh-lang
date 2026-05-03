@@ -53,10 +53,22 @@ class Interpreter:
     def visit_AddNode(self, node):
         left = self.visit(node.left)
         right = self.visit(node.right)
-        # Handle Swedish natural string adding: 'hej' pluss namn
-        if isinstance(left, str) or isinstance(right, str):
-            return str(left) + str(right)
-        return left + right
+
+        # Swedish Natural Language logic:
+        # If we are joining text, assume a space is needed
+        # (e.g., 'hej' pluss 'namn' -> 'hej namn')
+        if isinstance(left, str) and isinstance(right, str):
+            # Only add space if left doesn't already end with one
+            # and right doesn't start with one
+            sep = " " if not left.endswith(" ") and not right.startswith(" ") else ""
+            return f"{left}{sep}{right}"
+
+        # Fallback for numbers or mixed types
+        try:
+            return left + right
+        except TypeError:
+            # If addition fails (e.g. string + int), coerce to string with space
+            return f"{left} {right}"
 
     def visit_SubNode(self, node): return self.visit(node.left) - self.visit(node.right)
     def visit_MulNode(self, node): return self.visit(node.left) * self.visit(node.right)
