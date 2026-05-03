@@ -199,12 +199,10 @@ class Interpreter:
 
     # --- Types and Objects ---
     def visit_TypeDefNode(self, node):
-        # We define a constructor function for this type
+        # The constructor returns a NEW dictionary every time it is called
         def constructor():
-            # An instance is just a dictionary of its fields
-            return {field: None for field in node.fields}
+            return {field.strip(): None for field in node.fields}
 
-        # Store the constructor in the environment (e.g., 'bil')
         self.env.define(node.name, constructor)
         return None
 
@@ -212,28 +210,31 @@ class Interpreter:
         value = self.visit(node.value)
 
         if node.target_type:
-            # We are setting a field in an object
+            # Setting a field: sätt märke i min bil till Volvo
             obj = self.env.get(node.target_type)
             if isinstance(obj, dict):
                 obj[node.name] = value
                 return value
-            raise Exception(f"'{node.target_type}' är inte ett objekt.")
+            raise Exception(f"'{node.target_type}' är inte ett objekt (typ: {type(obj).__name__}).")
 
-        # If the value being assigned is a constructor (callable),
-        # run it to create an instance!
-        if callable(value) and not isinstance(node.value, VarAccessNode):
+        # Instantiation logic: sätt min bil till bil
+        # If 'value' is a blueprint/constructor and we are assigning it
+        # to a variable (not a property), run it to create the dictionary.
+        if callable(value) and not isinstance(node.value, FunctionDefNode):
             value = value()
 
         self.env.define(node.name, value)
         return value
 
     def visit_VarAccessNode(self, node):
-        # Handle field access if target_type is present
-        # (You might need to adjust your AST/Parser to support 'skriv märke i bil')
-        if hasattr(node, 'target_type') and node.target_type:
-            obj = self.env.get(node.target_type)
+        # Handle 'märke i min bil'
+        if hasattr(node, 'target') and node.target:
+            obj = self.env.get(node.target)
             if isinstance(obj, dict):
-                return obj.get(node.name, node.name) # Fallback to name if field empty
+                # Return the field value, or the field name as string if empty (Swedish fallback)
+                val = obj.get(node.name)
+                return val if val is not None else node.name
+            raise Exception(f"Kan inte läsa '{node.name}' från '{node.target}' (inte ett objekt).")
 
         return self.env.get(node.name)
 

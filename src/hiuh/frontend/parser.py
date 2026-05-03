@@ -83,64 +83,47 @@ class Parser:
         t = self.peek()
         if not t: return None
 
-        # 1. Newline literal: ny rad
+        # STOP IMMEDIATELY if we see a newline or indent before we start
+        if t.type in ["T_NEWLINE", "T_INDENT"]:
+            return None
+
+        # 1. 'ny rad' check
         if t.type == "T_IDENTIFIER" and t.value == "ny":
             if self.peek(1) and self.peek(1).value == "rad":
                 self.consume(); self.consume(); return StringNode("\n")
 
-        # 2. Scope & Trigger Scan
-        checkpoint = self.pos
-        i = 0
-        all_identifiers_known = True
-        has_expression_trigger = False
-        token_count = 0
+        # 2. Block/Function Priority: 'grej' must trigger expression parsing
+        if t.type == "T_KEYWORD_FUNC":
+            return self.expression()
 
-        while self.peek(i) and self.peek(i).type not in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
-            tok = self.peek(i)
-            token_count += 1
-            if tok.type == "T_IDENTIFIER":
-                if not self.is_var_known(tok.value) and tok.value != "lista":
-                    all_identifiers_known = False
-            # Check for math/logic triggers
-            if tok.type in ["T_KEYWORD_WITH", "T_OP_ADD", "T_OP_MUL", "T_OP_SUB", "T_OP_DIV",
-                            "T_OP_IS", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_OP_OR", "T_OP_AND"]:
-                # Special Case: 'större' or 'mindre' alone are NOT triggers
-                # They only trigger if there is more than one token on the line
-                has_expression_trigger = True
-            i += 1
-
-        # 3. Decision Logic
-        is_hard_literal = t.type in ["T_LITERAL_INT", "T_LITERAL_FLOAT", "T_LITERAL_TRUE", "T_LITERAL_FALSE", "T_KEYWORD_FUNC"]
-
-        # If it's a single keyword (token_count == 1), skip expression parsing to allow StringNode fallback
-        should_try_expression = False
-        if is_hard_literal:
-            should_try_expression = True
-        elif token_count > 1 and has_expression_trigger and all_identifiers_known:
-            should_try_expression = True
-        elif token_count == 1 and t.type == "T_IDENTIFIER" and (t.value == "lista" or self.is_var_known(t.value)):
-            should_try_expression = True
-
-        if should_try_expression:
+        # 3. Decision Logic: Only try expression if it's a known literal or var
+        is_known = t.type == "T_IDENTIFIER" and self.is_var_known(t.value)
+        if t.type in ["T_LITERAL_INT", "T_LITERAL_FLOAT", "T_LITERAL_TRUE", "T_LITERAL_FALSE"] or is_known or t.value == "lista":
+            checkpoint = self.pos
             try:
                 expr = self.expression()
-                if not self.peek() or self.peek().type in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
+                # If the next token is a newline or indent, the expression is valid
+                if not self.peek() or self.peek().type in ["T_NEWLINE", "T_INDENT", "T_DEDENT", "T_COMMENT"]:
                     return expr
                 self.pos = checkpoint
             except:
                 self.pos = checkpoint
 
-        # 4. Fallback: Greedy String (This will catch 'större' as a single word)
+        # 4. Fallback: Joined String
         txt = []
-        while self.peek() and self.peek().type not in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
+        # MUST stop at Newline/Indent to prevent dragging line 3 into line 2
+        while self.peek() and self.peek().type not in ["T_NEWLINE", "T_INDENT", "T_DEDENT", "T_COMMENT"]:
             txt.append(str(self.consume().value))
         return StringNode(" ".join(txt))
+
 
     def expression(self):
         left = self.arithmetic()
         while True:
             t = self.peek()
-            if not t: break
+            # STOP if we hit a block start
+            if not t or t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT"]: break
+
             if t.type == "T_OP_IS": self.consume(); t = self.peek()
             if t and (t.type in ["T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_OP_OR", "T_OP_AND"]):
                 op_parts = []
@@ -153,6 +136,8 @@ class Parser:
     def arithmetic(self):
         left = self.term()
         while self.peek() and self.peek().type in ["T_OP_ADD", "T_OP_SUB"]:
+            # STOP if next line starts
+            if self.peek().type in ["T_INDENT"]: break
             op = self.consume().type
             left = AddNode(left, self.term()) if op == "T_OP_ADD" else SubNode(left, self.term())
         return left
@@ -160,6 +145,8 @@ class Parser:
     def term(self):
         left = self.primary()
         while self.peek() and self.peek().type in ["T_OP_MUL", "T_OP_DIV"]:
+            # STOP if next line starts
+            if self.peek().type in ["T_INDENT"]: break
             op = self.consume().type
             if op == "T_OP_DIV" and self.peek() and self.peek().value == "med": self.consume()
             left = MulNode(left, self.primary()) if op == "T_OP_MUL" else DivNode(left, self.primary())
@@ -170,30 +157,28 @@ class Parser:
         if not t: raise SyntaxError("Expected primary")
 
         if t.type == "T_KEYWORD_FUNC":
-            self.consume(); p = []
+            self.consume() # consume 'grej'
+            p = []
             if self.peek() and self.peek().type == "T_KEYWORD_WITH":
-                self.consume()
+                self.consume() # consume 'med'
                 while self.peek() and self.peek().type == "T_IDENTIFIER":
                     p.append(self.consume().value)
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
+
             return FunctionDefNode(p, self.parse_block(params=p))
 
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL"]:
-            # Greedily consume identifiers for multi-word variables like 'min bil'
-            parts = [self.consume().value]
-            while self.peek() and self.peek().type == "T_IDENTIFIER":
-                combined = " ".join(parts + [self.peek().value])
-                if self.is_var_known(combined): parts.append(self.consume().value)
-                else: break
-            name = " ".join(parts)
+            name = self.consume().value
 
-            # Property read: 'märke i min bil'
+            # IMPROVED: Look ahead for "i" immediately after an identifier
             if self.peek() and self.peek().type == "T_KEYWORD_IN":
-                self.consume(); t_parts = []
+                self.consume() # consume 'i'
+                target_parts = []
+                # Greedily grab the object name (e.g., 'min', 'bil')
                 while self.peek() and self.peek().type == "T_IDENTIFIER":
-                    t_parts.append(self.consume().value)
-                return VarAccessNode(name, target=" ".join(t_parts))
+                    target_parts.append(self.consume().value)
+                return VarAccessNode(name, target=" ".join(target_parts))
 
             # Call: 'hälsa med Hiuh'
             if self.peek() and self.peek().type == "T_KEYWORD_WITH":
@@ -214,17 +199,32 @@ class Parser:
         raise SyntaxError(f"Unexpected {t.type} at line {t.line}")
 
     def parse_block(self, params=None):
-        while self.peek() and self.peek().type == "T_NEWLINE": self.consume()
-        self.consume("T_INDENT"); self.enter_scope()
+        # 1. Clear any and all newlines before the indentation starts
+        while self.peek() and self.peek().type == "T_NEWLINE":
+            self.consume("T_NEWLINE")
+
+        # 2. Consume the indentation
+        self.consume("T_INDENT")
+        self.enter_scope()
+
         if params:
-            for p in params: self.define_var(p)
+            for p in params:
+                self.define_var(p)
+
         stmts = []
+        # 3. Parse statements until we hit the matching DEDENT
         while self.peek() and self.peek().type != "T_DEDENT":
             if self.peek().type in ["T_NEWLINE", "T_COMMENT"]:
-                self.consume(); continue
+                self.consume()
+                continue
             stmts.append(self.statement())
+
         self.exit_scope()
-        if self.peek() and self.peek().type == "T_DEDENT": self.consume("T_DEDENT")
+
+        # 4. Clean up the dedent and any trailing newlines
+        if self.peek() and self.peek().type == "T_DEDENT":
+            self.consume("T_DEDENT")
+
         return stmts
 
     def parse_if(self):
