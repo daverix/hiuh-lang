@@ -5,7 +5,6 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.pos = 0
-        # Dynamic Scope Stack. Built-ins included.
         self.scopes = [{"SANT", "FALSKT", "lista", "inmatning"}]
 
     def enter_scope(self):
@@ -79,6 +78,10 @@ class Parser:
             if self.peek(1) and self.peek(1).value == "rad":
                 self.consume(); self.consume(); return StringNode("\n")
 
+        # Function definitions are never greedy strings
+        if t.type == "T_KEYWORD_FUNC":
+            return self.expression()
+
         checkpoint = self.pos
         i = 0
         has_unknown_var = False
@@ -91,7 +94,7 @@ class Parser:
                 has_operator_syntax = True
             i += 1
 
-        if t.type in ["T_LITERAL_INT", "T_LITERAL_FLOAT", "T_LITERAL_TRUE", "T_LITERAL_FALSE", "T_KEYWORD_FUNC"] or (not has_unknown_var and has_operator_syntax):
+        if t.type in ["T_LITERAL_INT", "T_LITERAL_FLOAT", "T_LITERAL_TRUE", "T_LITERAL_FALSE"] or (not has_unknown_var and has_operator_syntax):
             try:
                 expr = self.expression()
                 if not self.peek() or self.peek().type in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
@@ -146,8 +149,10 @@ class Parser:
     def primary(self):
         t = self.peek()
         if not t: raise SyntaxError("Expected primary")
+
         if t.type == "T_KEYWORD_FUNC":
-            self.consume(); p = []
+            self.consume()
+            p = []
             if self.peek() and self.peek().type == "T_KEYWORD_WITH":
                 self.consume()
                 while self.peek() and self.peek().type == "T_IDENTIFIER":
@@ -155,6 +160,7 @@ class Parser:
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
             return FunctionDefNode(p, self.parse_block(params=p))
+
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL"]:
             name = self.consume().value
             if name == "lista":
@@ -167,48 +173,67 @@ class Parser:
                         else: break
                 return FunctionCallNode(name, args)
             return VarAccessNode(name)
+
         if t.type == "T_LITERAL_INT": return IntNode(self.consume().value)
         if t.type == "T_LITERAL_FLOAT": return FloatNode(self.consume().value)
         if t.type == "T_LITERAL_TRUE": self.consume(); return BoolNode(True)
         if t.type == "T_LITERAL_FALSE": self.consume(); return BoolNode(False)
-        raise SyntaxError(f"Unexpected {t.type}")
+        raise SyntaxError(f"Unexpected {t.type} at line {t.line}")
 
     def parse_block(self, params=None):
-        self.consume("T_NEWLINE"); self.consume("T_INDENT"); self.enter_scope()
+        # Allow blocks to start either after a newline or immediately if indented
+        if self.peek() and self.peek().type == "T_NEWLINE":
+            self.consume("T_NEWLINE")
+
+        self.consume("T_INDENT")
+        self.enter_scope()
         if params:
             for p in params: self.define_var(p)
+
         stmts = []
         while self.peek() and self.peek().type != "T_DEDENT":
             if self.peek().type in ["T_NEWLINE", "T_COMMENT"]:
                 self.consume(); continue
             stmts.append(self.statement())
-        self.exit_scope(); self.consume("T_DEDENT")
+
+        self.exit_scope()
+        self.consume("T_DEDENT")
         return stmts
 
     def parse_if(self):
-        self.consume("T_KEYWORD_IF"); cond = self.expression(); true_b = self.parse_block()
+        self.consume("T_KEYWORD_IF")
+        cond = self.expression()
+        true_b = self.parse_block()
         false_b = None
         if self.peek() and self.peek().type == "T_KEYWORD_ELSE":
-            self.consume(); false_b = self.parse_block()
+            self.consume()
+            false_b = self.parse_block()
         return IfNode(cond, true_b, false_b)
 
     def parse_while(self):
-        self.consume("T_KEYWORD_WHILE"); return WhileNode(self.expression(), self.parse_block())
+        self.consume("T_KEYWORD_WHILE")
+        return WhileNode(self.expression(), self.parse_block())
 
     def parse_try_catch(self):
-        self.consume("T_KEYWORD_TRY"); try_b = self.parse_block()
-        self.consume("T_KEYWORD_CATCH"); err = self.consume("T_IDENTIFIER").value
+        self.consume("T_KEYWORD_TRY")
+        try_b = self.parse_block()
+        self.consume("T_KEYWORD_CATCH")
+        err = self.consume("T_IDENTIFIER").value
         return TryCatchNode(try_b, err, self.parse_block(params=[err]))
 
     def parse_return(self):
-        self.consume("T_KEYWORD_GIVE"); return ReturnNode(self.expression())
+        self.consume("T_KEYWORD_GIVE")
+        return ReturnNode(self.expression())
 
     def parse_throw(self):
-        self.consume("T_KEYWORD_THROW"); return UnaryOpNode("kasta", self.expression())
+        self.consume("T_KEYWORD_THROW")
+        return UnaryOpNode("kasta", self.expression())
 
     def parse_type_def(self):
-        self.consume("T_KEYWORD_TYPE"); name = self.consume("T_IDENTIFIER").value
-        self.define_var(name); f = []
+        self.consume("T_KEYWORD_TYPE")
+        name = self.consume("T_IDENTIFIER").value
+        self.define_var(name)
+        f = []
         if self.peek() and self.peek().type == "T_KEYWORD_WITH":
             self.consume()
             while self.peek() and self.peek().type == "T_IDENTIFIER":
