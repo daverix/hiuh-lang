@@ -1,185 +1,182 @@
+# -*- coding: utf-8 -*-
 import unittest
-from hiuh.frontend.tokenizer import Tokenizer # Assuming Tokenizer is available here
+from hiuh.frontend.tokenizer import Tokenizer, Token
 
-class TestTokenizer(unittest.TestCase):
-    """
-    Tests covering various language constructs based on examples in README.md.
-    """
+class TestHiuhReadmeSpecification(unittest.TestCase):
+    def setUp(self):
+        self.tokenizer = Tokenizer()
 
-    def test_simple_stdout(self):
-        """Example: simple stdout command."""
-        source_code = "skriv hejsan hoppsan"
-        # In a real test, we would assert the tokens match what the tokenizer should produce.
-        # For this example, we just ensure the tokenizer runs with the code.
-        # print(Tokenizer().tokenize(source_code)) 
-        pass # Placeholder test
+    def test_stdout_section(self):
+        source = "skriv hejsan\nskriv ny rad\nskriv hoppsan"
+        expected = [
+            Token("T_KEYWORD_PRINT", "skriv", 1, 1),
+            Token("T_IDENTIFIER", "hejsan", 1, 7),
+            Token("T_NEWLINE", "\n", 1, 13),
+            Token("T_KEYWORD_PRINT", "skriv", 2, 1),
+            Token("T_IDENTIFIER", "ny", 2, 7),
+            Token("T_IDENTIFIER", "rad", 2, 10),
+            Token("T_NEWLINE", "\n", 2, 13),
+            Token("T_KEYWORD_PRINT", "skriv", 3, 1),
+            Token("T_IDENTIFIER", "hoppsan", 3, 7)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
 
-    def test_newline_keyword(self):
-        """Example: using 'ny rad' keyword."""
-        source_code = """skriv hejsan
-skriv ny rad
-skriv hoppsan"""
-        pass # Placeholder test
+    def test_variables_boolean_section(self):
+        source = "sätt x till SANT\nsätt b till a större än 2"
+        expected = [
+            Token("T_KEYWORD_SET", "sätt", 1, 1),
+            Token("T_IDENTIFIER", "x", 1, 6),
+            Token("T_KEYWORD_TO", "till", 1, 8),
+            Token("T_LITERAL_TRUE", "SANT", 1, 13),
+            Token("T_NEWLINE", "\n", 1, 17),
+            Token("T_KEYWORD_SET", "sätt", 2, 1),
+            Token("T_IDENTIFIER", "b", 2, 6),
+            Token("T_KEYWORD_TO", "till", 2, 8),
+            Token("T_IDENTIFIER", "a", 2, 13),
+            Token("T_KEYWORD_GREATER", "större", 2, 15),
+            Token("T_KEYWORD_THAN", "än", 2, 22),
+            Token("T_LITERAL_INT", "2", 2, 25)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
 
-    def test_boolean_variables(self):
-        """Example: setting and comparing boolean variables."""
-        source_code = """sätt x till SANT
-sätt y till x eller FALSKT
+    def test_variables_math_section(self):
+        source = "sätt c till b gånger b pluss a"
+        expected = [
+            Token("T_KEYWORD_SET", "sätt", 1, 1),
+            Token("T_IDENTIFIER", "c", 1, 6),
+            Token("T_KEYWORD_TO", "till", 1, 8),
+            Token("T_IDENTIFIER", "b", 1, 13),
+            Token("T_OP_MUL", "gånger", 1, 15),
+            Token("T_IDENTIFIER", "b", 1, 22),
+            Token("T_OP_ADD", "pluss", 1, 24),
+            Token("T_IDENTIFIER", "a", 1, 30)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
 
-sätt a till 2
-sätt b till a större än 2"""
-        pass # Placeholder test
+    def test_variables_float_section(self):
+        source = "sätt y till 3,4"
+        expected = [
+            Token("T_KEYWORD_SET", "sätt", 1, 1),
+            Token("T_IDENTIFIER", "y", 1, 6),
+            Token("T_KEYWORD_TO", "till", 1, 8),
+            Token("T_LITERAL_FLOAT", "3,4", 1, 13)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
 
-    def test_int_variables_simple(self):
-        """Example: setting a simple integer variable."""
-        source_code = """sätt x till 2
-skriv 2"""
-        pass # Placeholder test
+    def test_variables_list_section(self):
+        source = "sätt min lista till lista med 1, 2, 3"
+        expected = [
+            Token("T_KEYWORD_SET", "sätt", 1, 1),
+            Token("T_IDENTIFIER", "min", 1, 6),
+            Token("T_IDENTIFIER", "lista", 1, 10),
+            Token("T_KEYWORD_TO", "till", 1, 16),
+            Token("T_IDENTIFIER", "lista", 1, 21),
+            Token("T_KEYWORD_WITH", "med", 1, 27),
+            Token("T_LITERAL_INT", "1", 1, 31),
+            Token("T_COMMA", ",", 1, 32),
+            Token("T_LITERAL_INT", "2", 1, 34),
+            Token("T_COMMA", ",", 1, 35),
+            Token("T_LITERAL_INT", "3", 1, 37)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
 
-    def test_int_variables_expression(self):
-        """Example: setting variables using mathematical expressions."""
-        source_code = """sätt a till 2
-sätt b till a gånger 3
-sätt c till b gånger b pluss a"""
-        pass # Placeholder test
+    def test_function_section(self):
+        source = "sätt f till grej med a\n    ge a"
+        expected = [
+            Token("T_KEYWORD_SET", "sätt", 1, 1),
+            Token("T_IDENTIFIER", "f", 1, 6),
+            Token("T_KEYWORD_TO", "till", 1, 8),
+            Token("T_KEYWORD_FUNC", "grej", 1, 13),
+            Token("T_KEYWORD_WITH", "med", 1, 18),
+            Token("T_IDENTIFIER", "a", 1, 22),
+            Token("T_NEWLINE", "\n", 1, 23),
+            Token("T_INDENT", "    ", 2, 1),
+            Token("T_KEYWORD_GIVE", "ge", 2, 5),
+            Token("T_IDENTIFIER", "a", 2, 8),
+            Token("T_DEDENT", "", 3, 1)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
 
-    def test_float_variable(self):
-        """Example: setting a float variable."""
-        source_code = "sätt y till 3,4"
-        pass # Placeholder test
+    def test_typ_section(self):
+        source = "typ person med namn, ålder\nsätt ålder i person till 38"
+        expected = [
+            Token("T_KEYWORD_TYPE", "typ", 1, 1),
+            Token("T_IDENTIFIER", "person", 1, 5),
+            Token("T_KEYWORD_WITH", "med", 1, 12),
+            Token("T_IDENTIFIER", "namn", 1, 16),
+            Token("T_COMMA", ",", 1, 20),
+            Token("T_IDENTIFIER", "ålder", 1, 22),
+            Token("T_NEWLINE", "\n", 1, 27),
+            Token("T_KEYWORD_SET", "sätt", 2, 1),
+            Token("T_IDENTIFIER", "ålder", 2, 6),
+            Token("T_KEYWORD_IN", "i", 2, 12),
+            Token("T_IDENTIFIER", "person", 2, 14),
+            Token("T_KEYWORD_TO", "till", 2, 21),
+            Token("T_LITERAL_INT", "38", 2, 26)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
 
-    def test_list_variable_empty(self):
-        """Example: creating an empty list."""
-        source_code = "sätt min lista till ny lista"
-        pass # Placeholder test
-        
-    def test_list_variable_initialize(self):
-        """Example: initializing a list with values."""
-        source_code = "sätt min lista till lista med 1, 2, 3"
-        pass # Placeholder test
+    def test_if_statement_section(self):
+        source = "om x är större än 2\n    skriv större\nannars\n    skriv mindre"
+        expected = [
+            Token("T_KEYWORD_IF", "om", 1, 1),
+            Token("T_IDENTIFIER", "x", 1, 4),
+            Token("T_OP_IS", "är", 1, 6),
+            Token("T_KEYWORD_GREATER", "större", 1, 9),
+            Token("T_KEYWORD_THAN", "än", 1, 16),
+            Token("T_LITERAL_INT", "2", 1, 19),
+            Token("T_NEWLINE", "\n", 1, 20),
+            Token("T_INDENT", "    ", 2, 1),
+            Token("T_KEYWORD_PRINT", "skriv", 2, 5),
+            Token("T_KEYWORD_GREATER", "större", 2, 11),
+            Token("T_NEWLINE", "\n", 2, 17),
+            Token("T_DEDENT", "", 3, 1),
+            Token("T_KEYWORD_ELSE", "annars", 3, 1),
+            Token("T_NEWLINE", "\n", 3, 7),
+            Token("T_INDENT", "    ", 4, 1),
+            Token("T_KEYWORD_PRINT", "skriv", 4, 5),
+            Token("T_IDENTIFIER", "mindre", 4, 11),
+            Token("T_DEDENT", "", 5, 1)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
 
-    def test_function_variable(self):
-        """Example: defining and calling a function variable."""
-        source_code = """sätt min funktion till grej med param1, param2, param3
-    ge param1 pluss param2 minus param3
+    def test_stdin_section(self):
+        source = "sätt t till nästa rad från inmatning"
+        expected = [
+            Token("T_KEYWORD_SET", "sätt", 1, 1),
+            Token("T_IDENTIFIER", "t", 1, 6),
+            Token("T_KEYWORD_TO", "till", 1, 8),
+            Token("T_IDENTIFIER", "nästa", 1, 13),
+            Token("T_IDENTIFIER", "rad", 1, 19),
+            Token("T_KEYWORD_FROM", "från", 1, 23),
+            Token("T_IDENTIFIER", "inmatning", 1, 28)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
 
-sätt x till min funktion med 1, 2, 3
+    def test_error_handling_section(self):
+        source = "prova\n    kasta fel\nfånga fel"
+        expected = [
+            Token("T_KEYWORD_TRY", "prova", 1, 1),
+            Token("T_NEWLINE", "\n", 1, 6),
+            Token("T_INDENT", "    ", 2, 1),
+            Token("T_KEYWORD_THROW", "kasta", 2, 5),
+            Token("T_IDENTIFIER", "fel", 2, 11),
+            Token("T_NEWLINE", "\n", 2, 14),
+            Token("T_DEDENT", "", 3, 1),
+            Token("T_KEYWORD_CATCH", "fånga", 3, 1),
+            Token("T_IDENTIFIER", "fel", 3, 7)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
 
-skriv x"""
-        pass # Placeholder test
-
-    def test_typed_variable(self):
-        """Example: defining and accessing a custom type variable."""
-        source_code = """typ person med namn, ålder
-
-sätt p till person med David, 37
-
-skriv Namn
-skriv ny rad
-skriv namn från p
-skriv ny rad
-skriv Ålder
-skriv ålder från p"""
-        pass # Placeholder test
-
-    def test_string_literal(self):
-        """Example: setting a string literal."""
-        source_code = """sätt x till en lång fin text som innehåller skriv och kommer inte tolkas som keyword"""
-        pass # Placeholder test
-
-    def test_if_statements(self):
-        """Example: simple if/else block."""
-        source_code = """sätt x till 3
-om x är större än 2
-    skriv större
-annars
-    skriv mindre eller lika med"""
-        pass # Placeholder test
-
-    def test_while_loops(self):
-        """Example: while loop structure."""
-        source_code = """sätt x till 0
-medan x är mindre än 10
-    skriv x pluss 1
-    sätt x till x pluss 1"""
-        pass # Placeholder test
-
-    def test_stdin_handling(self):
-        """Example: reading from stdin."""
-        source_code = """sätt nummer som text till nästa rad från inmatning
-sätt nummer till konvertera till nummer med nummer som text
-
-om nummer är större än 10
-    skriv stort nummer
-annars
-    skriv litet nummer"""
-        pass # Placeholder test
-
-    def test_reading_single_file(self):
-        """Example: reading one line from a file."""
-        source_code = """sätt input till inläsning från fil.txt
-sätt rad1 till nästa rad från input
-skriv rad1"""
-        pass # Placeholder test
-
-    def test_reading_multiple_files(self):
-        """Example: reading multiple lines from a file."""
-        source_code = """sätt data till inläsning från fil2.txt
-sätt rader till ny lista
-
-medan rad finns från data
-    sätt nuvarande rad till nästa rad från data
-    lägg till nuvarande rad i rader
-    
-
-skriv längd från rader"""
-        pass # Placeholder test
-    
-    def test_error_handling(self):
-        """Example: try/except block."""
-        source_code = """prova
-    skriv här testar vi något och det blev fel
-    skriv ny rad
-    kasta något fel här
-fånga fel
-    skriv det blev ett fel
-    skriv ny rad
-    skriv meddelande från fel"""
-        pass # Placeholder test
-
-    def test_scopes(self):
-        """Example: variable scope demonstration."""
-        source_code = """sätt x till 3
-sätt y till grej med a
-    sätt b till grej med c
-        ge c gånger a
-
-    ge b med x delat med a
-
-skriv y med 4"""
-        pass # Placeholder test
-
-    def test_comments(self):
-        """Example: handling comments."""
-        source_code = """. skriver en text
-skriv hej
-
-. jämför något
-om längd från hej är större än 2
-    . skriver hoppsan för att längden är större än två
-    skriv hoppsan"""
-        pass # Placeholder test
-
-    def test_packages_main_app(self):
-        """Example: referencing files/packages."""
-        source_code = """hämta bibliotek.exempel
-hämta mattematik som matte
-
-sätt s till slumpa från matte
-skriv nästa tal från s
-skriv ny rad
-skriv min variabel från exempel"""
-        pass # Placeholder test
+    def test_comments_section(self):
+        source = ". skriver\nskriv hej"
+        expected = [
+            Token("T_COMMENT", ". skriver", 1, 1),
+            Token("T_NEWLINE", "\n", 1, 10),
+            Token("T_KEYWORD_PRINT", "skriv", 2, 1),
+            Token("T_IDENTIFIER", "hej", 2, 7)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
 
 if __name__ == '__main__':
     unittest.main()
