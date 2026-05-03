@@ -156,6 +156,31 @@ class Interpreter:
             raise HiuhRuntimeError(val)
         return None
 
+    def visit_ComparisonNode(self, node):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        op = node.op.strip()
+
+        # Handle Swedish Comparison Operators
+        if op == "större än":
+            return left > right
+        if op == "mindre än":
+            return left < right
+        if op == "lika med":
+            return left == right
+        if op == "större än eller lika med":
+            return left >= right
+        if op == "mindre än eller lika med":
+            return left <= right
+
+        # Handle Logical Operators
+        if op == "och":
+            return bool(left) and bool(right)
+        if op == "eller":
+            return bool(left) or bool(right)
+
+        raise Exception(f"Interpreter: Okänd jämförelseoperator '{op}'")
+
 class HiuhRuntimeError(Exception):
     def __init__(self, value):
         self.value = value
