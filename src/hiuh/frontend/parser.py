@@ -48,7 +48,11 @@ class Parser:
         if t.type == "T_KEYWORD_WHILE": return self.parse_while()
         if t.type == "T_KEYWORD_TYPE": return self.parse_type_def()
         if t.type == "T_KEYWORD_TRY": return self.parse_try_catch()
-        if t.type == "T_KEYWORD_THROW": return self.parse_throw()
+
+        if t.type == "T_KEYWORD_THROW":
+            self.consume("T_KEYWORD_THROW")
+            return UnaryOpNode("kasta", self.parse_greedy_expression())
+
         if t.type == "T_KEYWORD_GIVE": return self.parse_return()
         return self.expression()
 

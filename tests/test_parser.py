@@ -190,7 +190,7 @@ class TestHiuhParserAST(unittest.TestCase):
         source = "prova\n    kasta fel\nfånga fel\n    skriv fel"
         expected = [
             TryCatchNode(
-                try_block=[UnaryOpNode("kasta", VarAccessNode("fel"))],
+                try_block=[UnaryOpNode("kasta", StringNode("fel"))],
                 error_var="fel",
                 catch_block=[PrintNode(VarAccessNode("fel"))]
             )

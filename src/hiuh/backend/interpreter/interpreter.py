@@ -45,8 +45,12 @@ class Interpreter:
     # --- Stdout ---
     def visit_PrintNode(self, node):
         value = self.visit(node.value)
-        # sys.stdout adds the newline per the 'skriv' requirement
-        sys.stdout.write(str(value) + "\n")
+        # If the value is already a newline (from 'ny rad'),
+        # just print it without adding an extra one.
+        if value == "\n":
+            sys.stdout.write(value)
+        else:
+            sys.stdout.write(str(value) + "\n")
         return value
 
     # --- Math & Swedish String Concatenation ---
