@@ -5,6 +5,7 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.pos = 0
+        # Dynamic Scope Stack. Built-ins included.
         self.scopes = [{"SANT", "FALSKT", "lista", "inmatning"}]
 
     def enter_scope(self):
@@ -73,34 +74,44 @@ class Parser:
     def parse_greedy_expression(self):
         t = self.peek()
         if not t: return None
-        if t.type == "T_IDENTIFIER" and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
-            self.consume(); self.consume(); return StringNode("\n")
 
-        # Priority: Numbers/Bools/Funcs are always expressions
-        if t.type in ["T_KEYWORD_FUNC", "T_LITERAL_INT", "T_LITERAL_FLOAT", "T_LITERAL_TRUE", "T_LITERAL_FALSE"]:
-            return self.expression()
+        if t.type == "T_IDENTIFIER" and t.value == "ny":
+            if self.peek(1) and self.peek(1).value == "rad":
+                self.consume(); self.consume(); return StringNode("\n")
 
-        # Decision: If keywords like 'större' appear alone, they are strings
         checkpoint = self.pos
-        parts = []
-        while self.peek() and self.peek().type not in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
-            parts.append(self.peek())
-            self.pos += 1
+        i = 0
+        has_unknown_var = False
+        has_operator_syntax = False
+        while self.peek(i) and self.peek(i).type not in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
+            tok = self.peek(i)
+            if tok.type == "T_IDENTIFIER":
+                if not self.is_var_known(tok.value): has_unknown_var = True
+            if "T_OP" in tok.type or tok.type in ["T_KEYWORD_THAN", "T_KEYWORD_WITH"]:
+                has_operator_syntax = True
+            i += 1
 
-        self.pos = checkpoint
-        # If it's a single word and it's a known variable, it's an expression
-        if len(parts) == 1 and parts[0].type == "T_IDENTIFIER" and self.is_var_known(parts[0].value):
+        if t.type in ["T_LITERAL_INT", "T_LITERAL_FLOAT", "T_LITERAL_TRUE", "T_LITERAL_FALSE", "T_KEYWORD_FUNC"] or (not has_unknown_var and has_operator_syntax):
+            try:
+                expr = self.expression()
+                if not self.peek() or self.peek().type in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
+                    return expr
+                self.pos = checkpoint
+            except:
+                self.pos = checkpoint
+
+        if t.type == "T_IDENTIFIER" and t.value == "lista":
             return self.expression()
 
-        # If there are operators in the sequence, it's an expression
-        if any("T_OP" in p.type or p.type in ["T_KEYWORD_THAN", "T_KEYWORD_WITH"] for p in parts):
-            return self.expression()
-
-        # Fallback: All tokens joined as a string
-        txt = []
+        txt_parts = []
         while self.peek() and self.peek().type not in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
-            txt.append(str(self.consume().value))
-        return StringNode(" ".join(txt))
+            txt_parts.append(str(self.consume().value))
+
+        joined = " ".join(txt_parts)
+        if len(txt_parts) == 1 and self.is_var_known(joined) and t.type == "T_IDENTIFIER":
+            return VarAccessNode(joined)
+
+        return StringNode(joined)
 
     def expression(self):
         left = self.arithmetic()
@@ -108,8 +119,7 @@ class Parser:
             t = self.peek()
             if not t: break
             if t.type == "T_OP_IS": self.consume(); t = self.peek()
-            if not t: break
-            if t.type in ["T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_OP_OR", "T_OP_AND"]:
+            if t and (t.type in ["T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_OP_OR", "T_OP_AND"]):
                 op_parts = []
                 while self.peek() and (self.peek().type in ["T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_KEYWORD_THAN", "T_KEYWORD_WITH", "T_OP_OR", "T_OP_AND"] or
                                        (self.peek().type == "T_IDENTIFIER" and self.peek().value in ["eller", "lika", "med", "än", "och"])):
@@ -147,20 +157,21 @@ class Parser:
             return FunctionDefNode(p, self.parse_block(params=p))
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL"]:
             name = self.consume().value
-            if self.peek() and self.peek().type == "T_KEYWORD_WITH":
-                self.consume(); args = []
-                while True:
-                    args.append(self.expression())
-                    if self.peek() and self.peek().type == "T_COMMA": self.consume()
-                    else: break
+            if name == "lista":
+                args = []
+                if self.peek() and self.peek().type == "T_KEYWORD_WITH":
+                    self.consume()
+                    while True:
+                        args.append(self.expression())
+                        if self.peek() and self.peek().type == "T_COMMA": self.consume()
+                        else: break
                 return FunctionCallNode(name, args)
-            if name == "lista": return FunctionCallNode(name, [])
             return VarAccessNode(name)
         if t.type == "T_LITERAL_INT": return IntNode(self.consume().value)
         if t.type == "T_LITERAL_FLOAT": return FloatNode(self.consume().value)
         if t.type == "T_LITERAL_TRUE": self.consume(); return BoolNode(True)
         if t.type == "T_LITERAL_FALSE": self.consume(); return BoolNode(False)
-        raise SyntaxError(f"Unexpected {t.type} at line {t.line}")
+        raise SyntaxError(f"Unexpected {t.type}")
 
     def parse_block(self, params=None):
         self.consume("T_NEWLINE"); self.consume("T_INDENT"); self.enter_scope()
