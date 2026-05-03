@@ -31,9 +31,16 @@ class BoolNode(ASTNode):
 
 # --- Variables & Access ---
 class VarAccessNode(ASTNode):
-    def __init__(self, name, source=None):
+    def __init__(self, name, target=None):
         self.name = name
-        self.source = source  # Used for 'namn från p'
+        self.target = target
+
+    def __repr__(self):
+        return f"VarAccessNode(name={repr(self.name)}, target={repr(self.target)})"
+
+    def __eq__(self, other):
+        return isinstance(other, VarAccessNode) and \
+            self.name == other.name and self.target == other.target
 
 # --- Mathematical Operations ---
 class AddNode(ASTNode):

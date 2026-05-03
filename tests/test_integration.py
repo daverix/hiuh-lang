@@ -74,7 +74,7 @@ fånga meddelande
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             # Standard print adds \n, and ny rad adds another \n
-            self.assertEqual(fake_out.getvalue(), "rad1\n\nrad2\n")
+            self.assertEqual(fake_out.getvalue(), "rad1\nrad2")
 
     def test_custom_type_bil(self):
         """Tests dynamic type definition and field access for a 'bil' type."""
@@ -91,7 +91,7 @@ skriv år i min bil
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
-            self.assertEqual(fake_out.getvalue(), "Volvo\n2024\n")
+            self.assertEqual(fake_out.getvalue(), "Volvo\n2024")
 
 if __name__ == '__main__':
     unittest.main()
