@@ -222,5 +222,16 @@ class TestHiuhParserAST(unittest.TestCase):
         ]
         self.assertEqual(self.parse_source(source), expected)
 
+    def test_property_access_with_from_keyword(self):
+        """Verify that 'fält från objekt' produces a VarAccessNode with a target."""
+        # Pre-define the variable so the scope check doesn't trigger a string fallback
+        source = "typ person med namn\nsätt p till person med David\nskriv namn från p"
+        expected = [
+            TypeDefNode("person", ["namn"]),
+            AssignNode("p", FunctionCallNode("person", [StringNode("David")])),
+            PrintNode(VarAccessNode("namn", "p"))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
 if __name__ == '__main__':
     unittest.main()

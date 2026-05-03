@@ -201,5 +201,14 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
         ]
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 
+    def test_tokenize_from_keyword(self):
+        """Verify that 'från' is tokenized correctly."""
+        source = "skriv märke från min bil"
+        tokens = self.tokenizer.tokenize(source)
+        # Expected sequence: skriv, märke, från, min, bil
+        # Check that 'från' is the 3rd token (index 2)
+        self.assertEqual(tokens[2].type, "T_KEYWORD_FROM")
+        self.assertEqual(tokens[2].value, "från")
+
 if __name__ == '__main__':
     unittest.main()

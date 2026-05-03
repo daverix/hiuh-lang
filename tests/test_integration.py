@@ -85,9 +85,9 @@ sätt märke i min bil till Volvo
 sätt modell i min bil till V60
 sätt år i min bil till 2024
 
-skriv märke i min bil
+skriv märke från min bil
 skriv ny rad
-skriv år i min bil
+skriv år från min bil
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
