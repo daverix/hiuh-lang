@@ -15,51 +15,141 @@ class TestHiuhParserAST(unittest.TestCase):
     def test_stdout_section(self):
         source = "skriv hejsan\nskriv ny rad\nskriv hoppsan"
         expected = [
-            PrintNode(VarAccessNode("hejsan")),
-            PrintNode(LiteralNode("\n", "STRING")),
-            PrintNode(VarAccessNode("hoppsan"))
+            PrintNode(StringNode("hejsan")),
+            PrintNode(StringNode("\n")),
+            PrintNode(StringNode("hoppsan"))
         ]
-        # Note: If your parser handles 'ny rad' differently, adjust the middle node.
         self.assertEqual(self.parse_source(source), expected)
 
-    def test_variables_boolean_section(self):
+    def test_variables_boolean_or_comparison(self):
+        source = "sätt x till SANT\nsätt y till x eller FALSKT"
+        expected = [
+            AssignNode("x", BoolNode(True)),
+            AssignNode("y", ComparisonNode(VarAccessNode("x"), "eller", BoolNode(False)))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_boolean_and_comparison(self):
+        source = "sätt x till SANT\nsätt y till x och FALSKT"
+        expected = [
+            AssignNode("x", BoolNode(True)),
+            AssignNode("y", ComparisonNode(VarAccessNode("x"), "och", BoolNode(False)))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_boolean_greater_than(self):
+        source = "sätt a till 3\nsätt b till a större än 2"
+        expected = [
+            AssignNode("a", IntNode(3)),
+            AssignNode("b", ComparisonNode(VarAccessNode("a"), "större än", IntNode(2)))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_boolean_greater_than_or_equal(self):
+        source = "sätt a till 3\nsätt b till a större än eller lika med 2"
+        expected = [
+            AssignNode("a", IntNode(3)),
+            AssignNode("b", ComparisonNode(VarAccessNode("a"), "större än eller lika med", IntNode(2)))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_boolean_equal(self):
+        source = "sätt a till 3\nsätt b till a lika med 2"
+        expected = [
+            AssignNode("a", IntNode(3)),
+            AssignNode("b", ComparisonNode(VarAccessNode("a"), "lika med", IntNode(2)))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_boolean_less_than(self):
+        source = "sätt a till 3\nsätt b till a mindre än 2"
+        expected = [
+            AssignNode("a", IntNode(3)),
+            AssignNode("b", ComparisonNode(VarAccessNode("a"), "mindre än", IntNode(2)))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_boolean_less_than_or_equal(self):
+        source = "sätt a till 3\nsätt b till a mindre än eller lika med 2"
+        expected = [
+            AssignNode("a", IntNode(3)),
+            AssignNode("b", ComparisonNode(VarAccessNode("a"), "mindre än eller lika med", IntNode(2)))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_string_when_variable_not_found(self):
         source = "sätt x till SANT\nsätt b till a större än 2"
         expected = [
-            AssignNode("x", LiteralNode(True, "BOOL")),
-            AssignNode("b", BinOpNode(VarAccessNode("a"), "större än", LiteralNode("2", "INT")))
+            AssignNode("x", BoolNode(True)),
+            AssignNode("b", StringNode("a större än 2"))
         ]
         self.assertEqual(self.parse_source(source), expected)
 
-    def test_variables_math_section(self):
-        source = "sätt c till b gånger b pluss a"
-        # Reflecting the recursive nature of the parser: b * (b + a)
+    def test_variables_math_plus(self):
+        source = "sätt c till 2 pluss 3"
         expected = [
-            AssignNode("c", BinOpNode(
-                VarAccessNode("b"),
-                "gånger",
-                BinOpNode(VarAccessNode("b"), "pluss", VarAccessNode("a"))
-            ))
+            AssignNode("c", AddNode(IntNode(2), IntNode(3)))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_math_subtract(self):
+        source = "sätt c till 2 minus 3"
+        expected = [
+            AssignNode("c", SubNode(IntNode(2), IntNode(3)))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_math_multiply(self):
+        source = "sätt c till 2 gånger 3"
+        expected = [
+            AssignNode("c", MulNode(IntNode(2), IntNode(3)))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_math_divide(self):
+        source = "sätt c till 2 delat med 3"
+        expected = [
+            AssignNode("c", DivNode(IntNode(2), IntNode(3)))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_math_multiplication_before_addition(self):
+        source = "sätt c till 3 pluss 4 gånger 2"
+        expected = [
+            AssignNode("c", AddNode(IntNode(3), MulNode(IntNode(4), IntNode(2))))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_math_division_before_addition(self):
+        source = "sätt c till 3 pluss 4 delat med 2"
+        expected = [
+            AssignNode("c", AddNode(IntNode(3), DivNode(IntNode(4), IntNode(2))))
         ]
         self.assertEqual(self.parse_source(source), expected)
 
     def test_variables_float_section(self):
         source = "sätt y till 3,4"
         expected = [
-            AssignNode("y", LiteralNode("3,4", "FLOAT"))
+            AssignNode("y", FloatNode("3,4"))
         ]
         self.assertEqual(self.parse_source(source), expected)
 
-    def test_variables_list_section(self):
+    def test_variables_list_with_initial_values(self):
         source = "sätt min lista till lista med 1, 2, 3"
-        # Note: 'min' and 'lista' are separate identifiers
         expected = [
-            AssignNode("min", FunctionCallNode("lista", [
-                LiteralNode("1", "INT"),
-                LiteralNode("2", "INT"),
-                LiteralNode("3", "INT")
+            AssignNode("min lista", FunctionCallNode("lista", [
+                IntNode(1),
+                IntNode(2),
+                IntNode(3)
             ]))
         ]
-        # This assumes the first identifier 'min' is the name and 'lista' is the value start
+        self.assertEqual(self.parse_source(source), expected)
+
+    def test_variables_list_empty(self):
+        source = "sätt min lista till lista"
+        expected = [
+            AssignNode("min lista", FunctionCallNode("lista", []))
+        ]
         self.assertEqual(self.parse_source(source), expected)
 
     def test_function_section(self):
@@ -76,7 +166,7 @@ class TestHiuhParserAST(unittest.TestCase):
         source = "typ person med namn, ålder\nsätt ålder i person till 38"
         expected = [
             TypeDefNode("person", ["namn", "ålder"]),
-            AssignNode("ålder", LiteralNode("38", "INT"), target_type="person")
+            AssignNode("ålder", IntNode(38), target_type="person")
         ]
         self.assertEqual(self.parse_source(source), expected)
 
@@ -84,20 +174,15 @@ class TestHiuhParserAST(unittest.TestCase):
         source = "om x är större än 2\n    skriv större\nannars\n    skriv mindre"
         expected = [
             IfNode(
-                condition=BinOpNode(VarAccessNode("x"), "är större än", LiteralNode("2", "INT")),
-                true_block=[PrintNode(VarAccessNode("större"))],
-                false_block=[PrintNode(VarAccessNode("mindre"))]
+                condition=ComparisonNode(VarAccessNode("x"), "större än", IntNode(2)),
+                true_block=[PrintNode(StringNode("större"))],
+                false_block=[PrintNode(StringNode("mindre"))]
             )
         ]
         self.assertEqual(self.parse_source(source), expected)
 
     def test_stdin_section(self):
         source = "sätt t till nästa rad från inmatning"
-        expected = [
-            AssignNode("t", VarAccessNode("nästa", source=None))
-            # Note: The actual structure depends on how you parse 'nästa rad från'
-            # Here we provide a placeholder based on current primary() logic
-        ]
         ast = self.parse_source(source)
         self.assertIsInstance(ast[0], AssignNode)
 
@@ -115,29 +200,27 @@ class TestHiuhParserAST(unittest.TestCase):
     def test_comments_section(self):
         source = ". skriver\nskriv hej"
         expected = [
-            PrintNode(VarAccessNode("hej"))
+            PrintNode(StringNode("hej"))
         ]
-        # Parser should skip T_COMMENT and T_NEWLINE
         self.assertEqual(self.parse_source(source), expected)
 
     def test_multiple_indents_nested(self):
         source = "om SANT\n    skriv nivå 1\n    om SANT\n        skriv nivå 2"
         expected = [
             IfNode(
-                condition=LiteralNode(True, "BOOL"),
+                condition=BoolNode(True),
                 true_block=[
-                    PrintNode(VarAccessNode("nivå")), # Simplified based on identifier logic
+                    PrintNode(StringNode("nivå 1")),
                     IfNode(
-                        condition=LiteralNode(True, "BOOL"),
-                        true_block=[PrintNode(VarAccessNode("nivå"))],
+                        condition=BoolNode(True),
+                        true_block=[PrintNode(StringNode("nivå 2"))],
                         false_block=None
                     )
                 ],
                 false_block=None
             )
         ]
-        ast = self.parse_source(source)
-        self.assertIsInstance(ast[0], IfNode)
+        self.assertEqual(self.parse_source(source), expected)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 class ASTNode:
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -5,32 +7,59 @@ class ASTNode:
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        # Format: NodeName(attr1=val1, attr2=val2)
+        # Format: NodeName(attr1=val1, ...)
         attrs = ", ".join([f"{k}={v!r}" for k, v in self.__dict__.items()])
         return f"{self.__class__.__name__}({attrs})"
 
-# --- Literals and Variables ---
-class LiteralNode(ASTNode):
-    def __init__(self, value, type):
-        self.value = value
-        self.type = type  # 'INT', 'FLOAT', 'BOOL', 'STRING'
+# --- Literals ---
+class IntNode(ASTNode):
+    def __init__(self, value):
+        self.value = int(value)
 
+class FloatNode(ASTNode):
+    def __init__(self, value):
+        # Converts Swedish '3,4' to Python '3.4'
+        self.value = float(str(value).replace(',', '.'))
+
+class StringNode(ASTNode):
+    def __init__(self, value):
+        self.value = str(value)
+
+class BoolNode(ASTNode):
+    def __init__(self, value):
+        self.value = bool(value)
+
+# --- Variables & Access ---
 class VarAccessNode(ASTNode):
     def __init__(self, name, source=None):
         self.name = name
         self.source = source  # Used for 'namn från p'
 
-# --- Operations ---
-class BinOpNode(ASTNode):
+# --- Mathematical Operations ---
+class AddNode(ASTNode):
+    def __init__(self, left, right):
+        self.left, self.right = left, right
+
+class SubNode(ASTNode):
+    def __init__(self, left, right):
+        self.left, self.right = left, right
+
+class MulNode(ASTNode):
+    def __init__(self, left, right):
+        self.left, self.right = left, right
+
+class DivNode(ASTNode):
+    def __init__(self, left, right):
+        self.left, self.right = left, right
+
+# --- Comparisons and Logic ---
+class ComparisonNode(ASTNode):
     def __init__(self, left, op, right):
-        self.left = left
-        self.op = op
-        self.right = right
+        self.left, self.op, self.right = left, op, right
 
 class UnaryOpNode(ASTNode):
     def __init__(self, op, operand):
-        self.op = op
-        self.operand = operand
+        self.op, self.operand = op, operand
 
 # --- Statements ---
 class AssignNode(ASTNode):

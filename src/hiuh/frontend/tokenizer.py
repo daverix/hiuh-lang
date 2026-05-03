@@ -31,13 +31,20 @@ class Tokenizer:
             "om": "T_KEYWORD_IF",
             "är": "T_OP_IS",
             "större": "T_KEYWORD_GREATER",
+            "mindre": "T_KEYWORD_LESS",
             "än": "T_KEYWORD_THAN",
+            "lika": "T_KEYWORD_EQUAL",
             "annars": "T_KEYWORD_ELSE",
             "prova": "T_KEYWORD_TRY",
             "kasta": "T_KEYWORD_THROW",
             "fånga": "T_KEYWORD_CATCH",
             "gånger": "T_OP_MUL",
-            "pluss": "T_OP_ADD"
+            "pluss": "T_OP_ADD",
+            "minus": "T_OP_SUB",
+            "delat": "T_OP_DIV",
+            "eller": "T_OP_OR",
+            "och": "T_OP_AND",
+            "medan": "T_KEYWORD_WHILE"
         }
 
     def is_alpha(self, char):
@@ -113,9 +120,10 @@ class Tokenizer:
                         i += 1
                     val = content[start:i]
 
-                    if val == "SANT":
+                    # Standardize logic for literals and keywords
+                    if val.upper() == "SANT":
                         t_type = "T_LITERAL_TRUE"
-                    elif val == "FALSKT":
+                    elif val.upper() == "FALSKT":
                         t_type = "T_LITERAL_FALSE"
                     else:
                         t_type = self.keywords.get(val.lower(), "T_IDENTIFIER")
