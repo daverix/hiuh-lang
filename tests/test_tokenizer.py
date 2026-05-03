@@ -135,7 +135,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token("T_NEWLINE", "\n", 3, 7),
             Token("T_INDENT", "    ", 4, 1),
             Token("T_KEYWORD_PRINT", "skriv", 4, 5),
-            Token("T_IDENTIFIER", "mindre", 4, 11),
+            Token("T_KEYWORD_LESS", "mindre", 4, 11),
             Token("T_DEDENT", "", 5, 1)
         ]
         self.assertEqual(self.tokenizer.tokenize(source), expected)
@@ -179,7 +179,6 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 
     def test_multiple_indents_nested(self):
-        """Tests multiple levels of indentation and automatic cleanup of the stack."""
         source = "om SANT\n    skriv nivå 1\n    om SANT\n        skriv nivå 2"
         expected = [
             Token("T_KEYWORD_IF", "om", 1, 1),
@@ -197,7 +196,6 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token("T_KEYWORD_PRINT", "skriv", 4, 9),
             Token("T_IDENTIFIER", "nivå", 4, 15),
             Token("T_LITERAL_INT", "2", 4, 20),
-            # At the end of the file, the tokenizer must emit DEDENT for every active indent
             Token("T_DEDENT", "", 5, 1),
             Token("T_DEDENT", "", 5, 1)
         ]
