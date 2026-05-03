@@ -1,0 +1,80 @@
+import unittest
+from io import StringIO
+from unittest.mock import patch
+from hiuh.frontend.tokenizer import Tokenizer
+from hiuh.frontend.parser import Parser
+from hiuh.backend.interpreter.interpreter import Interpreter
+
+class TestHiuhFullIntegration(unittest.TestCase):
+    def setUp(self):
+        self.tokenizer = Tokenizer()
+        self.interpreter = Interpreter()
+
+    def run_source(self, source):
+        tokens = self.tokenizer.tokenize(source)
+        parser = Parser(tokens)
+        nodes = parser.parse()
+        return self.interpreter.execute(nodes)
+
+    def test_arithmetic_precedence(self):
+        """Tests that multiplication happens before addition (3 + 4 * 2 = 11)."""
+        source = "skriv 3 pluss 4 gånger 2"
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "11")
+
+    def test_greedy_string_assignment(self):
+        """Tests the README rule: anything after TILL that isn't a type is a string."""
+        source = "sätt x till detta är en hemlighet\nskriv x"
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "detta är en hemlighet")
+
+    def test_if_else_logic(self):
+        """Tests control flow logic with Swedish comparison operators."""
+        source = """
+sätt poäng till 85
+om poäng större än eller lika med 50
+    skriv godkänd
+annars
+    skriv underkänd
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "godkänd")
+
+    def test_function_definition_and_call(self):
+        """Tests function scope and return values."""
+        source = """
+sätt hälsa till grej med namn
+    ge hej pluss namn
+
+sätt meddelande till hälsa med Hiuh
+skriv meddelande
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "hej Hiuh")
+
+    def test_try_catch_blocks(self):
+        """Tests the Swedish error handling keywords."""
+        source = """
+prova
+    kasta ett fel inträffade
+fånga meddelande
+    skriv meddelande
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "ett fel inträffade")
+
+    def test_newline_swedish_literal(self):
+        """Tests that 'ny rad' is interpreted as a newline character."""
+        source = "skriv rad1\nskriv ny rad\nskriv rad2"
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # Standard print adds \n, and ny rad adds another \n
+            self.assertEqual(fake_out.getvalue(), "rad1\n\nrad2\n")
+
+if __name__ == '__main__':
+    unittest.main()
