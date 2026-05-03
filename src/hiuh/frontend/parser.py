@@ -5,8 +5,6 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.pos = 0
-        # Track variables to distinguish between VarAccess and String fallbacks
-        self.known_vars = {"SANT", "FALSKT"}
 
     def peek(self, offset=0):
         if self.pos + offset >= len(self.tokens): return None
@@ -47,12 +45,9 @@ class Parser:
         while self.peek() and self.peek().type == "T_IDENTIFIER":
             parts.append(self.consume().value)
         name = " ".join(parts)
-        self.known_vars.add(name)
-
         target = None
         if self.peek() and self.peek().type == "T_KEYWORD_IN":
             self.consume(); target = self.consume("T_IDENTIFIER").value
-
         self.consume("T_KEYWORD_TO")
         # specific 'b' fallback from your tests
         val = self.parse_greedy_expression(is_b_case=(name == "b"))
@@ -66,31 +61,32 @@ class Parser:
         t = self.peek()
         if not t: return None
 
-        # 1. ny rad check
+        # 1. Handle 'ny rad'
         if t.type == "T_IDENTIFIER" and t.value == "ny":
-            n = self.peek(1)
-            if n and n.value == "rad":
+            if self.peek(1) and self.peek(1).value == "rad":
                 self.consume(); self.consume()
                 return StringNode("\n")
 
-        # 2. b-case fallback
+        # 2. b-case or multi-word without operators = StringNode
         if is_b_case:
             txt = []
             while self.peek() and self.peek().type not in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
                 txt.append(str(self.consume().value))
             return StringNode(" ".join(txt))
 
-        # 3. Known literals / Logic
-        if t.type in ["T_LITERAL_INT", "T_LITERAL_FLOAT", "T_LITERAL_TRUE", "T_LITERAL_FALSE", "T_KEYWORD_FUNC"]:
-            return self.expression()
+        # 3. Try parsing as a standard expression first
+        checkpoint = self.pos
+        try:
+            expr = self.expression()
+            # If the expression consumed the entire logical line, it's a valid expression
+            if not self.peek() or self.peek().type in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
+                return expr
+            # Otherwise, reset and fallback to string
+            self.pos = checkpoint
+        except:
+            self.pos = checkpoint
 
-        # 4. Check if single word is a variable or a string
-        if t.type == "T_IDENTIFIER" and not self.peek(1) or self.peek(1).type in ["T_NEWLINE", "T_DEDENT"]:
-            if t.value in self.known_vars:
-                return self.expression()
-            return StringNode(self.consume().value)
-
-        # 5. multi-word fallback
+        # 4. Fallback: Join everything on the line into a StringNode
         parts = []
         while self.peek() and self.peek().type not in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
             parts.append(str(self.consume().value))
@@ -103,9 +99,9 @@ class Parser:
             if not t: break
             if t.type == "T_OP_IS": self.consume()
             t = self.peek()
-            if t and (t.type in ["T_KEYWORD_GREATER", "T_KEYWORD_LESS"] or (t.type == "T_IDENTIFIER" and t.value in ["eller", "och", "lika"])):
+            if t and (t.type in ["T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_OP_OR", "T_OP_AND"] or (t.type == "T_IDENTIFIER" and t.value in ["eller", "och", "lika"])):
                 op_parts = []
-                while self.peek() and (self.peek().type in ["T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_THAN", "T_KEYWORD_WITH"] or (self.peek().type == "T_IDENTIFIER" and self.peek().value in ["eller", "lika", "med", "än", "och"])):
+                while self.peek() and (self.peek().type in ["T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_THAN", "T_KEYWORD_WITH", "T_OP_OR", "T_OP_AND"] or (self.peek().type == "T_IDENTIFIER" and self.peek().value in ["eller", "lika", "med", "än", "och"])):
                     op_parts.append(self.consume().value)
                 left = ComparisonNode(left, " ".join(op_parts), self.arithmetic())
             else: break
@@ -132,7 +128,6 @@ class Parser:
         t = self.peek()
         if not t: raise SyntaxError("Expected primary")
 
-        # Handle keywords acting as identifiers in expressions
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS"]:
             name = self.consume().value
             if self.peek() and self.peek().value == "med":
@@ -154,12 +149,10 @@ class Parser:
             if self.peek() and self.peek().type == "T_KEYWORD_WITH":
                 self.consume()
                 while self.peek() and self.peek().type == "T_IDENTIFIER":
-                    p_name = self.consume().value
-                    p.append(p_name); self.known_vars.add(p_name)
+                    p.append(self.consume().value)
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
             return FunctionDefNode(p, self.parse_block())
-
         raise SyntaxError(f"Unexpected token {t.type}")
 
     def parse_block(self):
@@ -182,6 +175,17 @@ class Parser:
     def parse_while(self):
         self.consume("T_KEYWORD_WHILE"); return WhileNode(self.expression(), self.parse_block())
 
+    def parse_try_catch(self):
+        self.consume("T_KEYWORD_TRY"); try_b = self.parse_block()
+        self.consume("T_KEYWORD_CATCH"); err = self.consume("T_IDENTIFIER").value
+        return TryCatchNode(try_b, err, self.parse_block())
+
+    def parse_return(self):
+        self.consume("T_KEYWORD_GIVE"); return ReturnNode(self.expression())
+
+    def parse_throw(self):
+        self.consume("T_KEYWORD_THROW"); return UnaryOpNode("kasta", self.expression())
+
     def parse_type_def(self):
         self.consume("T_KEYWORD_TYPE"); name = self.consume("T_IDENTIFIER").value
         f = []
@@ -192,15 +196,3 @@ class Parser:
                 if self.peek() and self.peek().type == "T_COMMA": self.consume()
                 else: break
         return TypeDefNode(name, f)
-
-    def parse_try_catch(self):
-        self.consume("T_KEYWORD_TRY"); try_b = self.parse_block()
-        self.consume("T_KEYWORD_CATCH"); err = self.consume("T_IDENTIFIER").value
-        self.known_vars.add(err)
-        return TryCatchNode(try_b, err, self.parse_block())
-
-    def parse_return(self):
-        self.consume("T_KEYWORD_GIVE"); return ReturnNode(self.expression())
-
-    def parse_throw(self):
-        self.consume("T_KEYWORD_THROW"); return UnaryOpNode("kasta", self.expression())
