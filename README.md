@@ -55,7 +55,7 @@ Value of a boolean variable can either be SANT, FALSKT or an expression.
 sätt x till SANT
 sätt y till x eller FALSKT
 
-sätt a till 2
+sätt a till 3
 sätt b till a större än 2
 ```
 
@@ -107,7 +107,7 @@ outputs: `3,4`
 
 empty list:
 ```
-sätt min lista till ny lista
+sätt min lista till lista
 ```
 
 initialize list with values:
@@ -235,7 +235,7 @@ Reading multiple lines:
 
 ```
 sätt data till inläsning från fil2.txt
-sätt rader till ny lista
+sätt rader till lista
 
 medan rad finns från data
     sätt nuvarande rad till nästa rad från data
