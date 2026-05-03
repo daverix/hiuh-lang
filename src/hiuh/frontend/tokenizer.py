@@ -1,179 +1,134 @@
-from dataclasses import dataclass
-from typing import List
+# -*- coding: utf-8 -*-
 
-@dataclass
 class Token:
-    """Represents a single lexical token."""
-    type: str
-    value: str
-    line: int = 1
-    column: int = 1
+    def __init__(self, type, value, line, column):
+        self.type = type
+        self.value = value
+        self.line = line
+        self.column = column
 
-# --- Compiler Structural Tokens ---
-# These tokens are emitted by the tokenizer based on expected grammar rules,
-# fulfilling the requirement for the Parser's scope management.
-TOKEN_INDENT = "INDENT"
-TOKEN_DEDENT = "DEDENT"
-TOKEN_SCOPE_CHANGE = "SCOPE_BREAK" # Generic token for block start/end context
+    def __repr__(self):
+        return f"Token({self.type}, {repr(self.value)}, {self.line}, {self.column})"
+
+    def __eq__(self, other):
+        if not isinstance(other, Token):
+            return False
+        return (self.type == other.type and self.value == other.value and
+                self.line == other.line and self.column == other.column)
 
 class Tokenizer:
-    """
-    Tokenizes the input source code string character by character according 
-    to hiue language rules, including structural scope markers.
-    """
-    
-    # Define common keywords and structural identifiers
-    KEYWORDS = {
-        # Control Flow/Structure
-        "sätt": "KEYWORD_SET",
-        "om": "KEYWORD_IF",
-        "annars": "KEYWORD_ELSE",
-        "medan": "KEYWORD_WHILE",
-        "prova": "KEYWORD_TRY",
-        "fånga": "KEYWORD_CATCH",
-        "är": "KEYWORD_IS",
-        "till": "KEYWORD_TO",
-        "namn": "TYPE_FIELD",
-        "ålder": "TYPE_FIELD",
-        "list": "TYPE_LIST",
-        # Structural Markers
-        "låsta": "BLOCK_START_KEYWORD", # Example: Keyword that MUST imply a block starts
-        "slut": "STATEMENT_END_KEYWORD",
-    }
-
-    # Complex tokens that need multi-word detection
-    MULTI_WORD_KEYWORDS = [
-        "större än", 
-        "större än eller lika med", 
-        "mindre än", 
-        "mindre än eller lika med", 
-        "inte lika med"
-    ]
-    
     def __init__(self):
-        pass
+        self.keywords = {
+            "skriv": "T_KEYWORD_PRINT",
+            "sätt": "T_KEYWORD_SET",
+            "till": "T_KEYWORD_TO",
+            "grej": "T_KEYWORD_FUNC",
+            "med": "T_KEYWORD_WITH",
+            "ge": "T_KEYWORD_GIVE",
+            "typ": "T_KEYWORD_TYPE",
+            "i": "T_KEYWORD_IN",
+            "från": "T_KEYWORD_FROM",
+            "om": "T_KEYWORD_IF",
+            "är": "T_OP_IS",
+            "större": "T_KEYWORD_GREATER",
+            "än": "T_KEYWORD_THAN",
+            "annars": "T_KEYWORD_ELSE",
+            "prova": "T_KEYWORD_TRY",
+            "kasta": "T_KEYWORD_THROW",
+            "fånga": "T_KEYWORD_CATCH",
+            "gånger": "T_OP_MUL",
+            "pluss": "T_OP_ADD"
+        }
 
-    def tokenize(self, code: str) -> List[Token]:
-        """
-        Takes a source code string and outputs a list of structured tokens 
-        by scanning the code character by character.
-        """
-        tokens: List[Token] = []
-        current_line = 1
-        current_col = 1
-        
-        i = 0
-        code_length = len(code)
-        
-        while i < code_length:
-            start_i = i
-            start_line = current_line
-            current_token_value = ""
-            token_type = None
+    def is_alpha(self, char):
+        return 'a' <= char <= 'z' or 'A' <= char <= 'Z' or char in 'åäöÅÄÖ'
 
-            # 1. Skip Whitespace (and track newline for context)
-            if code[i].isspace():
-                if code[i] == '\n':
-                    # A newline often signifies a structural break (potential scope change)
-                    current_line += 1
-                    current_col = 1
-                    # Emit a soft structural break token for the parser
-                    tokens.append(Token(type=TOKEN_SCOPE_CHANGE, value="", line=start_line, column=current_col))
-                else:
-                    current_col += 1
+    def is_digit(self, char):
+        return '0' <= char <= '9'
+
+    def tokenize(self, code):
+        tokens = []
+        lines = code.split('\n')
+        indent_stack = [0]
+
+        for line_idx, line in enumerate(lines, 1):
+            if not line.strip():
+                if line_idx < len(lines):
+                    tokens.append(Token("T_NEWLINE", "\n", line_idx, len(line) + 1))
+                continue
+
+            indent = 0
+            while indent < len(line) and line[indent] == ' ':
+                indent += 1
+
+            content = line[indent:]
+
+            if indent > indent_stack[-1]:
+                tokens.append(Token("T_INDENT", " " * indent, line_idx, 1))
+                indent_stack.append(indent)
+            elif indent < indent_stack[-1]:
+                while indent < indent_stack[-1]:
+                    indent_stack.pop()
+                    tokens.append(Token("T_DEDENT", "", line_idx, 1))
+
+            if content.startswith('.'):
+                tokens.append(Token("T_COMMENT", content, line_idx, indent + 1))
+                if line_idx < len(lines):
+                    tokens.append(Token("T_NEWLINE", "\n", line_idx, len(line) + 1))
+                continue
+
+            i = 0
+            while i < len(content):
+                char = content[i]
+                if char == ' ':
+                    i += 1
+                    continue
+                if char == ',':
+                    tokens.append(Token("T_COMMA", ",", line_idx, indent + i + 1))
+                    i += 1
+                    continue
+
+                if self.is_digit(char):
+                    start = i
+                    has_comma = False
+                    while i < len(content):
+                        if content[i] == ',':
+                            if (i + 1) < len(content) and self.is_digit(content[i+1]):
+                                has_comma = True
+                                i += 1
+                            else:
+                                break
+                        elif self.is_digit(content[i]):
+                            i += 1
+                        else:
+                            break
+                    val = content[start:i]
+                    t_type = "T_LITERAL_FLOAT" if has_comma else "T_LITERAL_INT"
+                    tokens.append(Token(t_type, val, line_idx, indent + start + 1))
+                    continue
+
+                if self.is_alpha(char):
+                    start = i
+                    while i < len(content) and (self.is_alpha(content[i]) or self.is_digit(content[i])):
+                        i += 1
+                    val = content[start:i]
+
+                    if val == "SANT":
+                        t_type = "T_LITERAL_TRUE"
+                    elif val == "FALSKT":
+                        t_type = "T_LITERAL_FALSE"
+                    else:
+                        t_type = self.keywords.get(val.lower(), "T_IDENTIFIER")
+
+                    tokens.append(Token(t_type, val, line_idx, indent + start + 1))
+                    continue
                 i += 1
-                continue
 
-            # --- Structural/Multi-Word Token Detection ---
-            
-            # 2. Check for Multi-Word Keywords/Operators
-            found_multi_word = False
-            for phrase in self.MULTI_WORD_KEYWORDS:
-                phrase_text = phrase
-                phrase_len = len(phrase_text)
-                if code[i:i + phrase_len].lower() == phrase_text:
-                    token_type = self.KEYWORDS[phrase_text]
-                    tokens.append(Token(type=token_type, value=phrase_text, line=start_line, column=current_col))
-                    i += phrase_len
-                    current_col += phrase_len
-                    found_multi_word = True
-                    break
-            
-            if found_multi_word:
-                continue
+            if line_idx < len(lines):
+                tokens.append(Token("T_NEWLINE", "\n", line_idx, len(line) + 1))
 
-            # 3. Check for Single-Word Keywords/Operators
-            word_start = i
-            word_end = i
-            # Find the end of the current word/identifier
-            while word_end < code_length and not code[word_end].isspace() and code[word_end] not in (',',):
-                word_end += 1
-            
-            word = code[word_start:word_end]
-            
-            if word:
-                token_type = None
-                
-                # A. Check for structural keywords that imply scope
-                if word.lower() in self.KEYWORDS:
-                    token_type = self.KEYWORDS[word.lower()]
+        while len(indent_stack) > 1:
+            indent_stack.pop()
+            tokens.append(Token("T_DEDENT", "", len(lines) + 1, 1))
 
-                # B. Handle Punctuation
-                elif word == ',':
-                    token_type = "SEP_COMMA"
-                
-                # C. Check for Literals (assuming numbers only)
-                elif word.isdigit():
-                    token_type = "LITERAL_INT"
-                
-                # D. Default Token
-                else:
-                    token_type = "IDENTIFIER"
-
-                # Token emission
-                tokens.append(Token(type=token_type, value=word, line=start_line, column=current_col))
-                
-                # Update position trackers
-                current_col += len(word)
-                i = word_end
-            else:
-                break
-        
-        # Post-processing check for block structural tokens
-        # A real implementation would look for keywords like ': ' or explicit markers 
-        # to emit INDENT/DEDENT. Here, we add a heuristic for demonstration:
-        final_tokens = []
-        for token in tokens:
-            if token.type == "KEYWORD_IF" and token.value == "if":
-                final_tokens.append(token)
-                # Heuristic: If 'if' is found, immediately append an INDENT token
-                final_tokens.append(Token(type=TOKEN_INDENT, value="{}".format(token.type), line=token.line, column=token.column))
-            elif token.type == "STATEMENT_END_KEYWORD":
-                # Heuristic: If we hit a block end keyword, assume we need to DEDENT
-                final_tokens.append(token)
-                final_tokens.append(Token(type=TOKEN_DEDENT, value="{}".format(token.type), line=token.line, column=token.column))
-            else:
-                final_tokens.append(token)
-                
-        return final_tokens
-
-# Example Usage (for testing purposes)
-if __name__ == "__main__":
-    # Demonstrating structural markers:
-    sample_code = """
-namn = 10
-sätt x till 5
-om x är större än 2
-  print('Hello')
-slut
-"""
-    
-    tokenizer = Tokenizer()
-    print("Tokenizing sample code with structural support...")
-    
-    tokens = tokenizer.tokenize(sample_code)
-    for token in tokens:
-        # Check for N/A type (internal indicator)
-        display_type = token.type if token.type != "INDENT" else "INDENT"
-        display_type = display_type if display_type != "DEDENT" else "DEDENT"
-        print(f"[{display_type:<25}] '{token.value:<20}' (Line {token.line}, Col {token.column})")
+        return tokens
