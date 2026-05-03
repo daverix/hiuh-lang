@@ -39,6 +39,18 @@ class Interpreter:
 
     def visit_AssignNode(self, node):
         value = self.visit(node.value)
+
+        # Scenario: sätt märke i min bil till Volvo
+        if node.target_type:
+            obj = self.env.get(node.target_type)
+            if isinstance(obj, dict):
+                obj[node.name] = value
+                return value
+            raise Exception(f"'{node.target_type}' är inte ett objekt (det är {type(obj).__name__}).")
+
+        if callable(value) and isinstance(node.value, VarAccessNode):
+            value = value()
+
         self.env.define(node.name, value)
         return value
 
@@ -131,10 +143,10 @@ class Interpreter:
         if callable(func):
             return func(*args)
 
-        # 4. README Fallback: If it's not a known function/var,
-        # it behaves like a greedy string joining 'name med args'
-        arg_strings = " ".join(str(a) for a in args)
-        return f"{node.name} med {arg_strings}"
+        # If it's not a function and not a known variable,
+        # only then do we do the Swedish greedy string fallback
+        arg_str = " ".join(str(a) for a in args)
+        return f"{node.name} med {arg_str}"
 
     def visit_ReturnNode(self, node):
         return self.visit(node.value)
