@@ -73,7 +73,7 @@ sätt b till a större än 2
 
 ```
 sätt x till 2
-skriv 2
+skriv x
 ```
 
 outputs: `2`
@@ -98,6 +98,7 @@ sätt c till b gånger b pluss a
 ### set float variable
 ```
 sätt y till 3,4
+skriv y
 ```
 
 outputs: `3,4`
@@ -144,7 +145,6 @@ skriv Namn
 skriv ny rad
 skriv namn från p
 skriv ny rad
-skriv Ålder
 skriv ålder från p
 ```
 
@@ -155,6 +155,14 @@ David
 ```
 
 To access the variables in a `typ`, use the `från` keyword followed by the variable name.
+
+To set a variable to a new value in a `typ`, use the following syntax:
+
+```
+sätt ålder i person till 38
+```
+
+`i` here means that the variable `ålder` is accessed from `person` instead of variables available in the current scope.
 
 ### set string literal
 
