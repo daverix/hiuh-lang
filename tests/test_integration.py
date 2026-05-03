@@ -76,5 +76,22 @@ fånga meddelande
             # Standard print adds \n, and ny rad adds another \n
             self.assertEqual(fake_out.getvalue(), "rad1\n\nrad2\n")
 
+    def test_custom_type_bil(self):
+        """Tests dynamic type definition and field access for a 'bil' type."""
+        source = """
+typ bil med märke, modell, år
+sätt min bil till bil
+sätt märke i min bil till Volvo
+sätt modell i min bil till V60
+sätt år i min bil till 2024
+
+skriv märke i min bil
+skriv ny rad
+skriv år i min bil
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue(), "Volvo\n2024\n")
+
 if __name__ == '__main__':
     unittest.main()

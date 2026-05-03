@@ -58,16 +58,33 @@ class Parser:
 
     def parse_assignment(self):
         self.consume("T_KEYWORD_SET")
+
+        # 1. Consume the property/variable name (e.g., 'märke')
         parts = []
         while self.peek() and self.peek().type == "T_IDENTIFIER":
             parts.append(self.consume().value)
         name = " ".join(parts)
+
         target = None
+        # 2. Check for the 'i' keyword (e.g., 'i min bil')
         if self.peek() and self.peek().type == "T_KEYWORD_IN":
-            self.consume(); target = self.consume("T_IDENTIFIER").value
+            self.consume() # consume 'i'
+            target_parts = []
+            # Greedily consume identifiers for the target (e.g., 'min', 'bil')
+            while self.peek() and self.peek().type == "T_IDENTIFIER":
+                target_parts.append(self.consume().value)
+            target = " ".join(target_parts)
+
+        # 3. Now it must be 'till'
         self.consume("T_KEYWORD_TO")
+
+        # 4. Parse the value
         val = self.parse_greedy_expression()
-        self.define_var(name)
+
+        # If it's a standard assignment, define it in scope
+        if not target:
+            self.define_var(name)
+
         return AssignNode(name, val, target)
 
     def parse_print(self):
@@ -83,32 +100,26 @@ class Parser:
             if self.peek(1) and self.peek(1).value == "rad":
                 self.consume(); self.consume(); return StringNode("\n")
 
-        # 2. Logic/Func/Literal check
-        if t.type in ["T_KEYWORD_FUNC", "T_LITERAL_INT", "T_LITERAL_FLOAT", "T_LITERAL_TRUE", "T_LITERAL_FALSE"]:
-            return self.expression()
+        # 2. Logic Check: If we see grej, lista, SANT, numbers, or a known variable,
+        # try parsing as an expression FIRST.
+        is_builtin = t.type == "T_IDENTIFIER" and t.value in ["lista", "inmatning"]
+        is_known = t.type == "T_IDENTIFIER" and self.is_var_known(t.value)
 
-        # 3. SCOPE CHECK: If the first word is a known variable, try parsing as expression first
-        # This ensures 'hälsa med Hiuh' is a CallNode, not a StringNode
-        if t.type == "T_IDENTIFIER" and self.is_var_known(t.value):
+        if t.type in ["T_KEYWORD_FUNC", "T_LITERAL_INT", "T_LITERAL_FLOAT", "T_LITERAL_TRUE", "T_LITERAL_FALSE"] or is_builtin or is_known:
             checkpoint = self.pos
             try:
                 expr = self.expression()
-                # If we parsed a call or variable and are at the end of the line, success
+                # If we are at the end of the line, the expression won!
                 if not self.peek() or self.peek().type in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
                     return expr
                 self.pos = checkpoint
             except:
                 self.pos = checkpoint
 
-        # 4. Fallback: Joined String
+        # 3. Final Fallback: Joined String
         txt = []
         while self.peek() and self.peek().type not in ["T_NEWLINE", "T_DEDENT", "T_COMMENT"]:
             txt.append(str(self.consume().value))
-
-        # If it was actually a single word that is known (e.g. 'x'), return VarAccess
-        if len(txt) == 1 and self.is_var_known(txt[0]):
-            return VarAccessNode(txt[0])
-
         return StringNode(" ".join(txt))
 
     def expression(self):
@@ -145,7 +156,7 @@ class Parser:
         t = self.peek()
         if not t: raise SyntaxError("Expected primary")
 
-        # 1. Function Definitions (grej ...) MUST come first
+        # 1. Function Definitions (grej ...)
         if t.type == "T_KEYWORD_FUNC":
             self.consume()  # consume 'grej'
             p = []
@@ -160,10 +171,28 @@ class Parser:
                         break
             return FunctionDefNode(p, self.parse_block(params=p))
 
-        # 2. Variable access or Function Calls
+        # 2. Variable access, Function Calls, and Field Access
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL"]:
-            name = self.consume().value
-            # Check for Function Call: name med arg1, arg2
+            # Handle multi-word variables (e.g., 'min bil')
+            parts = [self.consume().value]
+            while self.peek() and self.peek().type == "T_IDENTIFIER":
+                combined = " ".join(parts + [self.peek().value])
+                if self.is_var_known(combined):
+                    parts.append(self.consume().value)
+                else:
+                    break
+            name = " ".join(parts)
+
+            # Check for Field Access: 'märke i min bil'
+            if self.peek() and self.peek().type == "T_KEYWORD_IN":
+                self.consume() # consume 'i'
+                target_parts = []
+                while self.peek() and self.peek().type == "T_IDENTIFIER":
+                    target_parts.append(self.consume().value)
+                target_name = " ".join(target_parts)
+                return VarAccessNode(name, target=target_name)
+
+            # Check for Function Call: 'hälsa med Hiuh' or 'lista med 1, 2'
             if self.peek() and self.peek().type == "T_KEYWORD_WITH":
                 self.consume() # consume 'med'
                 args = []
@@ -175,8 +204,10 @@ class Parser:
                         break
                 return FunctionCallNode(name, args)
 
+            # Built-in constructor
             if name == "lista":
                 return FunctionCallNode(name, [])
+
             return VarAccessNode(name)
 
         # 3. Literals
@@ -185,7 +216,8 @@ class Parser:
         if t.type == "T_LITERAL_TRUE": self.consume(); return BoolNode(True)
         if t.type == "T_LITERAL_FALSE": self.consume(); return BoolNode(False)
 
-        raise SyntaxError(f"Unexpected {t.type} at line {t.line}")
+        raise SyntaxError(f"Unexpected {t.type} ({t.value}) at line {t.line}")
+
 
     def parse_block(self, params=None):
         # Allow blocks to start either after a newline or immediately if indented

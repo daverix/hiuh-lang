@@ -185,6 +185,46 @@ class Interpreter:
 
         raise Exception(f"Interpreter: Okänd jämförelseoperator '{op}'")
 
+    # --- Types and Objects ---
+    def visit_TypeDefNode(self, node):
+        # We define a constructor function for this type
+        def constructor():
+            # An instance is just a dictionary of its fields
+            return {field: None for field in node.fields}
+
+        # Store the constructor in the environment (e.g., 'bil')
+        self.env.define(node.name, constructor)
+        return None
+
+    def visit_AssignNode(self, node):
+        value = self.visit(node.value)
+
+        if node.target_type:
+            # We are setting a field in an object
+            obj = self.env.get(node.target_type)
+            if isinstance(obj, dict):
+                obj[node.name] = value
+                return value
+            raise Exception(f"'{node.target_type}' är inte ett objekt.")
+
+        # If the value being assigned is a constructor (callable),
+        # run it to create an instance!
+        if callable(value) and not isinstance(node.value, VarAccessNode):
+            value = value()
+
+        self.env.define(node.name, value)
+        return value
+
+    def visit_VarAccessNode(self, node):
+        # Handle field access if target_type is present
+        # (You might need to adjust your AST/Parser to support 'skriv märke i bil')
+        if hasattr(node, 'target_type') and node.target_type:
+            obj = self.env.get(node.target_type)
+            if isinstance(obj, dict):
+                return obj.get(node.name, node.name) # Fallback to name if field empty
+
+        return self.env.get(node.name)
+
 class HiuhRuntimeError(Exception):
     def __init__(self, value):
         self.value = value
