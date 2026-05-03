@@ -93,5 +93,28 @@ skriv år i min bil
             self.run_source(source)
             self.assertEqual(fake_out.getvalue(), "Volvo\n2024")
 
+    def test_stdin_input_inmatning(self):
+        """Tests that 'inmatning' correctly reads from simulated stdin."""
+        # The Hiuh source code
+        source = """
+sätt svar till inmatning
+skriv Hej pluss svar
+"""
+        # Mocking BOTH stdin (for input) and stdout (to verify the result)
+        with patch('sys.stdin', StringIO("Daverix\n")):
+            with patch('sys.stdout', new=StringIO()) as fake_out:
+                self.run_source(source)
+                # Output should be "Hej Daverix"
+                self.assertEqual(fake_out.getvalue().strip(), "Hej Daverix")
+
+    def test_multiple_concatenation(self):
+        """Tests joining three parts together."""
+        source = "skriv ett pluss två pluss tre"
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # Should result in "ett två tre"
+            # (Assuming 'ett', 'två', 'tre' fall back to strings)
+            self.assertEqual(fake_out.getvalue().strip(), "ett två tre")
+
 if __name__ == '__main__':
     unittest.main()

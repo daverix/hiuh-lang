@@ -83,34 +83,40 @@ class Parser:
         t = self.peek()
         if not t or t.type in ["T_NEWLINE", "T_DEDENT", "T_INDENT"]: return None
 
-        if t.type == "T_IDENTIFIER" and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
-            self.consume(); self.consume(); return StringNode("\n")
+        if t.type == "T_IDENTIFIER" and t.value == "ny":
+            if self.peek(1) and self.peek(1).value == "rad":
+                self.consume(); self.consume(); return StringNode("\n")
 
+        # LOOKAHEAD: If the line contains an operator, it MUST be an expression
         checkpoint = self.pos
-        try:
-            expr = self.expression()
-            # If the expression is a function, we DO NOT allow it to be a greedy string.
-            # If it fails (like an empty grej), the Exception will trigger the fallback.
-            if isinstance(expr, FunctionDefNode):
-                # Ensure it has a body (is not empty)
-                if not expr.body: raise SyntaxError("Tom grej")
-                return expr
+        i = 0
+        has_operator = False
+        while self.peek(i) and self.peek(i).type not in ["T_NEWLINE", "T_DEDENT", "T_INDENT"]:
+            if self.peek(i).type in ["T_OP_ADD", "T_OP_SUB", "T_OP_MUL", "T_OP_DIV", "T_KEYWORD_IN", "T_KEYWORD_WITH"]:
+                has_operator = True
+                break
+            i += 1
 
-            # For non-functions, validate scope and line boundaries
-            if (not self.peek() or self.peek().type in ["T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT"]) and self._is_tree_valid(expr):
-                return expr
+        try:
+            # If we see an operator OR a literal OR a known variable, try expression
+            is_known = t.type == "T_IDENTIFIER" and self.is_var_known(t.value)
+            is_literal = t.type in ["T_LITERAL_INT", "T_LITERAL_FLOAT", "T_LITERAL_TRUE", "T_LITERAL_FALSE", "T_KEYWORD_FUNC"]
+
+            if has_operator or is_known or is_literal or t.value == "lista":
+                expr = self.expression()
+                # If it's a function or we reached the end of the line, it's valid
+                if isinstance(expr, FunctionDefNode) or (not self.peek() or self.peek().type in ["T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT"]):
+                    return expr
             self.pos = checkpoint
         except:
-            # If the expression was a 'grej' but failed (e.g. no indent),
-            # we should raise the error if 'grej' was the first word.
-            if t.type == "T_KEYWORD_FUNC":
-                raise # Re-raise to pass 'test_empty_grej_fails'
             self.pos = checkpoint
 
+        # Fallback
         txt = []
         while self.peek() and self.peek().type not in ["T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT"]:
             txt.append(str(self.consume().value))
         return StringNode(" ".join(txt))
+
 
     def expression(self):
         left = self.arithmetic()

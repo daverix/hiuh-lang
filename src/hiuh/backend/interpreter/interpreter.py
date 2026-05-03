@@ -10,6 +10,7 @@ class Interpreter:
         self.globals.define("FALSKT", False)
         # Built-in: lista
         self.globals.define("lista", lambda *args: list(args))
+        self.globals.define("inmatning", lambda: sys.stdin.readline().strip())
         self.env = self.globals
 
     def execute(self, nodes):
