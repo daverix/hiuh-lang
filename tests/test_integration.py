@@ -128,6 +128,16 @@ skriv element 1 från min_lista
             # Should result in "blå"
             self.assertEqual(fake_out.getvalue().strip(), "blågrön")
 
+    def test_list_length(self):
+        """Verify 'längd från [lista]' syntax."""
+        source = """
+sätt frukter till lista med äpple, banan
+skriv längd från frukter
+    """
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # Output should be 2
+            self.assertEqual(fake_out.getvalue().strip(), "2")
 
 if __name__ == '__main__':
     unittest.main()

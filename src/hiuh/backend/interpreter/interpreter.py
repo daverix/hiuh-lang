@@ -12,6 +12,7 @@ class Interpreter:
         self.globals.define("lista", lambda *args: list(args))
         # Built-in: inmatning reads from stdin
         self.globals.define("inmatning", lambda: sys.stdin.readline().strip())
+        self.globals.define("längd", lambda x: len(x) if hasattr(x, '__len__') else 0)
         self.env = self.globals
 
     def execute(self, nodes):

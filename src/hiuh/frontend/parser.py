@@ -188,6 +188,17 @@ class Parser:
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL"]:
             name = self.consume().value
 
+            if name == "längd":
+                if self.peek() and self.peek().type == "T_KEYWORD_FROM":
+                    self.consume() # från
+                    t_parts = []
+                    while self.peek() and self.peek().type == "T_IDENTIFIER":
+                        t_parts.append(self.consume().value)
+
+                    target = " ".join(t_parts)
+                    # Maps 'längd från x' to a function call for the built-in
+                    return FunctionCallNode("längd", [VarAccessNode(target)])
+
             # Index Get
             if name in ["element", "index"] and self.peek() and self.peek().type == "T_LITERAL_INT":
                 idx = self.consume().value
