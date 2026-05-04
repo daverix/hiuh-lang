@@ -13,6 +13,7 @@ class Interpreter:
         # Built-in: inmatning reads from stdin
         self.globals.define("inmatning", lambda: sys.stdin.readline().strip())
         self.globals.define("längd", lambda x: len(x) if hasattr(x, '__len__') else 0)
+        self.globals.define("mellanrum", " ")
         self.env = self.globals
 
     def execute(self, nodes):
@@ -84,15 +85,7 @@ class Interpreter:
 
     # --- Math & Swedish String Concatenation ---
     def visit_AddNode(self, node):
-        l = self.visit(node.left)
-        r = self.visit(node.right)
-        if isinstance(l, str) and isinstance(r, str):
-            sep = " " if not l.endswith(" ") and not r.startswith(" ") else ""
-            return f"{l}{sep}{r}"
-        try:
-            return l + r
-        except TypeError:
-            return f"{l} {r}"
+        return self.visit(node.left) + self.visit(node.right)
 
     def visit_SubNode(self, node): return self.visit(node.left) - self.visit(node.right)
     def visit_MulNode(self, node): return self.visit(node.left) * self.visit(node.right)
@@ -183,3 +176,21 @@ class Interpreter:
     def visit_TypeDefNode(self, node):
         # Store constructor: returns a new dict with defined fields
         self.env.define(node.name, lambda: {f.strip(): None for f in node.fields})
+
+    def visit_CastNode(self, node):
+        val = self.visit(node.value)
+        target = node.target_type
+
+        try:
+            if target == "tal":
+                return int(float(str(val).replace(',', '.'))) # Handles "10" or "10,5"
+            if target == "flyttal":
+                return float(str(val).replace(',', '.'))
+            if target == "text":
+                return str(val)
+            if target == "boolesk":
+                return bool(val)
+        except (ValueError, TypeError):
+            raise Exception(f"Kunde inte omvandla '{val}' till {target}")
+
+        return val

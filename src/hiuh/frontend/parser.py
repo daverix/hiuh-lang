@@ -6,7 +6,7 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
         # Dynamic Scope Stack. Built-ins included.
-        self.scopes = [{"SANT", "FALSKT", "lista", "inmatning"}]
+        self.scopes = [{"SANT", "FALSKT", "lista", "inmatning", "heltal", "text", "flyttal", "mellanrum"}]
         self.known_types = set()
 
     def enter_scope(self): self.scopes.append(set())
@@ -93,12 +93,24 @@ class Parser:
 
     def _is_tree_valid(self, node):
         if isinstance(node, VarAccessNode):
-            if node.target: return self.is_var_known(node.target)
+            if hasattr(node, 'target') and node.target:
+                return self.is_var_known(node.target)
             return self.is_var_known(node.name)
-        if isinstance(node, (AddNode, SubNode, MulNode, DivNode, ComparisonNode)):
+
+        if isinstance(node, AddNode):
+            return self._is_tree_valid(node.left) or self._is_tree_valid(node.right)
+
+        if isinstance(node, (SubNode, MulNode, DivNode, ComparisonNode)):
             return self._is_tree_valid(node.left) and self._is_tree_valid(node.right)
-        if isinstance(node, FunctionCallNode): return self.is_var_known(node.name) or node.name == "lista"
-        if isinstance(node, UnaryOpNode): return self._is_tree_valid(node.operand)
+
+        if isinstance(node, FunctionCallNode):
+            return self.is_var_known(node.name) or node.name == "lista"
+
+        if isinstance(node, CastNode):
+            return self._is_tree_valid(node.value)
+
+        if isinstance(node, UnaryOpNode):
+            return self._is_tree_valid(node.operand)
         return True
 
     def parse_greedy_expression(self):
@@ -113,7 +125,11 @@ class Parser:
         i = 0
         while self.peek(i) and self.peek(i).type not in ["T_NEWLINE", "T_DEDENT", "T_INDENT"]:
             tok = self.peek(i)
-            if tok.value in ["element", "index", "inmatning"] or tok.type in ["T_OP_ADD", "T_KEYWORD_FROM"]:
+            if tok.value == "mellanrum" or tok.type == "T_OP_ADD":
+                has_forced_trigger = True
+                break
+
+            if tok.value in ["element", "index", "inmatning", "mellanrum", "som"] or tok.type in ["T_OP_ADD", "T_KEYWORD_FROM"]:
                 has_forced_trigger = True; break
             i += 1
 
@@ -142,6 +158,13 @@ class Parser:
         while True:
             t = self.peek()
             if not t or t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT"]: break
+
+            if t.value == "som":
+                self.consume() # consume 'som'
+                target = self.consume("T_IDENTIFIER").value
+                left = CastNode(left, target)
+                continue # look for more operators
+
             if t.type == "T_OP_IS": self.consume(); t = self.peek()
             if not t: break
             if t.type in ["T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_OP_OR", "T_OP_AND"]:
@@ -155,10 +178,36 @@ class Parser:
     def arithmetic(self):
         left = self.term()
         if isinstance(left, FunctionDefNode): return left
-        while self.peek() and self.peek().type in ["T_OP_ADD", "T_OP_SUB"]:
-            if self.peek().type in ["T_NEWLINE", "T_INDENT"]: break
-            op = self.consume().type
-            left = AddNode(left, self.term()) if op == "T_OP_ADD" else SubNode(left, self.term())
+
+        while self.peek():
+            t = self.peek()
+            if t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT"]: break
+
+            if t.type == "T_OP_ADD": # 'pluss'
+                self.consume() # consume 'pluss'
+
+                # Check if the right side is a standard term (number/var)
+                # or if we should just grab the rest of the line as a string
+                checkpoint = self.pos
+                try:
+                    right = self.term()
+                    # If the next token isn't another pluss or EOL, this might be a string
+                    if self.peek() and self.peek().type not in ["T_OP_ADD", "T_NEWLINE", "T_DEDENT", "T_INDENT"]:
+                        raise Exception("Not a clean term")
+                except:
+                    self.pos = checkpoint
+                    txt = []
+                    # Gobble everything until the next pluss or end of line
+                    while self.peek() and self.peek().type not in ["T_OP_ADD", "T_NEWLINE", "T_DEDENT", "T_INDENT"]:
+                        txt.append(str(self.consume().value))
+                    right = StringNode(" ".join(txt))
+
+                left = AddNode(left, right)
+            elif t.type == "T_OP_SUB":
+                self.consume()
+                left = SubNode(left, self.term())
+            else:
+                break
         return left
 
     def term(self):

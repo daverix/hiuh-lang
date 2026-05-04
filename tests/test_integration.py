@@ -47,7 +47,7 @@ annars
         """Tests function scope and return values."""
         source = """
 sätt hälsa till grej med namn
-    ge hej pluss namn
+    ge hej pluss mellanrum pluss namn
 
 sätt meddelande till hälsa med Hiuh
 skriv meddelande
@@ -98,7 +98,7 @@ skriv år från min bil
         # The Hiuh source code
         source = """
 sätt svar till inmatning
-skriv Hej pluss svar
+skriv Hej pluss mellanrum pluss svar
 """
         # Mocking BOTH stdin (for input) and stdout (to verify the result)
         with patch('sys.stdin', StringIO("Daverix\n")):
@@ -109,7 +109,7 @@ skriv Hej pluss svar
 
     def test_multiple_concatenation(self):
         """Tests joining three parts together."""
-        source = "skriv ett pluss två pluss tre"
+        source = "skriv ett pluss mellanrum pluss två pluss mellanrum pluss tre"
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             # Should result in "ett två tre"
@@ -138,6 +138,22 @@ skriv längd från frukter
             self.run_source(source)
             # Output should be 2
             self.assertEqual(fake_out.getvalue().strip(), "2")
+
+    def test_casting_som_tal(self):
+        """Tests that strings can be converted to numbers for math."""
+        # '10' is an unknown variable, so it's a StringNode via fallback
+        source = "sätt x till 10 som tal\nskriv x pluss 5"
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "15")
+
+    def test_casting_som_text(self):
+        """Tests converting a number back to text."""
+        source = "sätt x till 100 som text\nskriv x pluss mellanrum pluss är ett stort tal"
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # Should join with space: "100 är ett stort tal"
+            self.assertEqual(fake_out.getvalue().strip(), "100 är ett stort tal")
 
 if __name__ == '__main__':
     unittest.main()
