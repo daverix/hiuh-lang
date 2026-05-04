@@ -35,13 +35,6 @@ class VarAccessNode(ASTNode):
         self.name = name
         self.target = target
 
-    def __repr__(self):
-        return f"VarAccessNode(name={repr(self.name)}, target={repr(self.target)})"
-
-    def __eq__(self, other):
-        return isinstance(other, VarAccessNode) and \
-            self.name == other.name and self.target == other.target
-
 # --- Mathematical Operations ---
 class AddNode(ASTNode):
     def __init__(self, left, right):

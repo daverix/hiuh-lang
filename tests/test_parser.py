@@ -233,5 +233,20 @@ class TestHiuhParserAST(unittest.TestCase):
         ]
         self.assertEqual(self.parse_source(source), expected)
 
+    def test_list_index_set_and_get_ast(self):
+        """Verify the AST structure for element [n] i/från [lista]."""
+        source = (
+            "sätt min lista till lista med röd, grön\n"
+            "sätt element 0 i min lista till blå\n"
+            "skriv element 0 från min lista"
+        )
+        # Note: 'röd' and 'grön' fall back to StringNodes because they aren't variables
+        expected = [
+            AssignNode(name='min lista', value=FunctionCallNode(name='lista', args=[StringNode(value='röd'), StringNode(value='grön')]), target_type=None),
+            AssignNode(name='0', value=StringNode(value='blå'), target_type='min lista'),
+            PrintNode(value=VarAccessNode(name='0', target='min lista'))
+        ]
+        self.assertEqual(self.parse_source(source), expected)
+
 if __name__ == '__main__':
     unittest.main()

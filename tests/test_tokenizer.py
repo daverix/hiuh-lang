@@ -210,5 +210,29 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
         self.assertEqual(tokens[2].type, "T_KEYWORD_FROM")
         self.assertEqual(tokens[2].value, "från")
 
+    def test_tokenize_list_operations(self):
+        """Verify tokens for setting and getting list elements."""
+        source = (
+            "sätt element 0 i minlista till röd\n"
+            "skriv element 0 från minlista"
+        )
+        tokens = self.tokenizer.tokenize(source)
+
+        # Expected types for the first line:
+        # sätt (SET), element (ID), 0 (INT), i (IN), minlista (ID), till (TO), röd (ID)
+        expected_types = [
+            "T_KEYWORD_SET", "T_IDENTIFIER", "T_LITERAL_INT", "T_KEYWORD_IN",
+            "T_IDENTIFIER", "T_KEYWORD_TO", "T_IDENTIFIER", "T_NEWLINE",
+            "T_KEYWORD_PRINT", "T_IDENTIFIER", "T_LITERAL_INT", "T_KEYWORD_FROM",
+            "T_IDENTIFIER"
+        ]
+
+        actual_types = [t.type for t in tokens if t.type not in ["T_EOF"]]
+        self.assertEqual(actual_types, expected_types)
+
+        # Specific Value Checks
+        self.assertEqual(tokens[3].value, "i")
+        self.assertEqual(tokens[11].value, "från")
+
 if __name__ == '__main__':
     unittest.main()

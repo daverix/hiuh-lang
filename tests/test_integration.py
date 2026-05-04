@@ -116,5 +116,18 @@ skriv Hej pluss svar
             # (Assuming 'ett', 'två', 'tre' fall back to strings)
             self.assertEqual(fake_out.getvalue().strip(), "ett två tre")
 
+    def test_list_set_and_get(self):
+        source = """
+sätt min_lista till lista med röd, grön
+sätt element 0 i min_lista till blå
+skriv element 0 från min_lista
+skriv element 1 från min_lista
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # Should result in "blå"
+            self.assertEqual(fake_out.getvalue().strip(), "blågrön")
+
+
 if __name__ == '__main__':
     unittest.main()
