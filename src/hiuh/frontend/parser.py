@@ -6,7 +6,7 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
         # Dynamic Scope Stack. Built-ins included.
-        self.scopes = [{"SANT", "FALSKT", "lista", "inmatning", "heltal", "text", "flyttal", "mellanrum"}]
+        self.scopes = [{"SANT", "FALSKT", "lista", "inmatning", "heltal", "text", "flyttal", "mellanrum", "ny", "rad"}]
         self.known_types = set()
 
     def enter_scope(self): self.scopes.append(set())
@@ -116,8 +116,6 @@ class Parser:
     def parse_greedy_expression(self):
         t = self.peek()
         if not t or t.type in ["T_NEWLINE", "T_DEDENT", "T_INDENT"]: return None
-        if t.type == "T_IDENTIFIER" and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
-            self.consume(); self.consume(); return StringNode("\n")
 
         checkpoint = self.pos
         # FORCED TRIGGERS: Keywords that must force an expression and block string fallback
@@ -233,6 +231,9 @@ class Parser:
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
             return FunctionDefNode(p, self.parse_block(params=p))
+
+        if t.type == "T_IDENTIFIER" and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
+            self.consume(); self.consume(); return StringNode("\n")
 
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL"]:
             name = self.consume().value
