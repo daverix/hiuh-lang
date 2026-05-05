@@ -181,21 +181,21 @@ class Parser:
             t = self.peek()
             if t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT"]: break
 
-            if t.type == "T_OP_ADD": # 'pluss'
-                self.consume() # consume 'pluss'
+            if t.type == "T_OP_ADD": # 'plus'
+                self.consume() # consume 'plus'
 
                 # Check if the right side is a standard term (number/var)
                 # or if we should just grab the rest of the line as a string
                 checkpoint = self.pos
                 try:
                     right = self.term()
-                    # If the next token isn't another pluss or EOL, this might be a string
+                    # If the next token isn't another plus or EOL, this might be a string
                     if self.peek() and self.peek().type not in ["T_OP_ADD", "T_NEWLINE", "T_DEDENT", "T_INDENT"]:
                         raise Exception("Not a clean term")
                 except:
                     self.pos = checkpoint
                     txt = []
-                    # Gobble everything until the next pluss or end of line
+                    # Gobble everything until the next plus or end of line
                     while self.peek() and self.peek().type not in ["T_OP_ADD", "T_NEWLINE", "T_DEDENT", "T_INDENT"]:
                         txt.append(str(self.consume().value))
                     right = StringNode(" ".join(txt))

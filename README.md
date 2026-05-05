@@ -83,12 +83,12 @@ It can also be set to an expression:
 ```
 sätt a till 2
 sätt b till a gånger 3
-sätt c till b gånger b pluss a
+sätt c till b gånger b plus a
 ```
 
 | operator  | description |
 |-----------|-------------|
-| pluss     | equivalent to + in other languages |
+| plus     | equivalent to + in other languages |
 | minus     | equivalent to - in other languages |
 | gånger    | equivalent to * in other languages |
 | delat med | equivalent to / in other languages |
@@ -121,7 +121,7 @@ Note! Here `min lista` is the variable. `lista med` creates a list with the comm
 
 ```
 sätt min funktion till grej med param1, param2, param3
-    ge param1 pluss param2 minus param3
+    ge param1 plus param2 minus param3
 
 sätt x till min funktion med 1, 2, 3
 
@@ -193,8 +193,8 @@ annars
 ```
 sätt x till 0
 medan x är mindre än 10
-    skriv x pluss 1
-    sätt x till x pluss 1
+    skriv x plus 1
+    sätt x till x plus 1
 ```
 
 outputs: `12345678910`

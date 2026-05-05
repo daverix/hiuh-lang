@@ -18,7 +18,7 @@ class TestHiuhFullIntegration(unittest.TestCase):
 
     def test_arithmetic_precedence(self):
         """Tests that multiplication happens before addition (3 + 4 * 2 = 11)."""
-        source = "skriv 3 pluss 4 gånger 2"
+        source = "skriv 3 plus 4 gånger 2"
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "11")
@@ -47,7 +47,7 @@ annars
         """Tests function scope and return values."""
         source = """
 sätt hälsa till grej med namn
-    ge hej pluss mellanrum pluss namn
+    ge hej plus mellanrum plus namn
 
 sätt meddelande till hälsa med Hiuh
 skriv meddelande
@@ -98,7 +98,7 @@ skriv år från min bil
         # The Hiuh source code
         source = """
 sätt svar till inmatning
-skriv Hej pluss mellanrum pluss svar
+skriv Hej plus mellanrum plus svar
 """
         # Mocking BOTH stdin (for input) and stdout (to verify the result)
         with patch('sys.stdin', StringIO("Daverix\n")):
@@ -109,7 +109,7 @@ skriv Hej pluss mellanrum pluss svar
 
     def test_multiple_concatenation(self):
         """Tests joining three parts together."""
-        source = "skriv ett pluss mellanrum pluss två pluss mellanrum pluss tre"
+        source = "skriv ett plus mellanrum plus två plus mellanrum plus tre"
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             # Should result in "ett två tre"
@@ -142,14 +142,14 @@ skriv längd från frukter
     def test_casting_som_tal(self):
         """Tests that strings can be converted to numbers for math."""
         # '10' is an unknown variable, so it's a StringNode via fallback
-        source = "sätt x till 10 som tal\nskriv x pluss 5"
+        source = "sätt x till 10 som tal\nskriv x plus 5"
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "15")
 
     def test_casting_som_text(self):
         """Tests converting a number back to text."""
-        source = "sätt x till 100 som text\nskriv x pluss mellanrum pluss är ett stort tal"
+        source = "sätt x till 100 som text\nskriv x plus mellanrum plus är ett stort tal"
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             # Should join with space: "100 är ett stort tal"

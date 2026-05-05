@@ -39,7 +39,7 @@ class Tokenizer:
             "kasta": "T_KEYWORD_THROW",
             "fånga": "T_KEYWORD_CATCH",
             "gånger": "T_OP_MUL",
-            "pluss": "T_OP_ADD",
+            "plus": "T_OP_ADD",
             "minus": "T_OP_SUB",
             "delat": "T_OP_DIV",
             "eller": "T_OP_OR",

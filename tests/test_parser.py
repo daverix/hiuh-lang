@@ -86,7 +86,7 @@ class TestHiuhParserAST(unittest.TestCase):
         self.assertEqual(self.parse_source(source), expected)
 
     def test_variables_math_plus(self):
-        source = "sätt c till 2 pluss 3"
+        source = "sätt c till 2 plus 3"
         expected = [
             AssignNode("c", AddNode(IntNode(2), IntNode(3)))
         ]
@@ -114,14 +114,14 @@ class TestHiuhParserAST(unittest.TestCase):
         self.assertEqual(self.parse_source(source), expected)
 
     def test_variables_math_multiplication_before_addition(self):
-        source = "sätt c till 3 pluss 4 gånger 2"
+        source = "sätt c till 3 plus 4 gånger 2"
         expected = [
             AssignNode("c", AddNode(IntNode(3), MulNode(IntNode(4), IntNode(2))))
         ]
         self.assertEqual(self.parse_source(source), expected)
 
     def test_variables_math_division_before_addition(self):
-        source = "sätt c till 3 pluss 4 delat med 2"
+        source = "sätt c till 3 plus 4 delat med 2"
         expected = [
             AssignNode("c", AddNode(IntNode(3), DivNode(IntNode(4), IntNode(2))))
         ]

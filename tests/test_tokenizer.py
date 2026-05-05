@@ -40,7 +40,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 
     def test_variables_math_section(self):
-        source = "sätt c till b gånger b pluss a"
+        source = "sätt c till b gånger b plus a"
         expected = [
             Token("T_KEYWORD_SET", "sätt", 1, 1),
             Token("T_IDENTIFIER", "c", 1, 6),
@@ -48,8 +48,8 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token("T_IDENTIFIER", "b", 1, 13),
             Token("T_OP_MUL", "gånger", 1, 15),
             Token("T_IDENTIFIER", "b", 1, 22),
-            Token("T_OP_ADD", "pluss", 1, 24),
-            Token("T_IDENTIFIER", "a", 1, 30)
+            Token("T_OP_ADD", "plus", 1, 24),
+            Token("T_IDENTIFIER", "a", 1, 29)
         ]
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 
