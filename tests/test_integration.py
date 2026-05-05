@@ -186,5 +186,19 @@ skriv element 0 från frukter
             # 4. Result: 'äpple'
             self.assertEqual(fake_out.getvalue().strip(), "äpple")
 
+    def test_list_membership_i(self):
+        """Verify 'val i lista' as a boolean check."""
+        source = """
+sätt färger till lista med röd, grön
+om röd i färger
+    skriv Japp
+om blå i färger
+    skriv Nej
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # Should only print "Japp"
+            self.assertEqual(fake_out.getvalue().strip(), "Japp")
+
 if __name__ == '__main__':
     unittest.main()

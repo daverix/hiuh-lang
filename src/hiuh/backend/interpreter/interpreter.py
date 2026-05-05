@@ -142,6 +142,12 @@ class Interpreter:
         l = self.visit(node.left)
         r = self.visit(node.right)
         op = node.op.strip()
+
+        if op == "i":
+            try:
+                return l in r
+            except TypeError:
+                return False
         if op == "större än": return l > r
         if op == "mindre än": return l < r
         if op == "lika med": return l == r
@@ -149,6 +155,7 @@ class Interpreter:
         if op == "mindre än eller lika med": return l <= r
         if op == "och": return bool(l) and bool(r)
         if op == "eller": return bool(l) or bool(r)
+
         return False
 
     # --- Error Handling ---

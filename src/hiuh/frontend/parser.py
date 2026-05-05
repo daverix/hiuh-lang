@@ -222,7 +222,12 @@ class Parser:
 
         while True:
             t = self.peek()
-            if not t or t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT", "T_KEYWORD_IN", "T_KEYWORD_FROM"]: break
+            if not t or t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT"]: break
+
+            if t.type == "T_KEYWORD_IN":
+                op_token = self.consume()
+                left = ComparisonNode(left, "i", self.arithmetic())
+                continue
 
             if t.value == "som":
                 self.consume() # consume 'som'
