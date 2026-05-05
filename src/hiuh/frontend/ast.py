@@ -119,3 +119,9 @@ class CastNode(ASTNode):
     def __init__(self, value, target_type):
         self.value = value
         self.target_type = target_type # 'heltal', 'text', 'flyttal'
+
+class AppendNode(ASTNode):
+    def __init__(self, value, target_list):
+        self.value = value
+        self.target_list = target_list
+

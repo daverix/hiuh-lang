@@ -155,5 +155,21 @@ skriv längd från frukter
             # Should join with space: "100 är ett stort tal"
             self.assertEqual(fake_out.getvalue().strip(), "100 är ett stort tal")
 
+    def test_list_append_lägg_till(self):
+        """Verify adding items to a list using 'lägg till'."""
+        source = """
+sätt frukter till lista med äpple
+lägg till banan i frukter
+skriv element 1 från frukter
+skriv mellanrum
+skriv element 0 från frukter
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # Result should be "banan äpple"
+            # (Note: index 1 is banan because we appended it)
+            self.assertEqual(fake_out.getvalue().strip(), "banan äpple")
+
+
 if __name__ == '__main__':
     unittest.main()

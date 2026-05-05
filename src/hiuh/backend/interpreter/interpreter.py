@@ -194,3 +194,12 @@ class Interpreter:
             raise Exception(f"Kunde inte omvandla '{val}' till {target}")
 
         return val
+
+    def visit_AppendNode(self, node):
+        val = self.visit(node.value)
+        lst = self.env.get(node.target_list)
+
+        if isinstance(lst, list):
+            lst.append(val)
+            return val
+        raise Exception(f"Kan inte lägga till i '{node.target_list}' för det är inte en lista.")

@@ -40,6 +40,10 @@ class Parser:
     def statement(self):
         t = self.peek()
         if not t: return None
+
+        if t.type == "T_IDENTIFIER" and t.value == "lägg":
+            if self.peek(1) and self.peek(1).value == "till":
+                return self.parse_append()
         if t.type == "T_KEYWORD_SET": return self.parse_assignment()
         if t.type == "T_KEYWORD_PRINT": return self.parse_print()
         if t.type == "T_KEYWORD_IF": return self.parse_if()
@@ -51,6 +55,24 @@ class Parser:
         if t.type == "T_KEYWORD_GIVE":
             self.consume(); return ReturnNode(self.expression())
         return self.expression()
+
+    def parse_append(self):
+        self.consume() # lägg
+        self.consume() # till
+
+        # Parse the value to add (could be an expression)
+        val = self.parse_greedy_expression()
+
+        # Expect 'i'
+        self.consume("T_KEYWORD_IN")
+
+        # Parse the list name (multi-word support)
+        parts = []
+        while self.peek() and self.peek().type == "T_IDENTIFIER":
+            parts.append(self.consume().value)
+        target = " ".join(parts)
+
+        return AppendNode(val, target)
 
     def parse_assignment(self):
         self.consume("T_KEYWORD_SET")
@@ -145,7 +167,7 @@ class Parser:
             self.pos = checkpoint
 
         txt = []
-        while self.peek() and self.peek().type not in ["T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT"]:
+        while self.peek() and self.peek().type not in ["T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT", "T_KEYWORD_IN", "T_KEYWORD_FROM"]:
             txt.append(str(self.consume().value))
         return StringNode(" ".join(txt))
 
@@ -155,7 +177,7 @@ class Parser:
 
         while True:
             t = self.peek()
-            if not t or t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT"]: break
+            if not t or t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT", "T_KEYWORD_IN", "T_KEYWORD_FROM"]: break
 
             if t.value == "som":
                 self.consume() # consume 'som'
@@ -179,7 +201,7 @@ class Parser:
 
         while self.peek():
             t = self.peek()
-            if t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT"]: break
+            if t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT", "T_KEYWORD_IN", "T_KEYWORD_FROM"]: break
 
             if t.type == "T_OP_ADD": # 'plus'
                 self.consume() # consume 'plus'
@@ -212,7 +234,7 @@ class Parser:
         left = self.primary()
         if isinstance(left, FunctionDefNode): return left
         while self.peek() and self.peek().type in ["T_OP_MUL", "T_OP_DIV"]:
-            if self.peek().type in ["T_NEWLINE", "T_INDENT"]: break
+            if self.peek().type in ["T_NEWLINE", "T_INDENT", "T_KEYWORD_IN", "T_KEYWORD_FROM"]: break
             op = self.consume().type
             if op == "T_OP_DIV" and self.peek() and self.peek().value == "med": self.consume()
             left = MulNode(left, self.primary()) if op == "T_OP_MUL" else DivNode(left, self.primary())
@@ -237,6 +259,17 @@ class Parser:
 
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL"]:
             name = self.consume().value
+
+            # --- Greedy Property/Access Lookahead ---
+            # If the following identifiers are followed by 'från', join them into 'name'
+            # This handles multi-word properties like "nästa rad från inmatning"
+            lookahead = 0
+            while self.peek(lookahead) and self.peek(lookahead).type == "T_IDENTIFIER":
+                if self.peek(lookahead + 1) and self.peek(lookahead + 1).type == "T_KEYWORD_FROM":
+                    for _ in range(lookahead + 1):
+                        name += " " + self.consume().value
+                    break
+                lookahead += 1
 
             if name == "längd":
                 if self.peek() and self.peek().type == "T_KEYWORD_FROM":
