@@ -248,5 +248,50 @@ class TestHiuhParserAST(unittest.TestCase):
         ]
         self.assertEqual(self.parse_source(source), expected)
 
+    def test_greedy_expression_stops_before_preposition(self):
+        """Pinpoint: Does greedy expression stop before 'från'?"""
+        # We simulate the call made by parse_remove()
+        source = "banan från frukter"
+        tokens = self.tokenizer.tokenize(source)
+        parser = Parser(tokens)
+
+        # We manually call the greedy method to see what it gobbles
+        node = parser.parse_greedy_expression()
+
+        # 1. It should only return "banan"
+        self.assertIsInstance(node, StringNode)
+        self.assertEqual(node.value, "banan")
+
+        # 2. CRITICAL: The next token should be 'från'
+        self.assertEqual(parser.peek().type, "T_KEYWORD_FROM",
+                         f"Parser consumed too much! Next token is {parser.peek()}")
+
+    def test_greedy_expression_with_multiword_stops(self):
+        """Pinpoint: Does it handle multi-word values but still stop at 'från'?"""
+        source = "en gul banan från frukter"
+        tokens = self.tokenizer.tokenize(source)
+        parser = Parser(tokens)
+
+        node = parser.parse_greedy_expression()
+
+        self.assertEqual(node.value, "en gul banan")
+        self.assertEqual(parser.peek().type, "T_KEYWORD_FROM")
+
+    def test_remove_following_another_statement(self):
+        """Pinpoint: Does a previous statement interfere with 'ta bort'?"""
+        source = "sätt x till 1\nta bort banan från frukter"
+        nodes = self.parse_source(source)
+        # nodes[0] is AssignNode
+        # nodes[1] should be RemoveValueNode
+        self.assertIsInstance(nodes[1], RemoveValueNode)
+        self.assertEqual(nodes[1].value.value, "banan")
+        self.assertEqual(nodes[1].target_list, "frukter")
+
+    def test_remove_with_multiword_target(self):
+        """Pinpoint: Does 'ta bort' handle multi-word list names?"""
+        source = "ta bort banan från min stora lista"
+        nodes = self.parse_source(source)
+        self.assertEqual(nodes[0].target_list, "min stora lista")
+
 if __name__ == '__main__':
     unittest.main()

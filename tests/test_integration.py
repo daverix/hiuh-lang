@@ -170,6 +170,21 @@ skriv element 0 från frukter
             # (Note: index 1 is banan because we appended it)
             self.assertEqual(fake_out.getvalue().strip(), "banan äpple")
 
+    def test_list_removal_mixed(self):
+        """Verify removal by value AND by index."""
+        source = """
+sätt frukter till lista med äpple, banan, citron
+ta bort banan från frukter
+ta bort element 1 från frukter
+skriv element 0 från frukter
+    """
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # 1. Start: [äpple, banan, citron]
+            # 2. 'ta bort banan': [äpple, citron]
+            # 3. 'ta bort element 1' (citron): [äpple]
+            # 4. Result: 'äpple'
+            self.assertEqual(fake_out.getvalue().strip(), "äpple")
 
 if __name__ == '__main__':
     unittest.main()

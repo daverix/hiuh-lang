@@ -203,3 +203,27 @@ class Interpreter:
             lst.append(val)
             return val
         raise Exception(f"Kan inte lägga till i '{node.target_list}' för det är inte en lista.")
+
+    def visit_RemoveIndexNode(self, node):
+        idx = self.visit(node.index)
+        lst = self.env.get(node.target_list)
+
+        if isinstance(lst, list):
+            try:
+                # 0-based pop as requested
+                return lst.pop(int(idx))
+            except (IndexError, ValueError):
+                raise Exception(f"Index {idx} finns inte i listan '{node.target_list}'")
+        raise Exception(f"'{node.target_list}' är inte en lista.")
+
+    def visit_RemoveValueNode(self, node):
+        val = self.visit(node.value)
+        lst = self.env.get(node.target_list)
+
+        if isinstance(lst, list):
+            if val in lst:
+                lst.remove(val)
+                return val
+            # Return None or throw error if value doesn't exist
+            return None
+        raise Exception(f"Kan inte ta bort från '{node.target_list}' för det är inte en lista.")

@@ -125,3 +125,12 @@ class AppendNode(ASTNode):
         self.value = value
         self.target_list = target_list
 
+class RemoveIndexNode(ASTNode):
+    def __init__(self, index, target_list):
+        self.index = index
+        self.target_list = target_list
+
+class RemoveValueNode(ASTNode):
+    def __init__(self, value, target_list):
+        self.value = value
+        self.target_list = target_list

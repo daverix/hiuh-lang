@@ -8,6 +8,7 @@ class Parser:
         # Dynamic Scope Stack. Built-ins included.
         self.scopes = [{"SANT", "FALSKT", "lista", "inmatning", "heltal", "text", "flyttal", "mellanrum", "ny", "rad"}]
         self.known_types = set()
+        self.in_structural_statement = False
 
     def enter_scope(self): self.scopes.append(set())
     def exit_scope(self):
@@ -44,6 +45,9 @@ class Parser:
         if t.type == "T_IDENTIFIER" and t.value == "lägg":
             if self.peek(1) and self.peek(1).value == "till":
                 return self.parse_append()
+        if t.type == "T_IDENTIFIER" and t.value == "ta":
+            if self.peek(1) and self.peek(1).value == "bort":
+                return self.parse_remove()
         if t.type == "T_KEYWORD_SET": return self.parse_assignment()
         if t.type == "T_KEYWORD_PRINT": return self.parse_print()
         if t.type == "T_KEYWORD_IF": return self.parse_if()
@@ -73,6 +77,35 @@ class Parser:
         target = " ".join(parts)
 
         return AppendNode(val, target)
+
+    def parse_remove(self):
+        self.consume() # ta
+        self.consume() # bort
+
+        # Check if the user specified 'element' or 'index'
+        is_index_based = False
+        if self.peek() and self.peek().value in ["element", "index"]:
+            self.consume()
+            is_index_based = True
+
+        self.in_structural_statement = True
+        try:
+            target_expr = self.parse_greedy_expression()
+        finally:
+            self.in_structural_statement = False
+
+        self.consume("T_KEYWORD_FROM") # från
+
+        # Parse the 'where' (the list name)
+        parts = []
+        while self.peek() and self.peek().type == "T_IDENTIFIER":
+            parts.append(self.consume().value)
+        list_name = " ".join(parts)
+
+        if is_index_based:
+            return RemoveIndexNode(target_expr, list_name)
+
+        return RemoveValueNode(target_expr, list_name)
 
     def parse_assignment(self):
         self.consume("T_KEYWORD_SET")
@@ -139,35 +172,47 @@ class Parser:
         t = self.peek()
         if not t or t.type in ["T_NEWLINE", "T_DEDENT", "T_INDENT"]: return None
 
+        if t.type == "T_IDENTIFIER" and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
+            self.consume(); self.consume(); return StringNode("\n")
+
         checkpoint = self.pos
-        # FORCED TRIGGERS: Keywords that must force an expression and block string fallback
+
         has_forced_trigger = False
         i = 0
         while self.peek(i) and self.peek(i).type not in ["T_NEWLINE", "T_DEDENT", "T_INDENT"]:
             tok = self.peek(i)
-            if tok.value == "mellanrum" or tok.type == "T_OP_ADD":
+            # If we hit a structural preposition, STOP the trigger scan.
+            # This prevents 'från' from being seen as a reason to force an expression.
+            if tok.type in ["T_KEYWORD_FROM", "T_KEYWORD_IN"]:
+                break
+            if tok.value in ["element", "index", "inmatning", "mellanrum", "som", "längd"] or \
+               tok.type in ["T_OP_ADD", "T_OP_SUB", "T_OP_MUL", "T_OP_DIV"]:
                 has_forced_trigger = True
                 break
-
-            if tok.value in ["element", "index", "inmatning", "mellanrum", "som"] or tok.type in ["T_OP_ADD", "T_KEYWORD_FROM"]:
-                has_forced_trigger = True; break
             i += 1
 
         try:
             expr = self.expression()
-            # If it's a function, it has claimed blocks; return it immediately
-            if isinstance(expr, FunctionDefNode): return expr
+            if isinstance(expr, (FunctionDefNode, FunctionCallNode)): return expr
 
-            # Normal validation
-            if (not self.peek() or self.peek().type in ["T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT"]) and (has_forced_trigger or self._is_tree_valid(expr)):
+            nt = self.peek()
+            is_at_boundary = not nt or nt.type in [
+                "T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT",
+                "T_KEYWORD_FROM", "T_KEYWORD_IN"
+            ]
+
+            if is_at_boundary and (has_forced_trigger or self._is_tree_valid(expr)):
                 return expr
             self.pos = checkpoint
         except:
-            if t.type == "T_KEYWORD_FUNC": raise # Don't hide function syntax errors
+            if t.type == "T_KEYWORD_FUNC": raise
             self.pos = checkpoint
 
         txt = []
-        while self.peek() and self.peek().type not in ["T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT", "T_KEYWORD_IN", "T_KEYWORD_FROM"]:
+        while self.peek():
+            nt = self.peek()
+            if nt.type in ["T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT", "T_KEYWORD_IN", "T_KEYWORD_FROM"]:
+                break
             txt.append(str(self.consume().value))
         return StringNode(" ".join(txt))
 
@@ -260,16 +305,14 @@ class Parser:
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL"]:
             name = self.consume().value
 
-            # --- Greedy Property/Access Lookahead ---
-            # If the following identifiers are followed by 'från', join them into 'name'
-            # This handles multi-word properties like "nästa rad från inmatning"
-            lookahead = 0
-            while self.peek(lookahead) and self.peek(lookahead).type == "T_IDENTIFIER":
-                if self.peek(lookahead + 1) and self.peek(lookahead + 1).type == "T_KEYWORD_FROM":
-                    for _ in range(lookahead + 1):
-                        name += " " + self.consume().value
-                    break
-                lookahead += 1
+            if not self.in_structural_statement:
+                lookahead = 0
+                while self.peek(lookahead) and self.peek(lookahead).type == "T_IDENTIFIER":
+                    if self.peek(lookahead + 1) and self.peek(lookahead + 1).type == "T_KEYWORD_FROM":
+                        for _ in range(lookahead + 1):
+                            name += " " + self.consume().value
+                        break
+                    lookahead += 1
 
             if name == "längd":
                 if self.peek() and self.peek().type == "T_KEYWORD_FROM":
@@ -291,7 +334,7 @@ class Parser:
                     return VarAccessNode(str(idx), target=" ".join(t_p))
 
             # Property Get
-            if self.peek() and self.peek().type == "T_KEYWORD_FROM":
+            if not self.in_structural_statement and self.peek() and self.peek().type == "T_KEYWORD_FROM":
                 self.consume(); t_p = []
                 while self.peek() and self.peek().type == "T_IDENTIFIER": t_p.append(self.consume().value)
                 return VarAccessNode(name, target=" ".join(t_p))
