@@ -178,6 +178,9 @@ class Interpreter:
             self.env.define(node.error_var, val)
             for s in node.catch_block: self.visit(s)
         finally:
+            if node.finally_block:
+                for s in node.finally_block:
+                    self.visit(s)
             self.env = old_env
 
     def visit_UnaryOpNode(self, node):

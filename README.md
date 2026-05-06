@@ -236,14 +236,16 @@ Reading multiple lines:
 
 ```
 öppna fil2.txt som data
-sätt rader till lista
-
-medan inte i slutet från data
-    sätt nuvarande rad till nästa rad från data
-    lägg till nuvarande rad i rader
+prova
+    sätt rader till lista
     
-skriv längd från rader
-stäng data
+    medan inte i slutet från data
+        sätt nuvarande rad till nästa rad från data
+        lägg till nuvarande rad i rader
+        
+    skriv längd från rader
+slutligen
+    stäng data
 ```
 
 In the example above, `rad finns` is boolean variable in `data` which is assigned from `inläsning` with the file `fil2.txt`.

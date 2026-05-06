@@ -247,5 +247,32 @@ stäng f2
         finally:
             if os.path.exists(filename):
                 os.remove(filename)
+
+    def test_try_catch_finally(self):
+        source = """
+prova
+    kasta Ojdå
+fånga fel
+    skriv fel
+slutligen
+    skriv mellanrum plus och hejdå
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # Output: "Ojdå och hejdå"
+            self.assertEqual(fake_out.getvalue().strip(), "Ojdå och hejdå")
+
+    def test_try_finally(self):
+        source = """
+prova
+    skriv hej
+slutligen
+    skriv mellanrum plus och hejdå
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # Output: "Ojdå och hejdå"
+            self.assertEqual(fake_out.getvalue().strip(), "hej och hejdå")
+
 if __name__ == '__main__':
     unittest.main()

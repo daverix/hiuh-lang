@@ -76,7 +76,7 @@ class Parser:
         parts = []
         while self.peek() and self.peek().type == "T_IDENTIFIER":
             parts.append(self.consume().value)
-        target = " ".join(parts)
+        target = "".join(parts)
 
         return AppendNode(val, target)
 
@@ -448,9 +448,25 @@ class Parser:
         self.consume("T_KEYWORD_WHILE"); return WhileNode(self.expression(), self.parse_block())
 
     def parse_try_catch(self):
-        self.consume("T_KEYWORD_TRY"); try_b = self.parse_block()
-        self.consume("T_KEYWORD_CATCH"); err = self.consume("T_IDENTIFIER").value
-        return TryCatchNode(try_b, err, self.parse_block(params=[err]))
+        self.consume("T_KEYWORD_TRY")
+        try_b = self.parse_block()
+
+        err_var = None
+        catch_b = None
+        if self.peek() and self.peek().value == "fånga":
+            self.consume() # fånga
+            err_var = self.consume("T_IDENTIFIER").value
+            catch_b = self.parse_block(params=[err_var])
+
+        finally_b = None
+        if self.peek() and self.peek().value == "slutligen":
+            self.consume() # slutligen
+            finally_b = self.parse_block()
+
+        if not catch_b and not finally_b:
+            raise SyntaxError("Ett 'försök' måste ha antingen 'fånga' eller 'slutligen'.")
+
+        return TryCatchNode(try_b, err_var, catch_b, finally_b)
 
     def parse_type_def(self):
         self.consume("T_KEYWORD_TYPE"); name = self.consume("T_IDENTIFIER").value

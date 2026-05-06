@@ -105,10 +105,11 @@ class ReturnNode(ASTNode):
 
 # --- Error Handling & Packages ---
 class TryCatchNode(ASTNode):
-    def __init__(self, try_block, error_var, catch_block):
+    def __init__(self, try_block, error_var, catch_block=None, finally_block=None):
         self.try_block = try_block
         self.error_var = error_var
         self.catch_block = catch_block
+        self.finally_block = finally_block # NEW
 
 class ImportNode(ASTNode):
     def __init__(self, module, alias=None):
