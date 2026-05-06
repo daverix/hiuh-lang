@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import sys
 from hiuh.frontend.ast import *
 from hiuh.backend.interpreter.environment import Environment
@@ -14,6 +15,8 @@ class Interpreter:
         self.globals.define("inmatning", lambda: sys.stdin.readline().strip())
         self.globals.define("längd", lambda x: len(x) if hasattr(x, '__len__') else 0)
         self.globals.define("mellanrum", " ")
+        self.open_files = []
+        self.globals.define("öppna", self.builtin_open)
         self.env = self.globals
 
     def execute(self, nodes):
@@ -50,6 +53,10 @@ class Interpreter:
             # Object Access: fält från objekt
             if isinstance(obj, dict):
                 val = obj.get(node.name)
+
+                if callable(val):
+                    return val()
+
                 return val if val is not None else node.name
         return self.env.get(node.name)
 
@@ -234,3 +241,62 @@ class Interpreter:
             # Return None or throw error if value doesn't exist
             return None
         raise Exception(f"Kan inte ta bort från '{node.target_list}' för det är inte en lista.")
+
+    def builtin_open(self, path, mode_str="läsning"):
+        # Map Swedish intent to Python modes
+        # 'r'  = read
+        # 'w'  = write (overwrite/new)
+        # 'a' = append
+        if mode_str == "skrivning":
+            py_mode = 'w'
+        elif mode_str == "läsning":
+            py_mode = 'r'
+        elif mode_str == "tillägg":
+            py_mode = 'a'
+        else:
+            raise ValueError(f"Unknown mode {mode_str}")
+
+        try:
+            f = open(str(path), py_mode, encoding='utf-8')
+            self.open_files.append(f)
+
+            def at_eof():
+                cur = f.tell()
+                f.seek(0, os.SEEK_END)
+                end = f.tell()
+                f.seek(cur)
+                return cur >= end
+
+            return {
+                "_file_handle": f,
+                "läge": mode_str,
+                "nästa rad": lambda: f.readline().rstrip('\n'),
+                "gå till början": lambda: f.seek(0),
+                "gå till slutet": lambda: f.tell() >= os.fstat(f.fileno()).st_size,
+                "i slutet": at_eof
+            }
+        except Exception as e:
+            raise Exception(f"Kunde inte öppna {path} för {mode_str}: {e}")
+
+    def visit_FileWriteNode(self, node):
+        content = self.visit(node.value)
+        file_obj = self.env.get(node.target_var)
+
+        if isinstance(file_obj, dict) and "_file_handle" in file_obj:
+            f = file_obj["_file_handle"]
+            f.write(str(content) + "\n") # Natural: write adds a newline
+            f.flush() # Ensure it's written immediately
+            return content
+        raise Exception(f"'{node.target_var}' är inte en öppen fil.")
+
+    def visit_CloseFileNode(self, node):
+        file_obj = self.env.get(node.target_var)
+
+        if isinstance(file_obj, dict) and "_file_handle" in file_obj:
+            f = file_obj["_file_handle"]
+            f.close()
+            # Remove from tracking list if you implemented the auto-cleanup earlier
+            if hasattr(self, 'open_files') and f in self.open_files:
+                self.open_files.remove(f)
+            return True
+        raise Exception(f"'{node.target_var}' är inte en öppen fil.")

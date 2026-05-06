@@ -219,14 +219,15 @@ In this example, `nästa rad` reads the next line from stdin into the variable `
 ## reading files
 
 ```
-sätt input till inläsning från fil.txt
+öppna fil.txt som input
 sätt rad1 till nästa rad från input
 skriv rad1
+stäng input
 ```
 
 This reads the first row from file `fil.txt`.
 
-`inläsning` is a built in function. `från` is synonymous with `med`.
+`öpnna` and `stäng` are a built in functions for opening and closing files.
 
 `input` is a `typ` variable that contains the variable `nästa rad` (which gives the next row when called)
 
@@ -234,18 +235,28 @@ This reads the first row from file `fil.txt`.
 Reading multiple lines:
 
 ```
-sätt data till inläsning från fil2.txt
+öppna fil2.txt som data
 sätt rader till lista
 
-medan rad finns från data
+medan inte i slutet från data
     sätt nuvarande rad till nästa rad från data
     lägg till nuvarande rad i rader
     
-
 skriv längd från rader
+stäng data
 ```
 
 In the example above, `rad finns` is boolean variable in `data` which is assigned from `inläsning` with the file `fil2.txt`.
+
+
+## saving files
+
+```
+sätt text till spara ner detta
+sätt output till nedsparning
+
+
+```
 
 
 ## error handling

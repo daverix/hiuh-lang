@@ -116,7 +116,7 @@ class Tokenizer:
 
                 if self.is_alpha(char):
                     start = i
-                    while i < len(content) and (self.is_alpha(content[i]) or self.is_digit(content[i])):
+                    while i < len(content) and (content[i].isalnum() or content[i] in '.'):
                         i += 1
                     val = content[start:i]
 

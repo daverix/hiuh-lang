@@ -134,3 +134,12 @@ class RemoveValueNode(ASTNode):
     def __init__(self, value, target_list):
         self.value = value
         self.target_list = target_list
+
+class FileWriteNode(ASTNode):
+    def __init__(self, value, target_var):
+        self.value = value        # What to write (Expression)
+        self.target_var = target_var # Variable holding the file object
+
+class CloseFileNode(ASTNode):
+    def __init__(self, target_var):
+        self.target_var = target_var # Variable holding the file object

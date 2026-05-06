@@ -1,3 +1,4 @@
+import os
 import unittest
 from io import StringIO
 from unittest.mock import patch
@@ -133,7 +134,7 @@ skriv element 1 från min_lista
         source = """
 sätt frukter till lista med äpple, banan
 skriv längd från frukter
-    """
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             # Output should be 2
@@ -177,7 +178,7 @@ sätt frukter till lista med äpple, banan, citron
 ta bort banan från frukter
 ta bort element 1 från frukter
 skriv element 0 från frukter
-    """
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             # 1. Start: [äpple, banan, citron]
@@ -200,5 +201,51 @@ om blå i färger
             # Should only print "Japp"
             self.assertEqual(fake_out.getvalue().strip(), "Japp")
 
+    def test_file_stream_operations(self):
+        filename = "data.txt"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write("Första raden\nAndra raden")
+
+        try:
+            # Note: data.txt is now a greedy string, no quotes needed
+            source = """
+öppna data.txt som min fil
+skriv nästa rad från min fil
+stäng min fil
+"""
+            with patch('sys.stdout', new=StringIO()) as fake_out:
+                self.run_source(source)
+                self.assertEqual(fake_out.getvalue().strip(), "Första raden")
+        finally:
+            if os.path.exists(filename):
+                os.remove(filename)
+
+    def test_file_write_overwrite(self):
+        filename = "skrivtest.txt"
+        try:
+            # First, we write one thing
+            source_1 = """
+öppna skrivtest.txt för skrivning som f
+skriv Första texten till f
+stäng f
+"""
+            self.run_source(source_1)
+
+            # Then, we overwrite it with something else
+            source_2 = """
+öppna skrivtest.txt för skrivning som f
+skriv Ny text till f
+stäng f
+öppna skrivtest.txt för läsning som f2
+skriv nästa rad från f2
+stäng f2
+"""
+            with patch('sys.stdout', new=StringIO()) as fake_out:
+                self.run_source(source_2)
+                # Output should only be the NEW text
+                self.assertEqual(fake_out.getvalue().strip(), "Ny text")
+        finally:
+            if os.path.exists(filename):
+                os.remove(filename)
 if __name__ == '__main__':
     unittest.main()

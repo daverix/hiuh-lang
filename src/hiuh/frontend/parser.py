@@ -48,6 +48,8 @@ class Parser:
         if t.type == "T_IDENTIFIER" and t.value == "ta":
             if self.peek(1) and self.peek(1).value == "bort":
                 return self.parse_remove()
+        if t.type == "T_IDENTIFIER" and t.value == "öppna":
+            return self.parse_open_file()
         if t.type == "T_KEYWORD_SET": return self.parse_assignment()
         if t.type == "T_KEYWORD_PRINT": return self.parse_print()
         if t.type == "T_KEYWORD_IF": return self.parse_if()
@@ -107,6 +109,32 @@ class Parser:
 
         return RemoveValueNode(target_expr, list_name)
 
+    def parse_open_file(self):
+        self.consume() # öppna
+        self.in_structural_statement = True
+        try:
+            path_expr = self.parse_greedy_expression()
+
+            mode = "läsning"
+            if self.peek() and self.peek().value == "för":
+                self.consume() # för
+                mode = self.consume("T_IDENTIFIER").value # läsning / skrivning
+
+            if self.peek() and self.peek().value == "som":
+                self.consume() # som
+            else:
+                raise SyntaxError("Förväntade 'som' efter filnamnet")
+        finally:
+            self.in_structural_statement = False
+
+        parts = []
+        while self.peek() and self.peek().type == "T_IDENTIFIER":
+            parts.append(self.consume().value)
+        var_name = " ".join(parts)
+
+        self.define_var(var_name)
+        return AssignNode(var_name, FunctionCallNode("öppna", [path_expr, StringNode(mode)]))
+
     def parse_assignment(self):
         self.consume("T_KEYWORD_SET")
 
@@ -144,7 +172,16 @@ class Parser:
 
     def parse_print(self):
         self.consume("T_KEYWORD_PRINT")
-        return PrintNode(self.parse_greedy_expression())
+
+        val = self.parse_greedy_expression()
+
+        if self.peek() and self.peek().type == "T_KEYWORD_TO":
+            self.consume() # till
+            target_var = self.consume("T_IDENTIFIER").value
+            # Create a new FileWriteNode
+            return FileWriteNode(val, target_var)
+
+        return PrintNode(val)
 
     def _is_tree_valid(self, node):
         if isinstance(node, VarAccessNode):
@@ -169,11 +206,16 @@ class Parser:
         return True
 
     def parse_greedy_expression(self):
+        while self.peek() and self.peek().type in ["T_NEWLINE", "T_COMMENT"]:
+            self.consume()
+
         t = self.peek()
-        if not t or t.type in ["T_NEWLINE", "T_DEDENT", "T_INDENT"]: return None
+        if not t or t.type in ["T_DEDENT", "T_INDENT"]:
+            return None
 
         if t.type == "T_IDENTIFIER" and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
-            self.consume(); self.consume(); return StringNode("\n")
+            self.consume(); self.consume()
+            return StringNode("\n")
 
         checkpoint = self.pos
 
@@ -181,14 +223,15 @@ class Parser:
         i = 0
         while self.peek(i) and self.peek(i).type not in ["T_NEWLINE", "T_DEDENT", "T_INDENT"]:
             tok = self.peek(i)
-            # If we hit a structural preposition, STOP the trigger scan.
-            # This prevents 'från' from being seen as a reason to force an expression.
-            if tok.type in ["T_KEYWORD_FROM", "T_KEYWORD_IN"]:
+
+            if tok.value in ["för", "som", "till"] or tok.type in ["T_KEYWORD_FROM", "T_KEYWORD_IN"]:
                 break
-            if tok.value in ["element", "index", "inmatning", "mellanrum", "som", "längd"] or \
+
+            if tok.value in ["element", "index", "inmatning", "mellanrum", "längd"] or \
                tok.type in ["T_OP_ADD", "T_OP_SUB", "T_OP_MUL", "T_OP_DIV"]:
                 has_forced_trigger = True
                 break
+
             i += 1
 
         try:
@@ -199,21 +242,25 @@ class Parser:
             is_at_boundary = not nt or nt.type in [
                 "T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT",
                 "T_KEYWORD_FROM", "T_KEYWORD_IN"
-            ]
+            ] or (nt.type == "T_IDENTIFIER" and nt.value in ["för", "som", "till"])
 
             if is_at_boundary and (has_forced_trigger or self._is_tree_valid(expr)):
                 return expr
-            self.pos = checkpoint
         except:
             if t.type == "T_KEYWORD_FUNC": raise
-            self.pos = checkpoint
 
+        self.pos = checkpoint
         txt = []
         while self.peek():
             nt = self.peek()
             if nt.type in ["T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT", "T_KEYWORD_IN", "T_KEYWORD_FROM"]:
                 break
+
+            if nt.value in ["som", "för", "till"]:
+                break
+
             txt.append(str(self.consume().value))
+
         return StringNode(" ".join(txt))
 
     def expression(self):
