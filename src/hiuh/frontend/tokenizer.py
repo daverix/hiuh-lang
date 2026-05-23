@@ -52,9 +52,6 @@ class Tokenizer:
             "som": "T_KEYWORD_AS"
         }
 
-    def is_alpha(self, char):
-        return 'a' <= char <= 'z' or 'A' <= char <= 'Z' or char in 'åäöÅÄÖ'
-
     def is_digit(self, char):
         return '0' <= char <= '9'
 
