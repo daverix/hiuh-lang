@@ -44,13 +44,27 @@ class Interpreter:
     def visit_VarAccessNode(self, node):
         if node.target:
             obj = self.env.get(node.target)
-            # List Access: element 0 från lista
+
+            if hasattr(obj, 'value'):
+                obj = obj.value
+
+            if isinstance(obj, str):
+                try:
+                    idx = int(node.name)
+                    if 0 <= idx < len(obj):
+                        return obj[idx]
+                    return "" # Return empty string for out-of-bounds indices safely
+                except ValueError:
+                    # If it's not a digit index, it might be a property lookup like 'längd från text'
+                    if node.name == "längd":
+                        return len(obj)
+
             if isinstance(obj, list):
                 try:
                     return obj[int(node.name)]
                 except (ValueError, IndexError):
                     raise Exception(f"Index {node.name} saknas i listan {node.target}")
-            # Object Access: fält från objekt
+
             if isinstance(obj, dict):
                 val = obj.get(node.name)
 
@@ -92,7 +106,16 @@ class Interpreter:
 
     # --- Math & Swedish String Concatenation ---
     def visit_AddNode(self, node):
-        return self.visit(node.left) + self.visit(node.right)
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+
+        # Runtime Type Check: If both are numbers, do mathematical addition
+        if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+            return left + right
+
+        # Fallback: If either side is text, cast both to strings for concatenation
+        # This converts: integer (1) plus string (".s") -> "1.s"
+        return str(left) + str(right)
 
     def visit_SubNode(self, node): return self.visit(node.left) - self.visit(node.right)
     def visit_MulNode(self, node): return self.visit(node.left) * self.visit(node.right)
@@ -172,6 +195,10 @@ class Interpreter:
         if op == "eller": return bool(l) or bool(r)
 
         return False
+
+    def visit_NotNode(self, node):
+        val = self.visit(node.condition)
+        return not bool(val)
 
     # --- Error Handling ---
     def visit_TryCatchNode(self, node):
@@ -265,26 +292,44 @@ class Interpreter:
         elif mode_str == "tillägg":
             py_mode = 'a'
         else:
-            raise ValueError(f"Unknown mode {mode_str}")
+            raise ValueError(f"Okänt läge {mode_str}")
 
         try:
             f = open(str(path), py_mode, encoding='utf-8')
             self.open_files.append(f)
 
-            def at_eof():
-                cur = f.tell()
-                f.seek(0, os.SEEK_END)
-                end = f.tell()
-                f.seek(cur)
-                return cur >= end
+            # We use a mutable state container to track if we peeked/read an empty line
+            state = {"last_line": None, "reached_end": False}
+
+            def read_next_line():
+                line = f.readline()
+                if line == "": # Python returns completely empty string ONLY at EOF
+                    state["reached_end"] = True
+                    return ""
+                return line.rstrip('\n')
+
+            def check_is_end():
+                # If we already flagged EOF during a read action
+                if state["reached_end"]:
+                    return True
+
+                # Peek ahead: can we read anything?
+                pos = f.tell()
+                next_check = f.readline()
+                f.seek(pos)
+
+                if next_check == "":
+                    state["reached_end"] = True
+                    return True
+                return False
 
             return {
                 "_file_handle": f,
                 "läge": mode_str,
-                "nästa rad": lambda: f.readline().rstrip('\n'),
-                "gå till början": lambda: f.seek(0),
+                "nästa rad": read_next_line,
+                "gå till början": lambda: (f.seek(0), state.update({"reached_end": False})),
                 "gå till slutet": lambda: f.tell() >= os.fstat(f.fileno()).st_size,
-                "i slutet": at_eof
+                "i slutet": check_is_end
             }
         except Exception as e:
             raise Exception(f"Kunde inte öppna {path} för {mode_str}: {e}")

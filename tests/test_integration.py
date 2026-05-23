@@ -328,5 +328,60 @@ skriv summa
             if os.path.exists(dir_name):
                 os.rmdir(dir_name)
 
+    def test_bootstrapping_sanity_step(self):
+        """Verify Hiuh can read a file line-by-line and simulate a basic tokenizer loop."""
+        target_file = "källkod_test.hiuh"
+
+        # 1. Create a mock source file that our Hiuh code will read
+        with open(target_file, "w", encoding="utf-8") as f:
+            f.write("sätt x till 10\nskriv x\n")
+
+        try:
+            # 2. The Hiuh source script that performs line-by-line inspection
+            source = """
+öppna källkod_test.hiuh för läsning som fil
+sätt rad_nummer till 1
+
+medan inte i slutet från fil
+    sätt rad till nästa rad från fil
+    
+    . Inspect the first character of the line to find syntax shapes
+    sätt första_tecken till element 0 från rad
+    
+    skriv rad_nummer plus . plus första_tecken plus mellanrum
+    sätt rad_nummer till rad_nummer plus 1
+
+stäng fil
+"""
+            with patch('sys.stdout', new=StringIO()) as fake_out:
+                self.run_source(source)
+                # Line 1 starts with 's' (sätt), Line 2 starts with 's' (skriv)
+                # Output should be "1.s 2.s "
+                self.assertEqual(fake_out.getvalue(), "1.s 2.s ")
+        finally:
+            # 3. Securely clean up the file
+            if os.path.exists(target_file):
+                os.remove(target_file)
+
+    def test_file_paths_with_and_without_spaces(self):
+        """Verify that standard files are quote-less, but files with spaces use quotes."""
+        file_simple = "källkod_test.hiuh"
+        file_spaced = "mitt projekt.hiuh"
+
+        with open(file_simple, "w", encoding="utf-8") as f: f.write("sätt x till 1")
+        with open(file_spaced, "w", encoding="utf-8") as f: f.write("sätt y till 2")
+
+        try:
+            source = """
+öppna källkod_test.hiuh för läsning som f1
+öppna "mitt projekt.hiuh" för läsning som f2
+stäng f1
+stäng f2
+"""
+            # If it compiles and runs without an exception, the syntax layout is correct
+            self.run_source(source)
+        finally:
+            if os.path.exists(file_simple): os.remove(file_simple)
+            if os.path.exists(file_spaced): os.remove(file_spaced)
 if __name__ == '__main__':
     unittest.main()

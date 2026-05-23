@@ -45,7 +45,11 @@ class Tokenizer:
             "eller": "T_OP_OR",
             "och": "T_OP_AND",
             "medan": "T_KEYWORD_WHILE",
-            "använd": "T_KEYWORD_IMPORT"
+            "använd": "T_KEYWORD_IMPORT",
+            "öppna": "T_KEYWORD_OPEN",
+            "stäng": "T_KEYWORD_CLOSE",
+            "för": "T_KEYWORD_FOR",
+            "som": "T_KEYWORD_AS"
         }
 
     def is_alpha(self, char):
@@ -91,9 +95,28 @@ class Tokenizer:
                 if char == ' ':
                     i += 1
                     continue
+
                 if char == ',':
                     tokens.append(Token("T_COMMA", ",", line_idx, indent + i + 1))
                     i += 1
+                    continue
+
+                if char in ['"', "'"]:
+                    quote_char = char
+                    start = i
+                    i += 1  # Skip the opening quote
+
+                    while i < len(content) and content[i] != quote_char:
+                        i += 1
+
+                    if i >= len(content):
+                        raise SyntaxError(f"Oavslutad textsträng på rad {line_idx}")
+
+                    # Extract the contents without the quote characters
+                    val = content[start + 1 : i]
+                    i += 1  # Skip the closing quote
+
+                    tokens.append(Token("T_STRING", val, line_idx, indent + start + 1))
                     continue
 
                 if self.is_digit(char):
@@ -115,23 +138,20 @@ class Tokenizer:
                     tokens.append(Token(t_type, val, line_idx, indent + start + 1))
                     continue
 
-                if self.is_alpha(char):
-                    start = i
-                    while i < len(content) and (content[i].isalnum() or content[i] in '.'):
-                        i += 1
-                    val = content[start:i]
+                start = i
+                while i < len(content) and not content[i].isspace() and content[i] not in [',', '"', "'"]:
+                    i += 1
 
-                    # Standardize logic for literals and keywords
-                    if val.upper() == "SANT":
-                        t_type = "T_LITERAL_TRUE"
-                    elif val.upper() == "FALSKT":
-                        t_type = "T_LITERAL_FALSE"
-                    else:
-                        t_type = self.keywords.get(val.lower(), "T_IDENTIFIER")
+                val = content[start:i]
 
-                    tokens.append(Token(t_type, val, line_idx, indent + start + 1))
-                    continue
-                i += 1
+                if val.upper() == "SANT":
+                    t_type = "T_LITERAL_TRUE"
+                elif val.upper() == "FALSKT":
+                    t_type = "T_LITERAL_FALSE"
+                else:
+                    t_type = self.keywords.get(val.lower(), "T_IDENTIFIER")
+
+                tokens.append(Token(t_type, val, line_idx, indent + start + 1))
 
             if line_idx < len(lines):
                 tokens.append(Token("T_NEWLINE", "\n", line_idx, len(line) + 1))

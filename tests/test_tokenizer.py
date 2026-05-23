@@ -234,5 +234,87 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
         self.assertEqual(tokens[3].value, "i")
         self.assertEqual(tokens[11].value, "från")
 
+    def test_bootstrapping_sanity_tokens(self):
+        """Verify the precise token layout for the bootstrapping sanity test source."""
+        source = """öppna källkod_test.hiuh för läsning som fil
+sätt rad_nummer till 1
+
+medan inte i slutet från fil
+    sätt rad till nästa rad från fil
+
+    . Inspect the first character of the line to find syntax shapes
+    sätt första_tecken till element 0 från rad
+
+    skriv rad_nummer plus . plus första_tecken plus mellanrum
+    sätt rad_nummer till rad_nummer plus 1
+
+stäng fil"""
+
+        expected = [
+            Token("T_KEYWORD_OPEN", "öppna", 1, 1),
+            Token("T_IDENTIFIER", "källkod_test.hiuh", 1, 7),
+            Token("T_KEYWORD_FOR", "för", 1, 25),
+            Token("T_IDENTIFIER", "läsning", 1, 29),
+            Token("T_KEYWORD_AS", "som", 1, 37),
+            Token("T_IDENTIFIER", "fil", 1, 41),
+            Token("T_NEWLINE", "\n", 1, 44),
+            Token("T_KEYWORD_SET", "sätt", 2, 1),
+            Token("T_IDENTIFIER", "rad_nummer", 2, 6),
+            Token("T_KEYWORD_TO", "till", 2, 17),
+            Token("T_LITERAL_INT", "1", 2, 22),
+            Token("T_NEWLINE", "\n", 2, 23),
+            Token("T_NEWLINE", "\n", 3, 1),
+            Token("T_KEYWORD_WHILE", "medan", 4, 1),
+            Token("T_IDENTIFIER", "inte", 4, 7),
+            Token("T_KEYWORD_IN", "i", 4, 12),
+            Token("T_IDENTIFIER", "slutet", 4, 14),
+            Token("T_KEYWORD_FROM", "från", 4, 21),
+            Token("T_IDENTIFIER", "fil", 4, 26),
+            Token("T_NEWLINE", "\n", 4, 29),
+            Token("T_INDENT", "    ", 5, 1),
+            Token("T_KEYWORD_SET", "sätt", 5, 5),
+            Token("T_IDENTIFIER", "rad", 5, 10),
+            Token("T_KEYWORD_TO", "till", 5, 14),
+            Token("T_IDENTIFIER", "nästa", 5, 19),
+            Token("T_IDENTIFIER", "rad", 5, 25),
+            Token("T_KEYWORD_FROM", "från", 5, 29),
+            Token("T_IDENTIFIER", "fil", 5, 34),
+            Token("T_NEWLINE", "\n", 5, 37),
+            Token("T_NEWLINE", "\n", 6, 1),
+            Token("T_COMMENT", ". Inspect the first character of the line to find syntax shapes", 7, 5),
+            Token("T_NEWLINE", "\n", 7, 68),
+            Token("T_KEYWORD_SET", "sätt", 8, 5),
+            Token("T_IDENTIFIER", "första_tecken", 8, 10),
+            Token("T_KEYWORD_TO", "till", 8, 24),
+            Token("T_IDENTIFIER", "element", 8, 29),
+            Token("T_LITERAL_INT", "0", 8, 37),
+            Token("T_KEYWORD_FROM", "från", 8, 39),
+            Token("T_IDENTIFIER", "rad", 8, 44),
+            Token("T_NEWLINE", "\n", 8, 47),
+            Token("T_NEWLINE", "\n", 9, 1),
+            Token("T_KEYWORD_PRINT", "skriv", 10, 5),
+            Token("T_IDENTIFIER", "rad_nummer", 10, 11),
+            Token("T_OP_ADD", "plus", 10, 22),
+            Token("T_IDENTIFIER", ".", 10, 27),
+            Token("T_OP_ADD", "plus", 10, 29),
+            Token("T_IDENTIFIER", "första_tecken", 10, 34),
+            Token("T_OP_ADD", "plus", 10, 48),
+            Token("T_IDENTIFIER", "mellanrum", 10, 53),
+            Token("T_NEWLINE", "\n", 10, 62),
+            Token("T_KEYWORD_SET", "sätt", 11, 5),
+            Token("T_IDENTIFIER", "rad_nummer", 11, 10),
+            Token("T_KEYWORD_TO", "till", 11, 21),
+            Token("T_IDENTIFIER", "rad_nummer", 11, 26),
+            Token("T_OP_ADD", "plus", 11, 37),
+            Token("T_LITERAL_INT", "1", 11, 42),
+            Token("T_NEWLINE", "\n", 11, 43),
+            Token("T_NEWLINE", "\n", 12, 1),
+            Token("T_DEDENT", "", 13, 1),
+            Token("T_KEYWORD_CLOSE", "stäng", 13, 1),
+            Token("T_IDENTIFIER", "fil", 13, 7)
+        ]
+
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
+
 if __name__ == '__main__':
     unittest.main()

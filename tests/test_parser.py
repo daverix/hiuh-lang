@@ -293,5 +293,78 @@ class TestHiuhParserAST(unittest.TestCase):
         nodes = self.parse_source(source)
         self.assertEqual(nodes[0].target_list, "min stora lista")
 
+    def test_bootstrapping_sanity_ast(self):
+        """Verify the precise AST node structure for the bootstrapping sanity test source."""
+        source = """öppna källkod_test.hiuh för läsning som fil
+sätt rad_nummer till 1
+
+medan inte i slutet från fil
+    sätt rad till nästa rad från fil
+
+    . Inspect the first character of the line to find syntax shapes
+    sätt första_tecken till element 0 från rad
+
+    skriv rad_nummer plus . plus första_tecken plus mellanrum
+    sätt rad_nummer till rad_nummer plus 1
+
+stäng fil"""
+
+        tokens = self.tokenizer.tokenize(source)
+        parser = Parser(tokens)
+        actual_nodes = parser.parse()
+
+        expected_nodes = [
+            # öppna källkod_test.hiuh för läsning som fil
+            AssignNode(
+                name="fil",
+                value=FunctionCallNode(
+                    name="öppna",
+                    args=[
+                        StringNode("källkod_test.hiuh"),
+                        StringNode("läsning")
+                    ]
+                )
+            ),
+
+            # sätt rad_nummer till 1
+            AssignNode(
+                name="rad_nummer",
+                value=IntNode("1")
+            ),
+
+            # medan inte i slutet från fil
+            # CORRECTED WHILE NODE CONTEXT:
+            WhileNode(
+                condition=NotNode( # Properly negates the statement
+                    condition=VarAccessNode("i slutet", target="fil") # Single property name!
+                ),
+                body=[
+                    AssignNode(name="rad", value=VarAccessNode("nästa rad", target="fil")),
+                    AssignNode(name="första_tecken", value=VarAccessNode("0", target="rad")),
+                    PrintNode(
+                        value=AddNode(
+                            left=AddNode(
+                                left=AddNode(
+                                    left=VarAccessNode("rad_nummer"),
+                                    right=StringNode(".")
+                                ),
+                                right=VarAccessNode("första_tecken")
+                            ),
+                            right=VarAccessNode("mellanrum")
+                        )
+                    ),
+                    AssignNode(
+                        name="rad_nummer",
+                        value=AddNode(left=VarAccessNode("rad_nummer"), right=IntNode("1"))
+                    )
+                ]
+            ),
+
+            # stäng fil
+            CloseFileNode(target_var="fil")
+        ]
+
+        self.assertEqual(actual_nodes, expected_nodes)
+
 if __name__ == '__main__':
     unittest.main()

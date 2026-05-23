@@ -53,6 +53,10 @@ class DivNode(ASTNode):
         self.left, self.right = left, right
 
 # --- Comparisons and Logic ---
+class NotNode(ASTNode):
+    def __init__(self, condition):
+        self.condition = condition
+
 class ComparisonNode(ASTNode):
     def __init__(self, left, op, right):
         self.left, self.op, self.right = left, op, right

@@ -45,14 +45,17 @@ class Parser:
         if t.type == "T_KEYWORD_IMPORT":
             return self.parse_import()
 
+        if t.type == "T_KEYWORD_OPEN":
+            return self.parse_open_file()
+        if t.type == "T_KEYWORD_CLOSE":
+            return self.parse_close_file()
+
         if t.type == "T_IDENTIFIER" and t.value == "lägg":
             if self.peek(1) and self.peek(1).value == "till":
                 return self.parse_append()
         if t.type == "T_IDENTIFIER" and t.value == "ta":
             if self.peek(1) and self.peek(1).value == "bort":
                 return self.parse_remove()
-        if t.type == "T_IDENTIFIER" and t.value == "öppna":
-            return self.parse_open_file()
         if t.type == "T_KEYWORD_SET": return self.parse_assignment()
         if t.type == "T_KEYWORD_PRINT": return self.parse_print()
         if t.type == "T_KEYWORD_IF": return self.parse_if()
@@ -157,6 +160,20 @@ class Parser:
         self.define_var(var_name)
         return AssignNode(var_name, FunctionCallNode("öppna", [path_expr, StringNode(mode)]))
 
+    def parse_close_file(self):
+        self.consume("T_KEYWORD_CLOSE") # Consumes 'stäng'
+
+        # Greedy identifier consumption to match multi-word file names
+        parts = []
+        while self.peek() and self.peek().type == "T_IDENTIFIER":
+            parts.append(self.consume().value)
+
+        if not parts:
+            raise SyntaxError(f"Förväntade en filvariabel efter 'stäng' på rad {self.peek().line if self.peek() else 'EOF'}")
+
+        target = " ".join(parts)
+        return CloseFileNode(target)
+
     def parse_assignment(self):
         self.consume("T_KEYWORD_SET")
 
@@ -206,6 +223,12 @@ class Parser:
         return PrintNode(val)
 
     def _is_tree_valid(self, node):
+        if isinstance(node, StringNode):
+            return True
+
+        if isinstance(node, CloseFileNode):
+            return True
+
         if isinstance(node, VarAccessNode):
             if hasattr(node, 'target') and node.target:
                 return self.is_var_known(node.target)
@@ -286,6 +309,13 @@ class Parser:
         return StringNode(" ".join(txt))
 
     def expression(self):
+        t = self.peek()
+        if t and t.type == "T_IDENTIFIER" and t.value == "inte":
+            self.consume() # consume 'inte'
+            # Recursively parse the condition that follows, then wrap it in a NotNode
+            cond_node = self.expression()
+            return NotNode(cond_node)
+
         left = self.arithmetic()
         if isinstance(left, FunctionDefNode): return left
 
@@ -376,12 +406,15 @@ class Parser:
         if t.type == "T_IDENTIFIER" and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
             self.consume(); self.consume(); return StringNode("\n")
 
-        if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL"]:
+        if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_KEYWORD_IN"]:
             name = self.consume().value
+
+            if name == ".":
+                return StringNode(".")
 
             if not self.in_structural_statement:
                 lookahead = 0
-                while self.peek(lookahead) and self.peek(lookahead).type == "T_IDENTIFIER":
+                while self.peek(lookahead) and self.peek(lookahead).type in ["T_IDENTIFIER", "T_KEYWORD_IN"]:
                     if self.peek(lookahead + 1) and self.peek(lookahead + 1).type == "T_KEYWORD_FROM":
                         for _ in range(lookahead + 1):
                             name += " " + self.consume().value
@@ -437,7 +470,7 @@ class Parser:
                 return prop_node
 
             # Multi-word Var
-            while self.peek() and self.peek().type == "T_IDENTIFIER":
+            while self.peek() and self.peek().type in ["T_IDENTIFIER", "T_KEYWORD_IN"]:
                 combined = name + " " + self.peek().value
                 if self.is_var_known(combined): name = combined; self.consume()
                 else: break
