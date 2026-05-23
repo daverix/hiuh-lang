@@ -313,16 +313,15 @@ class Interpreter:
         raise Exception(f"'{node.target_var}' är inte en öppen fil.")
 
     def visit_ImportNode(self, node):
-        # 1. Resolve path (look for module_name.hiuh in the current execution directory)
-        module_file = f"{node.module_name}.hiuh"
+        path_parts = node.module_name.split('.')
+        relative_path = os.path.sep.join(path_parts)
+        module_file = f"{relative_path}.hiuh"
         if not os.path.exists(module_file):
             raise Exception(f"Modulen '{node.module_name}' hittades inte ({module_file}).")
 
-        # 2. Read the source code
         with open(module_file, 'r', encoding='utf-8') as f:
             module_source = f.read()
 
-        # 3. Compile the module internally (Reuse Tokenizer and Parser)
         from hiuh.frontend.tokenizer import Tokenizer
         from hiuh.frontend.parser import Parser
 
@@ -331,11 +330,8 @@ class Interpreter:
         parser = Parser(tokens)
         module_nodes = parser.parse()
 
-        # 4. Create an isolated Environment for the module
-        # It inherits global built-ins, but has a fresh local scope
         module_env = Environment(self.globals)
 
-        # Swap environments to run the module code safely
         old_env = self.env
         self.env = module_env
         try:
@@ -344,16 +340,14 @@ class Interpreter:
         finally:
             self.env = old_env # Always swap back
 
-        # 5. Extract all variables defined locally inside that module
-        # (excluding the global built-ins inherited from self.globals)
-        module_exports = {}
-        for key, value in module_env.vars.items():
-            module_exports[key] = value
+        if hasattr(module_env, 'values'):
+            module_exports = dict(module_env.values)
+        elif hasattr(module_env, 'vars'):
+            module_exports = dict(module_env.vars)
+        else:
+            module_exports = module_env.get_local_bindings()
 
-        # 6. Bind the module namespace into the current environment
-        # If an alias was supplied (använd x som y), we use 'y'
-        # Otherwise we use the module's raw filename/name 'x'
-        namespace_name = node.alias if node.alias else node.module_name
+        namespace_name = node.alias if node.alias else path_parts[-1]
         self.env.define(namespace_name, module_exports)
 
         return module_exports

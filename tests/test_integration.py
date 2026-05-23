@@ -299,5 +299,34 @@ skriv meddelande
             if os.path.exists(module_filename):
                 os.remove(module_filename)
 
+    def test_module_directory_import(self):
+        dir_name = "verktyg"
+        module_filename = os.path.join(dir_name, "matematik.hiuh")
+
+        # Create the subdirectory and the file
+        os.makedirs(dir_name, exist_ok=True)
+        with open(module_filename, "w", encoding="utf-8") as f:
+            f.write("""
+sätt addera till grej med a, b
+    ge a plus b
+        """)
+
+        try:
+            # We import from a directory via dot separation and use the default name 'matematik'
+            source = """
+använd verktyg.matematik
+sätt summa till addera från matematik med 10, 5
+skriv summa
+            """
+            with patch('sys.stdout', new=StringIO()) as fake_out:
+                self.run_source(source)
+                self.assertEqual(fake_out.getvalue().strip(), "15")
+        finally:
+            # Clean up both file and folder
+            if os.path.exists(module_filename):
+                os.remove(module_filename)
+            if os.path.exists(dir_name):
+                os.rmdir(dir_name)
+
 if __name__ == '__main__':
     unittest.main()
