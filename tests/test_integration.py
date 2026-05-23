@@ -274,5 +274,30 @@ slutligen
             # Output: "Ojdå och hejdå"
             self.assertEqual(fake_out.getvalue().strip(), "hej och hejdå")
 
+    def test_module_import_and_aliasing(self):
+        module_filename = "hjälpare.hiuh"
+
+        # Create a helper module that exposes a function
+        with open(module_filename, "w", encoding="utf-8") as f:
+            f.write("""
+sätt hälsa till grej med namn
+    ge Hej plus mellanrum plus namn
+        """)
+
+        try:
+            # We import the helper module using an alias ('som h')
+            # and access its property using our standard property access parser rule ('från')
+            source = """
+använd hjälpare som h
+sätt meddelande till hälsa från h med David
+skriv meddelande
+    """
+            with patch('sys.stdout', new=StringIO()) as fake_out:
+                self.run_source(source)
+                self.assertEqual(fake_out.getvalue().strip(), "Hej David")
+        finally:
+            if os.path.exists(module_filename):
+                os.remove(module_filename)
+
 if __name__ == '__main__':
     unittest.main()

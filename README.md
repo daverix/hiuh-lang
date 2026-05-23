@@ -349,8 +349,8 @@ sätt slumpa till grej
 In the example, the main application. When compiling point to the main file and the compiler will pull in all other files relative this file:
 
 ```
-hämta bibliotek.exempel
-hämta mattematik som matte
+använd bibliotek.exempel
+använd mattematik som matte
 
 sätt s till slumpa från matte
 skriv nästa tal från s

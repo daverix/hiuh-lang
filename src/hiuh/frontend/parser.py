@@ -42,6 +42,9 @@ class Parser:
         t = self.peek()
         if not t: return None
 
+        if t.type == "T_KEYWORD_IMPORT":
+            return self.parse_import()
+
         if t.type == "T_IDENTIFIER" and t.value == "lägg":
             if self.peek(1) and self.peek(1).value == "till":
                 return self.parse_append()
@@ -61,6 +64,25 @@ class Parser:
         if t.type == "T_KEYWORD_GIVE":
             self.consume(); return ReturnNode(self.expression())
         return self.expression()
+
+    def parse_import(self):
+        self.consume("T_KEYWORD_IMPORT") # använd
+
+        # Parse module name (greedy string to support filenames/multiword paths)
+        # Note: because we made 'som' a hard boundary before, parse_greedy_expression will stop perfectly!
+        module_expr = self.parse_greedy_expression()
+        module_name = module_expr.value if hasattr(module_expr, 'value') else str(module_expr)
+
+        alias = None
+        # Support: använd matematik som matte
+        if self.peek() and self.peek().value == "som":
+            self.consume() # som
+            parts = []
+            while self.peek() and self.peek().type == "T_IDENTIFIER":
+                parts.append(self.consume().value)
+            alias = " ".join(parts)
+
+        return ImportNode(module_name, alias)
 
     def parse_append(self):
         self.consume() # lägg
@@ -381,15 +403,38 @@ class Parser:
             if name in ["element", "index"] and self.peek() and self.peek().type == "T_LITERAL_INT":
                 idx = self.consume().value
                 if self.peek() and self.peek().type == "T_KEYWORD_FROM":
-                    self.consume(); t_p = []
-                    while self.peek() and self.peek().type == "T_IDENTIFIER": t_p.append(self.consume().value)
-                    return VarAccessNode(str(idx), target=" ".join(t_p))
+                    self.consume()
+                    parts = []
+                    while self.peek() and self.peek().type == "T_IDENTIFIER": parts.append(self.consume().value)
+                    return VarAccessNode(str(idx), target=" ".join(parts))
 
             # Property Get
             if not self.in_structural_statement and self.peek() and self.peek().type == "T_KEYWORD_FROM":
-                self.consume(); t_p = []
-                while self.peek() and self.peek().type == "T_IDENTIFIER": t_p.append(self.consume().value)
-                return VarAccessNode(name, target=" ".join(t_p))
+                self.consume()
+
+                parts = []
+                while self.peek() and self.peek().type == "T_IDENTIFIER":
+                    parts.append(self.consume().value)
+
+                target_namespace = " ".join(parts)
+                prop_node = VarAccessNode(name, target=target_namespace)
+
+                if self.peek() and self.peek().type == "T_KEYWORD_WITH":
+                    self.consume() # med
+                    args = []
+                    while True:
+                        arg_expr = self.expression()
+                        if isinstance(arg_expr, VarAccessNode) and not self.is_var_known(arg_expr.name):
+                            arg_expr = StringNode(arg_expr.name)
+                        args.append(arg_expr)
+                        if self.peek() and self.peek().type == "T_COMMA":
+                            self.consume()
+                        else:
+                            break
+
+                    return FunctionCallNode(prop_node, args)
+
+                return prop_node
 
             # Multi-word Var
             while self.peek() and self.peek().type == "T_IDENTIFIER":

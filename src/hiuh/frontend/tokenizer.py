@@ -44,7 +44,8 @@ class Tokenizer:
             "delat": "T_OP_DIV",
             "eller": "T_OP_OR",
             "och": "T_OP_AND",
-            "medan": "T_KEYWORD_WHILE"
+            "medan": "T_KEYWORD_WHILE",
+            "använd": "T_KEYWORD_IMPORT"
         }
 
     def is_alpha(self, char):

@@ -131,9 +131,17 @@ class Interpreter:
         return hiuh_func
 
     def visit_FunctionCallNode(self, node):
-        f = self.env.get(node.name)
-        # Visited arguments
         args = [self.visit(arg) for arg in node.args]
+
+        if isinstance(node.name, VarAccessNode) and node.name.target:
+            module_dict = self.env.get(node.name.target)
+            if isinstance(module_dict, dict):
+                func = module_dict.get(node.name.name)
+                if func and callable(func):
+                    return func(*args)
+            raise Exception(f"Hittade inte funktionen '{node.name.name}' i modulen '{node.name.target}'.")
+
+        f = self.env.get(node.name)
 
         if callable(f):
             return f(*args)
@@ -303,3 +311,49 @@ class Interpreter:
                 self.open_files.remove(f)
             return True
         raise Exception(f"'{node.target_var}' är inte en öppen fil.")
+
+    def visit_ImportNode(self, node):
+        # 1. Resolve path (look for module_name.hiuh in the current execution directory)
+        module_file = f"{node.module_name}.hiuh"
+        if not os.path.exists(module_file):
+            raise Exception(f"Modulen '{node.module_name}' hittades inte ({module_file}).")
+
+        # 2. Read the source code
+        with open(module_file, 'r', encoding='utf-8') as f:
+            module_source = f.read()
+
+        # 3. Compile the module internally (Reuse Tokenizer and Parser)
+        from hiuh.frontend.tokenizer import Tokenizer
+        from hiuh.frontend.parser import Parser
+
+        tokenizer = Tokenizer()
+        tokens = tokenizer.tokenize(module_source)
+        parser = Parser(tokens)
+        module_nodes = parser.parse()
+
+        # 4. Create an isolated Environment for the module
+        # It inherits global built-ins, but has a fresh local scope
+        module_env = Environment(self.globals)
+
+        # Swap environments to run the module code safely
+        old_env = self.env
+        self.env = module_env
+        try:
+            for m_node in module_nodes:
+                self.visit(m_node)
+        finally:
+            self.env = old_env # Always swap back
+
+        # 5. Extract all variables defined locally inside that module
+        # (excluding the global built-ins inherited from self.globals)
+        module_exports = {}
+        for key, value in module_env.vars.items():
+            module_exports[key] = value
+
+        # 6. Bind the module namespace into the current environment
+        # If an alias was supplied (använd x som y), we use 'y'
+        # Otherwise we use the module's raw filename/name 'x'
+        namespace_name = node.alias if node.alias else node.module_name
+        self.env.define(namespace_name, module_exports)
+
+        return module_exports
