@@ -154,10 +154,10 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 
     def test_error_handling_section(self):
-        source = "prova\n    kasta fel\nfånga fel"
+        source = "försök\n    kasta fel\nfånga fel"
         expected = [
-            Token("T_KEYWORD_TRY", "prova", 1, 1),
-            Token("T_NEWLINE", "\n", 1, 6),
+            Token("T_KEYWORD_TRY", "försök", 1, 1),
+            Token("T_NEWLINE", "\n", 1, 7),
             Token("T_INDENT", "    ", 2, 1),
             Token("T_KEYWORD_THROW", "kasta", 2, 5),
             Token("T_IDENTIFIER", "fel", 2, 11),

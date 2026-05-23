@@ -60,7 +60,7 @@ skriv meddelande
     def test_try_catch_blocks(self):
         """Tests the Swedish error handling keywords."""
         source = """
-prova
+försök
     kasta ett fel inträffade
 fånga meddelande
     skriv meddelande
@@ -250,7 +250,7 @@ stäng f2
 
     def test_try_catch_finally(self):
         source = """
-prova
+försök
     kasta Ojdå
 fånga fel
     skriv fel
@@ -264,7 +264,7 @@ slutligen
 
     def test_try_finally(self):
         source = """
-prova
+försök
     skriv hej
 slutligen
     skriv mellanrum plus och hejdå

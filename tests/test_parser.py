@@ -187,7 +187,7 @@ class TestHiuhParserAST(unittest.TestCase):
         self.assertIsInstance(ast[0], AssignNode)
 
     def test_error_handling_section(self):
-        source = "prova\n    kasta fel\nfånga fel\n    skriv fel"
+        source = "försök\n    kasta fel\nfånga fel\n    skriv fel"
         expected = [
             TryCatchNode(
                 try_block=[UnaryOpNode("kasta", StringNode("fel"))],

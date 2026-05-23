@@ -236,7 +236,7 @@ Reading multiple lines:
 
 ```
 öppna fil2.txt som data
-prova
+försök
     sätt rader till lista
     
     medan inte i slutet från data
@@ -266,7 +266,7 @@ sätt output till nedsparning
 If something goes wrong we can catch it by using:
 
 ```
-prova
+försök
     skriv här testar vi något och det blev fel
     skriv ny rad
     kasta något fel här

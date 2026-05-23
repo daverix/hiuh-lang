@@ -35,7 +35,7 @@ class Tokenizer:
             "än": "T_KEYWORD_THAN",
             "lika": "T_KEYWORD_EQUAL",
             "annars": "T_KEYWORD_ELSE",
-            "prova": "T_KEYWORD_TRY",
+            "försök": "T_KEYWORD_TRY",
             "kasta": "T_KEYWORD_THROW",
             "fånga": "T_KEYWORD_CATCH",
             "gånger": "T_OP_MUL",
