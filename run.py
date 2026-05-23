@@ -23,7 +23,10 @@ def main():
         print(f"Fel: Filen '{file_path}' hittades inte.")
         return
 
-    with open(file_path, 'r', encoding='utf-8') as f:
+    abs_path = os.path.abspath(file_path)
+    base_dir = os.path.dirname(abs_path)
+
+    with open(abs_path, 'r', encoding='utf-8') as f:
         source = f.read()
 
     # 1. Tokenize
@@ -42,6 +45,7 @@ def main():
     interpreter = Interpreter()
     # Inject the 'argument' list into globals
     interpreter.globals.define("argument", cli_args)
+    interpreter.script_dir_stack = [base_dir]
 
     try:
         interpreter.execute(nodes)

@@ -15,8 +15,10 @@ class Interpreter:
         self.globals.define("inmatning", lambda: sys.stdin.readline().strip())
         self.globals.define("längd", lambda x: len(x) if hasattr(x, '__len__') else 0)
         self.globals.define("mellanrum", " ")
-        self.open_files = []
         self.globals.define("öppna", self.builtin_open)
+
+        self.open_files = []
+        self.script_dir_stack = [os.getcwd()]
         self.env = self.globals
 
     def execute(self, nodes):
@@ -360,7 +362,11 @@ class Interpreter:
     def visit_ImportNode(self, node):
         path_parts = node.module_name.split('.')
         relative_path = os.path.sep.join(path_parts)
-        module_file = f"{relative_path}.hiuh"
+        module_filename = f"{relative_path}.hiuh"
+
+        current_dir = self.script_dir_stack[-1]
+        module_file = os.path.join(current_dir, module_filename)
+
         if not os.path.exists(module_file):
             raise Exception(f"Modulen '{node.module_name}' hittades inte ({module_file}).")
 
@@ -377,13 +383,17 @@ class Interpreter:
 
         module_env = Environment(self.globals)
 
+        new_dir = os.path.dirname(os.path.abspath(module_file))
+        self.script_dir_stack.append(new_dir)
+
         old_env = self.env
         self.env = module_env
         try:
             for m_node in module_nodes:
                 self.visit(m_node)
         finally:
-            self.env = old_env # Always swap back
+            self.env = old_env
+            self.script_dir_stack.pop()
 
         if hasattr(module_env, 'values'):
             module_exports = dict(module_env.values)
