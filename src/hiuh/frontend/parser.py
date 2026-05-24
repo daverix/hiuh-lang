@@ -310,7 +310,14 @@ class Parser:
 
             txt.append(str(self.consume().value))
 
-        return StringNode(" ".join(txt), token=t)
+        raw_value = " ".join(txt)
+        if raw_value.isdigit():
+            return IntNode(int(raw_value))
+
+        if ',' in raw_value and raw_value.replace(',', '').isdigit():
+            return FloatNode(raw_value, token=t)
+
+        return StringNode(raw_value, token=t)
 
     def expression(self):
         t = self.peek()
