@@ -106,14 +106,9 @@ class Interpreter:
 
             if isinstance(obj, str):
                 try:
-                    idx = int(node.name)
-                    if 0 <= idx < len(obj):
-                        return Char(obj[idx])
-                    return "" # Return empty string for out-of-bounds indices safely
-                except ValueError:
-                    # If it's not a digit index, it might be a property lookup like 'längd från text'
-                    if node.name == "längd":
-                        return len(obj)
+                    return Char(obj[int(node.name)])
+                except ValueError, IndexError:
+                    raise Exception(f"Index {node.name} saknas i texten {node.target}")
 
             if isinstance(obj, list):
                 try:
