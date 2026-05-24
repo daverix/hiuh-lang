@@ -4,6 +4,11 @@ import sys
 from hiuh.frontend.ast import *
 from hiuh.backend.interpreter.environment import Environment
 
+class ReturnException(Exception):
+    """Internal interpreter exception used to bubble return values out of nested scopes."""
+    def __init__(self, value):
+        self.value = value
+
 class Interpreter:
     def __init__(self):
         self.globals = Environment()
@@ -18,6 +23,7 @@ class Interpreter:
         self.globals.define("öppna", self.builtin_open)
 
         self.open_files = []
+        self.call_stack = []
         self.script_dir_stack = [os.getcwd()]
         self.env = self.globals
 
@@ -29,9 +35,39 @@ class Interpreter:
 
     def visit(self, node):
         if node is None: return None
+
+        if hasattr(node, 'line') and node.line is not None:
+            if self.call_stack:
+                self.call_stack[-1]["line"] = node.line
+                self.call_stack[-1]["column"] = getattr(node, 'column', 1)
+
         method = f"visit_{type(node).__name__}"
         visitor = getattr(self, method, self.no_visit_method)
-        return visitor(node)
+
+        try:
+            return visitor(node)
+        except Exception as e:
+            # Catch errors anywhere in the execution tree and print the trace once
+            if not hasattr(e, '_hiuh_traceback_printed'):
+                self.print_hiuh_traceback()
+                e._hiuh_traceback_printed = True
+            raise e
+
+    def print_hiuh_traceback(self):
+        """Prints a human-readable trace of the execution path when a crash happens."""
+        import sys
+        print("\n--- Spårningshistorik (Call Stack) ---", file=sys.stderr)
+
+        # Traverse frames from the first caller down to the execution crash line
+        for frame in self.call_stack:
+            # Skip the dummy internal Python runner seed layer if it doesn't represent real code
+            if frame["function"] == "<huvudprogram>" and frame["file"] == "run.py":
+                continue
+
+            col_info = f", Kolumn {frame['column']}" if "column" in frame else ""
+            print(f"  Fil: '{frame['file']}', Rad {frame['line']}{col_info}, i funktion: {frame['function']}", file=sys.stderr)
+
+        print("--------------------------------------\n", file=sys.stderr)
 
     def no_visit_method(self, node):
         raise Exception(f"Interpreter: visit_{type(node).__name__} is not implemented")
@@ -158,25 +194,77 @@ class Interpreter:
     def visit_FunctionCallNode(self, node):
         args = [self.visit(arg) for arg in node.args]
 
+        func_name = str(node.name)
+        current_file = os.path.basename(self.script_dir_stack[-1])
+
+        # Resolve function reference...
         if isinstance(node.name, VarAccessNode) and node.name.target:
+            func_name = f"{node.name.target}.{node.name.name}"
             module_dict = self.env.get(node.name.target)
-            if isinstance(module_dict, dict):
-                func = module_dict.get(node.name.name)
-                if func and callable(func):
+            func = module_dict.get(node.name.name) if isinstance(module_dict, dict) else None
+        else:
+            func = self.env.get(node.name)
+
+        if func and (callable(func) or hasattr(func, 'body')):
+            # --- PUSH FUNCTION FRAME ---
+            self.call_stack.append({
+                "function": func_name,
+                "file": current_file,
+                "line": getattr(node, 'line', self.call_stack[-1]["line"] if self.call_stack else 1),
+                "column": getattr(node, 'column', self.call_stack[-1]["column"] if self.call_stack else 1)
+            })
+
+            try:
+                if callable(func):
                     return func(*args)
-            raise Exception(f"Hittade inte funktionen '{node.name.name}' i modulen '{node.name.target}'.")
+                return self.execute_hiuh_function(func, args)
+            except ReturnException as e:
+                # Catch the return payload thrown by 'ge' and pass it back
+                return e.value
+            finally:
+                # --- POP FUNCTION FRAME ---
+                # This try/finally strictly matches the execution life of the function call!
+                self.call_stack.pop()
 
-        f = self.env.get(node.name)
+        raise Exception(f"'{func_name}' är inte en körbar grej.")
 
-        if callable(f):
-            return f(*args)
+    def execute_hiuh_function(self, func_node, args):
+        """Executes a user-defined Hiuh-lang function in an isolated local environment."""
+        # 1. Create a fresh local scope that inherits from the environment
+        # where the function was defined (lexical scoping)
+        # Note: If func_node tracks its definition environment, use that, otherwise fallback to self.env
+        definition_env = getattr(func_node, 'closure_env', self.env)
+        local_env = Environment(definition_env)
 
-        # Swedish Fallback Rule
-        arg_str = " ".join(map(str, args))
-        return f"{node.name} med {arg_str}"
+        # 2. Bind the passed positional arguments to the function parameter names
+        if len(args) != len(func_node.params):
+            raise Exception(
+                f"Fel antal argument: Förväntade {len(func_node.params)}, "
+                f"men fick {len(args)}."
+            )
+
+        for param_name, arg_value in zip(func_node.params, args):
+            local_env.define(param_name, arg_value)
+
+        # 3. Swap the active environment pointer to our new local scope
+        old_env = self.env
+        self.env = local_env
+
+        try:
+            # 4. Loop through and execute every statement in the function body
+            for statement_node in func_node.body:
+                # If your ReturnNode logic throws a custom Python exception to bubble up the value:
+                self.visit(statement_node)
+
+            return None # Default return value if 'ge' is omitted
+        finally:
+            # 5. ALWAYS restore the parent execution environment pointer!
+            self.env = old_env
 
     def visit_ReturnNode(self, node):
-        return self.visit(node.value)
+        return_value = self.visit(node.value)
+        # Raise the exception to instantly halt the current execution frame loop
+        raise ReturnException(return_value)
 
     def visit_ComparisonNode(self, node):
         l = self.visit(node.left)

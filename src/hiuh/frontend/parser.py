@@ -63,13 +63,13 @@ class Parser:
         if t.type == "T_KEYWORD_TYPE": return self.parse_type_def()
         if t.type == "T_KEYWORD_TRY": return self.parse_try_catch()
         if t.type == "T_KEYWORD_THROW":
-            self.consume(); return UnaryOpNode("kasta", self.parse_greedy_expression())
+            self.consume(); return UnaryOpNode("kasta", self.parse_greedy_expression(), token=t)
         if t.type == "T_KEYWORD_GIVE":
-            self.consume(); return ReturnNode(self.expression())
+            self.consume(); return ReturnNode(self.expression(), token=t)
         return self.expression()
 
     def parse_import(self):
-        self.consume("T_KEYWORD_IMPORT") # använd
+        import_token = self.consume("T_KEYWORD_IMPORT") # använd
 
         # Parse module name (greedy string to support filenames/multiword paths)
         # Note: because we made 'som' a hard boundary before, parse_greedy_expression will stop perfectly!
@@ -85,10 +85,10 @@ class Parser:
                 parts.append(self.consume().value)
             alias = " ".join(parts)
 
-        return ImportNode(module_name, alias)
+        return ImportNode(module_name, alias, token=import_token)
 
     def parse_append(self):
-        self.consume() # lägg
+        append_token = self.consume() # lägg
         self.consume() # till
 
         # Parse the value to add (could be an expression)
@@ -103,10 +103,10 @@ class Parser:
             parts.append(self.consume().value)
         target = "".join(parts)
 
-        return AppendNode(val, target)
+        return AppendNode(val, target, token=append_token)
 
     def parse_remove(self):
-        self.consume() # ta
+        remove_token = self.consume() # ta
         self.consume() # bort
 
         # Check if the user specified 'element' or 'index'
@@ -130,23 +130,25 @@ class Parser:
         list_name = " ".join(parts)
 
         if is_index_based:
-            return RemoveIndexNode(target_expr, list_name)
+            return RemoveIndexNode(target_expr, list_name, token=remove_token)
 
-        return RemoveValueNode(target_expr, list_name)
+        return RemoveValueNode(target_expr, list_name, token=remove_token)
 
     def parse_open_file(self):
-        self.consume() # öppna
+        open_token = self.consume() # öppna
         self.in_structural_statement = True
         try:
             path_expr = self.parse_greedy_expression()
 
             mode = "läsning"
+            mode_token = open_token
             if self.peek() and self.peek().value == "för":
                 self.consume() # för
-                mode = self.consume("T_IDENTIFIER").value # läsning / skrivning
+                mode_token = self.consume("T_IDENTIFIER")
+                mode = mode_token.value # läsning / skrivning
 
             if self.peek() and self.peek().value == "som":
-                self.consume() # som
+                assign_token = self.consume() # som
             else:
                 raise SyntaxError("Förväntade 'som' efter filnamnet")
         finally:
@@ -158,10 +160,12 @@ class Parser:
         var_name = " ".join(parts)
 
         self.define_var(var_name)
-        return AssignNode(var_name, FunctionCallNode("öppna", [path_expr, StringNode(mode)]))
+        function_call_args = [path_expr, StringNode(mode, token=mode_token)]
+        function_call_node = FunctionCallNode("öppna", function_call_args, token=open_token)
+        return AssignNode(var_name, function_call_node, target_type=None, token=assign_token)
 
     def parse_close_file(self):
-        self.consume("T_KEYWORD_CLOSE") # Consumes 'stäng'
+        close_file_token = self.consume("T_KEYWORD_CLOSE") # Consumes 'stäng'
 
         # Greedy identifier consumption to match multi-word file names
         parts = []
@@ -172,10 +176,10 @@ class Parser:
             raise SyntaxError(f"Förväntade en filvariabel efter 'stäng' på rad {self.peek().line if self.peek() else 'EOF'}")
 
         target = " ".join(parts)
-        return CloseFileNode(target)
+        return CloseFileNode(target, token=close_file_token)
 
     def parse_assignment(self):
-        self.consume("T_KEYWORD_SET")
+        assign_token = self.consume("T_KEYWORD_SET")
 
         # Check for list indexing: sätt element 0 i minlista till ...
         if self.peek() and self.peek().value in ["element", "index"] and self.peek(1).type == "T_LITERAL_INT":
@@ -188,7 +192,7 @@ class Parser:
             target = " ".join(target_parts)
             self.consume("T_KEYWORD_TO")
             val = self.parse_greedy_expression()
-            return AssignNode(str(idx), val, target_type=target)
+            return AssignNode(str(idx), val, target_type=target, token=assign_token)
 
         # Standard assignment
         parts = []
@@ -207,10 +211,10 @@ class Parser:
         self.consume("T_KEYWORD_TO")
         val = self.parse_greedy_expression()
         if not target: self.define_var(name)
-        return AssignNode(name, val, target)
+        return AssignNode(name, val, target_type=target, token=assign_token)
 
     def parse_print(self):
-        self.consume("T_KEYWORD_PRINT")
+        print_token = self.consume("T_KEYWORD_PRINT")
 
         val = self.parse_greedy_expression()
 
@@ -218,9 +222,9 @@ class Parser:
             self.consume() # till
             target_var = self.consume("T_IDENTIFIER").value
             # Create a new FileWriteNode
-            return FileWriteNode(val, target_var)
+            return FileWriteNode(val, target_var, token=print_token)
 
-        return PrintNode(val)
+        return PrintNode(val, token=print_token)
 
     def _is_tree_valid(self, node):
         if isinstance(node, StringNode):
@@ -260,7 +264,7 @@ class Parser:
 
         if t.type == "T_IDENTIFIER" and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
             self.consume(); self.consume()
-            return StringNode("\n")
+            return StringNode("\n", token=t)
 
         checkpoint = self.pos
 
@@ -306,7 +310,7 @@ class Parser:
 
             txt.append(str(self.consume().value))
 
-        return StringNode(" ".join(txt))
+        return StringNode(" ".join(txt), token=t)
 
     def expression(self):
         t = self.peek()
@@ -314,7 +318,7 @@ class Parser:
             self.consume() # consume 'inte'
             # Recursively parse the condition that follows, then wrap it in a NotNode
             cond_node = self.expression()
-            return NotNode(cond_node)
+            return NotNode(cond_node, token=t)
 
         left = self.arithmetic()
         if isinstance(left, FunctionDefNode): return left
@@ -324,14 +328,14 @@ class Parser:
             if not t or t.type in ["T_NEWLINE", "T_INDENT", "T_DEDENT"]: break
 
             if t.type == "T_KEYWORD_IN":
-                op_token = self.consume()
-                left = ComparisonNode(left, "i", self.arithmetic())
+                self.consume()
+                left = ComparisonNode(left, "i", self.arithmetic(), token=t)
                 continue
 
             if t.value == "som":
                 self.consume() # consume 'som'
                 target = self.consume("T_IDENTIFIER").value
-                left = CastNode(left, target)
+                left = CastNode(left, target_type=target, token=t)
                 continue # look for more operators
 
             if t.type == "T_OP_IS": self.consume(); t = self.peek()
@@ -340,7 +344,7 @@ class Parser:
                 op_parts = []
                 while self.peek() and (self.peek().type in ["T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_KEYWORD_THAN", "T_KEYWORD_WITH", "T_OP_OR", "T_OP_AND"] or (self.peek().type == "T_IDENTIFIER" and self.peek().value in ["eller", "lika", "med", "än", "och"])):
                     op_parts.append(self.consume().value)
-                left = ComparisonNode(left, " ".join(op_parts), self.arithmetic())
+                left = ComparisonNode(left, " ".join(op_parts), self.arithmetic(), token=t)
             else: break
         return left
 
@@ -369,12 +373,12 @@ class Parser:
                     # Gobble everything until the next plus or end of line
                     while self.peek() and self.peek().type not in ["T_OP_ADD", "T_NEWLINE", "T_DEDENT", "T_INDENT"]:
                         txt.append(str(self.consume().value))
-                    right = StringNode(" ".join(txt))
+                    right = StringNode(" ".join(txt), token=t)
 
-                left = AddNode(left, right)
+                left = AddNode(left, right, token=t)
             elif t.type == "T_OP_SUB":
                 self.consume()
-                left = SubNode(left, self.term())
+                left = SubNode(left, self.term(), token=t)
             else:
                 break
         return left
@@ -384,9 +388,11 @@ class Parser:
         if isinstance(left, FunctionDefNode): return left
         while self.peek() and self.peek().type in ["T_OP_MUL", "T_OP_DIV"]:
             if self.peek().type in ["T_NEWLINE", "T_INDENT", "T_KEYWORD_IN", "T_KEYWORD_FROM"]: break
-            op = self.consume().type
+            op_token = self.consume()
+            op = op_token.type
             if op == "T_OP_DIV" and self.peek() and self.peek().value == "med": self.consume()
-            left = MulNode(left, self.primary()) if op == "T_OP_MUL" else DivNode(left, self.primary())
+            right = self.primary()
+            left = MulNode(left, right, token=op_token) if op == "T_OP_MUL" else DivNode(left, right, token=op_token)
         return left
 
     def primary(self):
@@ -401,16 +407,16 @@ class Parser:
                     p.append(self.consume().value)
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
-            return FunctionDefNode(p, self.parse_block(params=p))
+            return FunctionDefNode(p, self.parse_block(params=p), token=t)
 
         if t.type == "T_IDENTIFIER" and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
-            self.consume(); self.consume(); return StringNode("\n")
+            self.consume(); self.consume(); return StringNode("\n", token=t)
 
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_KEYWORD_IN"]:
             name = self.consume().value
 
             if name == ".":
-                return StringNode(".")
+                return StringNode(".", token=t)
 
             if not self.in_structural_statement:
                 lookahead = 0
@@ -425,12 +431,13 @@ class Parser:
                 if self.peek() and self.peek().type == "T_KEYWORD_FROM":
                     self.consume() # från
                     t_parts = []
+                    first_var_token=self.peek() if self.peek() and self.peek().type == "T_IDENTIFIER" else None
                     while self.peek() and self.peek().type == "T_IDENTIFIER":
                         t_parts.append(self.consume().value)
 
                     target = " ".join(t_parts)
                     # Maps 'längd från x' to a function call for the built-in
-                    return FunctionCallNode("längd", [VarAccessNode(target)])
+                    return FunctionCallNode("längd", [VarAccessNode(target, token=first_var_token)], token=t)
 
             # Index Get
             if name in ["element", "index"] and self.peek() and self.peek().type == "T_LITERAL_INT":
@@ -439,7 +446,7 @@ class Parser:
                     self.consume()
                     parts = []
                     while self.peek() and self.peek().type == "T_IDENTIFIER": parts.append(self.consume().value)
-                    return VarAccessNode(str(idx), target=" ".join(parts))
+                    return VarAccessNode(str(idx), target=" ".join(parts), token=t)
 
             # Property Get
             if not self.in_structural_statement and self.peek() and self.peek().type == "T_KEYWORD_FROM":
@@ -450,7 +457,7 @@ class Parser:
                     parts.append(self.consume().value)
 
                 target_namespace = " ".join(parts)
-                prop_node = VarAccessNode(name, target=target_namespace)
+                prop_node = VarAccessNode(name, target=target_namespace, token=t)
 
                 if self.peek() and self.peek().type == "T_KEYWORD_WITH":
                     self.consume() # med
@@ -458,14 +465,14 @@ class Parser:
                     while True:
                         arg_expr = self.expression()
                         if isinstance(arg_expr, VarAccessNode) and not self.is_var_known(arg_expr.name):
-                            arg_expr = StringNode(arg_expr.name)
+                            arg_expr = StringNode(arg_expr.name, token=t)
                         args.append(arg_expr)
                         if self.peek() and self.peek().type == "T_COMMA":
                             self.consume()
                         else:
                             break
 
-                    return FunctionCallNode(prop_node, args)
+                    return FunctionCallNode(prop_node, args, token=t)
 
                 return prop_node
 
@@ -484,7 +491,7 @@ class Parser:
                     args.append(arg_expr)
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
-                return FunctionCallNode(name, args)
+                return FunctionCallNode(name, args, token=t)
 
             if name == "lista":
                 args = []
@@ -494,13 +501,13 @@ class Parser:
                         args.append(self.expression())
                         if self.peek() and self.peek().type == "T_COMMA": self.consume()
                         else: break
-                return FunctionCallNode(name, args)
-            return VarAccessNode(name)
+                return FunctionCallNode(name, args, token=t)
+            return VarAccessNode(name, token=t)
 
-        if t.type == "T_LITERAL_INT": return IntNode(self.consume().value)
-        if t.type == "T_LITERAL_FLOAT": return FloatNode(self.consume().value)
-        if t.type == "T_LITERAL_TRUE": self.consume(); return BoolNode(True)
-        if t.type == "T_LITERAL_FALSE": self.consume(); return BoolNode(False)
+        if t.type == "T_LITERAL_INT": return IntNode(self.consume().value, token=t)
+        if t.type == "T_LITERAL_FLOAT": return FloatNode(self.consume().value, token=t)
+        if t.type == "T_LITERAL_TRUE": self.consume(); return BoolNode(True, token=t)
+        if t.type == "T_LITERAL_FALSE": self.consume(); return BoolNode(False, token=t)
         raise SyntaxError(f"Unexpected {t.type} ({t.value}) at line {t.line}")
 
     def parse_block(self, params=None):
@@ -516,17 +523,20 @@ class Parser:
         return stmts
 
     def parse_if(self):
-        self.consume("T_KEYWORD_IF"); cond = self.expression(); true_b = self.parse_block()
+        if_token = self.consume("T_KEYWORD_IF")
+        cond = self.expression()
+        true_b = self.parse_block()
         false_b = None
         if self.peek() and self.peek().type == "T_KEYWORD_ELSE":
             self.consume(); false_b = self.parse_block()
-        return IfNode(cond, true_b, false_b)
+        return IfNode(cond, true_b, false_b, token=if_token)
 
     def parse_while(self):
-        self.consume("T_KEYWORD_WHILE"); return WhileNode(self.expression(), self.parse_block())
+        while_token = self.consume("T_KEYWORD_WHILE")
+        return WhileNode(self.expression(), self.parse_block(), token=while_token)
 
     def parse_try_catch(self):
-        self.consume("T_KEYWORD_TRY")
+        try_token = self.consume("T_KEYWORD_TRY")
         try_b = self.parse_block()
 
         err_var = None
@@ -544,10 +554,11 @@ class Parser:
         if not catch_b and not finally_b:
             raise SyntaxError("Ett 'försök' måste ha antingen 'fånga' eller 'slutligen'.")
 
-        return TryCatchNode(try_b, err_var, catch_b, finally_b)
+        return TryCatchNode(try_b, err_var, catch_b, finally_b, token=try_token)
 
     def parse_type_def(self):
-        self.consume("T_KEYWORD_TYPE"); name = self.consume("T_IDENTIFIER").value
+        type_def_token = self.consume("T_KEYWORD_TYPE")
+        name = self.consume("T_IDENTIFIER").value
         self.known_types.add(name); self.define_var(name)
         f = []
         if self.peek() and self.peek().type == "T_KEYWORD_WITH":
@@ -556,4 +567,4 @@ class Parser:
                 f.append(self.consume().value)
                 if self.peek() and self.peek().type == "T_COMMA": self.consume()
                 else: break
-        return TypeDefNode(name, f)
+        return TypeDefNode(name, f, token=type_def_token)
