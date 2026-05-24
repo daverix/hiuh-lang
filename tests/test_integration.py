@@ -383,5 +383,43 @@ stäng f2
         finally:
             if os.path.exists(file_simple): os.remove(file_simple)
             if os.path.exists(file_spaced): os.remove(file_spaced)
+
+    def test_ascii_character_casting_symmetry(self):
+        """Verify that string characters can be evaluated as ASCII integers and vice versa."""
+        source = """
+. Skapa en textsträng som innehåller citattecken, mellanslag och kommatecken
+. I källkoden kan vi skriva ' och " eftersom de är tillåtna som filnamns-escapes,
+. men vi kan också generera dem via ASCII-koder!
+
+sätt textrad till "A, B"
+sätt första_tecken till element 0 från textrad
+sätt andra_tecken till element 1 från textrad
+
+. 1. Omvandla tecken till ASCII-koder (som tal)
+sätt kod_A till första_tecken som tal
+sätt kod_komma till andra_tecken som tal
+
+. 2. Skapa tecken direkt från ASCII-koder (som tecken)
+sätt genererat_mellanslag till 32 som tecken
+sätt genererat_dubbelcitat till 34 som tecken
+
+. 3. Skriv ut resultaten för verifiering
+skriv kod_A plus mellanrum plus kod_komma plus mellanrum
+skriv genererat_dubbelcitat plus Hej plus genererat_mellanslag plus Världen plus genererat_dubbelcitat
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+
+            # --- EXPECTED RUNTIME METRICS ---
+            # ASCII Code for 'A' is 65
+            # ASCII Code for ',' is 44
+            # 32 som tecken injects a space ' '
+            # 34 som tecken injects a double quote '"'
+            # Expected final console print layout: '65 44 "Hej Världen"'
+
+            expected_output = '65 44 "Hej Världen"'
+            self.assertEqual(fake_out.getvalue().strip(), expected_output)
+
+
 if __name__ == '__main__':
     unittest.main()

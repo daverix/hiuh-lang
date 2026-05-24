@@ -9,6 +9,24 @@ class ReturnException(Exception):
     def __init__(self, value):
         self.value = value
 
+class Char:
+    """Internal interpreter representation of a single character token byte."""
+    def __init__(self, value: str):
+        self.value = value  # Guaranteed to be a 1-character string
+
+    def __eq__(self, other):
+        if isinstance(other, Char):
+            return self.value == other.value
+        if isinstance(other, str):
+            return self.value == other
+        return False
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return f"Char({self.value!r})"
+
 class Interpreter:
     def __init__(self):
         self.globals = Environment()
@@ -90,7 +108,7 @@ class Interpreter:
                 try:
                     idx = int(node.name)
                     if 0 <= idx < len(obj):
-                        return obj[idx]
+                        return Char(obj[idx])
                     return "" # Return empty string for out-of-bounds indices safely
                 except ValueError:
                     # If it's not a digit index, it might be a property lookup like 'längd från text'
@@ -324,7 +342,17 @@ class Interpreter:
         target = node.target_type
 
         try:
+            if target == "tecken":
+                if isinstance(val, Char):
+                    return val
+
+                if 0 <= val <= 255:
+                    return Char(chr(val))
+                raise ValueError(f"ASCII-kod {val} är utanför giltigt intervall (0-255).")
             if target == "tal":
+                if isinstance(val, Char):
+                    return ord(val.value) if val.value else 0
+
                 return int(float(str(val).replace(',', '.'))) # Handles "10" or "10,5"
             if target == "flyttal":
                 return float(str(val).replace(',', '.'))
@@ -335,7 +363,7 @@ class Interpreter:
         except (ValueError, TypeError):
             raise Exception(f"Kunde inte omvandla '{val}' till {target}")
 
-        return val
+        raise Exception(f"Kunde inte omvandla '{val}' till {target}")
 
     def visit_AppendNode(self, node):
         val = self.visit(node.value)
