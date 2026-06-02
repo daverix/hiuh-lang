@@ -243,13 +243,11 @@ class Interpreter:
 
     def execute_hiuh_function(self, func_node, args):
         """Executes a user-defined Hiuh-lang function in an isolated local environment."""
-        # 1. Create a fresh local scope that inherits from the environment
-        # where the function was defined (lexical scoping)
-        # Note: If func_node tracks its definition environment, use that, otherwise fallback to self.env
-        definition_env = getattr(func_node, 'closure_env', self.env)
+        # 1. Lexical Scope Isolation
+        definition_env = getattr(func_node, 'closure_env', self.globals)
         local_env = Environment(definition_env)
 
-        # 2. Bind the passed positional arguments to the function parameter names
+        # 2. Bind parameter names to the evaluated runtime arguments
         if len(args) != len(func_node.params):
             raise Exception(
                 f"Fel antal argument: Förväntade {len(func_node.params)}, "
@@ -270,6 +268,8 @@ class Interpreter:
                 self.visit(statement_node)
 
             return None # Default return value if 'ge' is omitted
+        except ReturnException as e:
+            return e.value # Extract value thrown via 'ge'
         finally:
             # 5. ALWAYS restore the parent execution environment pointer!
             self.env = old_env
@@ -491,6 +491,15 @@ class Interpreter:
         tokens = tokenizer.tokenize(module_source)
         parser = Parser(tokens)
         module_nodes = parser.parse()
+
+        for m_node in module_nodes:
+            if m_node.__class__.__name__ == "AssignNode":
+                if hasattr(self, 'known_variables'):
+                    self.known_variables.add(m_node.name)
+
+                namespace_prefix = node.alias if node.alias else path_parts[-1]
+                if hasattr(self, 'known_variables'):
+                    self.known_variables.add(f"{namespace_prefix}.{m_node.name}")
 
         module_env = Environment(self.globals)
 

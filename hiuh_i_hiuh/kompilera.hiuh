@@ -1,0 +1,7 @@
+använd tokeniserare
+
+. Hämta infil från argument (t.ex. element 1)
+sätt källkod till element 1 från argument
+sätt utdata till källkod plus .tokens
+
+tokenisera fil från tokeniserare med källkod, utdata

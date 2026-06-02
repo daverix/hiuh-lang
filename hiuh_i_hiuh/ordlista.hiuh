@@ -1,0 +1,22 @@
+använd listor
+
+typ ordlista med värden, putta, hämta, rensa
+
+typ par med nyckel, värde
+
+sätt ny ordlista till grej med värden
+    sätt putta till grej med nyckel, värde
+        lägg till par med nyckel, värde
+    sätt hämta till grej med nyckel
+        sätt m till grej med p
+            sätt parnyckel till nyckel från p
+            ge parnyckel lika med nyckel
+        ge första matchande i listor med värden, m
+
+    sätt rensa till grej med nyckel
+
+    ge ordlista med värden, putta, hämta, rensa
+
+sätt ny tom ordlista till grej
+    sätt värden till lista
+    ge ny ordlista med värden

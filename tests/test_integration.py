@@ -420,6 +420,41 @@ skriv genererat_dubbelcitat plus Hej plus genererat_mellanslag plus Världen plu
             expected_output = '65 44 "Hej Världen"'
             self.assertEqual(fake_out.getvalue().strip(), expected_output)
 
+    def test_listor_utility_callbacks(self):
+        """Verify that listor.hiuh can be imported and executed with high-order callback functions."""
+        # 1. Ensure listor.hiuh exists in the repository search paths or a module directory
+        # For this test, we assume 'listor.hiuh' is located directly in your active project root folder
+        source = """
+använd listor
+
+. 1. Create a callback utility function to search for a specific name target
+sätt matchar_hiuh till grej med text_stycke
+    ge text_stycke lika med Hiuh
+
+. 2. Initialize a flat sample list dataset
+sätt namn_lista till lista med Java, Python, Hiuh, Kotlin
+
+. 3. Invoke your high-order lookup functions using the callback
+sätt hittat_index till index på första matchande från listor med namn_lista, matchar_hiuh
+sätt hittat_namn till första matchande från listor med namn_lista, matchar_hiuh
+
+skriv hittat_index plus mellanrum plus hittat_namn
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            # Explicitly seed the base script folder context path so the
+            # interpreter's 'använd listor' locator knows exactly where to look
+            import os
+            repo_root = os.getcwd()
+            hiuh_folder = os.path.join(repo_root, "hiuh_i_hiuh")
+
+            # Seed the initial folder path context so 'använd listor' resolves there
+            self.interpreter.script_dir_stack = [hiuh_folder]
+
+            self.run_source(source)
+
+            # Index of 'Hiuh' in [Java, Python, Hiuh, Kotlin] is 2
+            # Expected exact console dump: "2 Hiuh"
+            self.assertEqual(fake_out.getvalue().strip(), "2 Hiuh")
 
 if __name__ == '__main__':
     unittest.main()

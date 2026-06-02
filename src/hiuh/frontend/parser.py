@@ -2,12 +2,13 @@
 from hiuh.frontend.ast import *
 
 class Parser:
-    def __init__(self, tokens):
+    def __init__(self, tokens, imported_names=None):
         self.tokens = tokens
         self.pos = 0
         # Dynamic Scope Stack. Built-ins included.
         self.scopes = [{"SANT", "FALSKT", "lista", "inmatning", "heltal", "text", "flyttal", "mellanrum", "ny", "rad"}]
         self.known_types = set()
+        self.known_variables = set(imported_names) if imported_names else set()
         self.in_structural_statement = False
 
     def enter_scope(self): self.scopes.append(set())
@@ -15,7 +16,8 @@ class Parser:
         if len(self.scopes) > 1: self.scopes.pop()
     def define_var(self, name): self.scopes[-1].add(name)
     def is_var_known(self, name):
-        return any(name in scope for scope in self.scopes) or name in self.known_types
+        in_scopes = any(name in scope for scope in self.scopes)
+        return in_scopes or name in self.known_types or name in self.known_variables
 
     def peek(self, offset=0):
         if self.pos + offset >= len(self.tokens): return None
@@ -195,13 +197,62 @@ class Parser:
             return AssignNode(str(idx), val, target_type=target, token=assign_token)
 
         # Standard assignment
+        checkpoint = self.pos
         parts = []
-        while self.peek() and self.peek().type == "T_IDENTIFIER":
+        last_consumed = None
+        while self.peek() and self.peek().type in ["T_IDENTIFIER", "T_KEYWORD_PRINT", "T_KEYWORD_SET", "T_KEYWORD_TO", "T_KEYWORD_WITH", "T_KEYWORD_GIVE", "T_KEYWORD_FUNC", "T_KEYWORD_TYPE", "T_KEYWORD_FROM", "T_KEYWORD_IF", "T_KEYWORD_ELSE", "T_KEYWORD_WHILE", "T_KEYWORD_TRY", "T_KEYWORD_THROW", "T_KEYWORD_CATCH", "T_KEYWORD_OPEN", "T_KEYWORD_CLOSE", "T_KEYWORD_FOR", "T_KEYWORD_AS", "T_OP_IS", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_KEYWORD_THAN", "T_OP_MUL", "T_OP_ADD", "T_OP_SUB", "T_OP_DIV", "T_OP_OR", "T_OP_AND", "T_KEYWORD_IN"]:
+            current_token = self.peek()
+            
+            # Special handling for 'i' followed by identifier: it's the target type marker
+            if current_token.type == "T_KEYWORD_IN" and current_token.value == "i":
+                # If next token is an identifier and we have name parts, 'i' is the target type marker
+                if self.peek(1) and self.peek(1).type == "T_IDENTIFIER" and parts:
+                    # 'i' is target type marker, stop collecting name
+                    break
+                # If name ends with 'till' and next is 'i', this is the 'till i' pattern
+                if self.peek(1) and self.peek(1).type == "T_KEYWORD_IN":
+                    # Pattern: 'till i' - this 'i' becomes part of name, we'll handle it later
+                    parts.append(self.consume().value)
+                    last_consumed = 'i'
+                    continue
+                # Otherwise 'i' is part of name (e.g., 'sätt i till x')
+                parts.append(self.consume().value)
+                last_consumed = 'i'
+                continue
+            
+            # Check if we just consumed 'till' - if followed by 'i', it's part of name
+            # Otherwise, 'till' is the assignment keyword and we should stop
+            if last_consumed == 'till' and current_token.type != "T_KEYWORD_IN":
+                # 'till' was the assignment keyword, put it back
+                self.pos = checkpoint + len(parts) - 1
+                parts = parts[:-1]
+                last_consumed = parts[-1] if parts else None
+                break
+            
             parts.append(self.consume().value)
+            last_consumed = parts[-1]
+            
+            # Check if last consumed was 'till' - if next is not 'i', it's assignment keyword
+            if parts[-1] == "till" and self.peek() and self.peek().type != "T_KEYWORD_IN":
+                # 'till' is the assignment keyword, put it back
+                self.pos = checkpoint + len(parts) - 1
+                parts = parts[:-1]
+                last_consumed = parts[-1] if parts else None
+                break
+        
         name = " ".join(parts)
-
+        
         target = None
-        if self.peek() and self.peek().type == "T_KEYWORD_IN":
+        # Check if we ended with 'till i' pattern (name ends with 'i' and next is also 'i')
+        if name.endswith(" i") and self.peek() and self.peek().type == "T_KEYWORD_IN":
+            name = name[:-2].strip()
+            self.consume()  # consume 'i'
+            t_parts = []
+            while self.peek() and self.peek().type == "T_IDENTIFIER":
+                t_parts.append(self.consume().value)
+            target = " ".join(t_parts)
+        # Standard target type pattern: 'sätt x i typ till value'
+        elif self.peek() and self.peek().type == "T_KEYWORD_IN":
             self.consume()
             t_parts = []
             while self.peek() and self.peek().type == "T_IDENTIFIER":

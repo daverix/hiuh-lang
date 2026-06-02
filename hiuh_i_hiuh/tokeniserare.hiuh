@@ -1,0 +1,232 @@
+. modul: tokeniserare
+
+sätt nyckelord till lista med
+
+sätt skriv i nyckelord till "T_KEYWORD_PRINT"
+sätt sätt i nyckelord till "T_KEYWORD_SET"
+sätt till i nyckelord till "T_KEYWORD_TO"
+sätt grej i nyckelord till "T_KEYWORD_FUNC"
+sätt med i nyckelord till "T_KEYWORD_WITH"
+sätt ge i nyckelord till "T_KEYWORD_GIVE"
+sätt typ i nyckelord till "T_KEYWORD_TYPE"
+sätt i i nyckelord till "T_KEYWORD_IN"
+sätt från i nyckelord till "T_KEYWORD_FROM"
+sätt om i nyckelord till "T_KEYWORD_IF"
+sätt är i nyckelord till "T_KEYWORD_IF"
+sätt större i nyckelord till "T_KEYWORD_GREATER"
+sätt mindre i nyckelord till "T_KEYWORD_LESS"
+sätt än i nyckelord till "T_KEYWORD_THAN"
+sätt lika i nyckelord till "T_KEYWORD_EQUAL"
+sätt annars i nyckelord till "T_KEYWORD_ELSE"
+sätt försök i nyckelord till "T_KEYWORD_TRY"
+sätt kasta i nyckelord till "T_KEYWORD_THROW"
+sätt fånga i nyckelord till "T_KEYWORD_CATCH"
+sätt gånger i nyckelord till "T_OP_MUL"
+sätt plus i nyckelord till "T_OP_ADD"
+sätt minus i nyckelord till "T_OP_SUB"
+sätt delat i nyckelord till "T_OP_DIV"
+sätt eller i nyckelord till "T_OP_OR"
+sätt och i nyckelord till "T_OP_AND"
+sätt medan i nyckelord till "T_KEYWORD_WHILE"
+sätt använd i nyckelord till "T_KEYWORD_IMPORT"
+sätt öppna i nyckelord till "T_KEYWORD_OPEN"
+sätt stäng i nyckelord till "T_KEYWORD_CLOSE"
+sätt för i nyckelord till "T_KEYWORD_FOR"
+sätt som i nyckelord till "T_KEYWORD_AS"
+
+sätt hämta nyckelords typ till grej med ord
+    sätt hittad_typ till ord från nyckelord
+    om hittad_typ lika med ord
+        ge T_IDENTIFIER
+    annars
+        ge hittad_typ
+
+sätt är siffra till grej med tecken
+    sätt tecken_kod till tecken som tal
+    ge tecken_kod större än 47 och tecken_kod mindre än 58
+
+sätt tokenisera fil till grej med källkods_fil, utdata_fil
+    öppna källkods_fil för läsning som infil
+    öppna utdata_fil för skrivning som utfil
+
+    sätt indent_stack till lista med 0
+    sätt rad_nummer till 1
+
+    sätt rader till lista med
+    medan inte i slutet från infil
+        lägg till nästa rad från infil i rader
+    sätt antal_rader till längd från rader
+
+    sätt rad_index till 0
+    medan rad_index mindre än antal_rader
+        sätt rad till element rad_index från rader
+        sätt längd_rad till längd från rad
+
+        sätt är_tom till SANT
+        sätt k till 0
+        medan k mindre än längd_rad
+            sätt test_char_kod till element k från rad som tal
+            om test_char_kod inte lika med 32
+                sätt är_tom till FALSKT
+            sätt k till k plus 1
+
+        om är_tom lika med SANT
+            om rad_nummer mindre än antal_rader
+                skriv T_NEWLINE plus mellanrum plus ny rad plus mellanrum plus rad_nummer plus mellanrum plus längd_rad plus 1 till utfil
+                skriv ny rad till utfil
+            sätt rad_nummer till rad_nummer plus 1
+            sätt rad_index till rad_index plus 1
+            fortsätt
+
+        sätt indent till 0
+        medan indent mindre än längd_rad och element indent från rad som tal lika med 32
+            sätt indent till indent plus 1
+
+        sätt sista_indent_index till längd från indent_stack minus 1
+        sätt sista_indent till element sista_indent_index från indent_stack
+
+        om indent större än sista_indent
+            skriv T_INDENT plus mellanrum plus mellanrum plus mellanrum plus rad_nummer plus mellanrum plus 1 till utfil
+            skriv ny rad till utfil
+            lägg till indent i indent_stack
+        annars om indent mindre än sista_indent
+            medan indent mindre än sista_indent
+                ta bort sista_indent_index från indent_stack
+                skriv T_DEDENT plus mellanrum plus mellanrum plus mellanrum plus rad_nummer plus mellanrum plus 1 till utfil
+                skriv ny rad till utfil
+                sätt sista_indent_index till längd från indent_stack minus 1
+                sätt sista_indent till element sista_indent_index från indent_stack
+
+        sätt första_innehåll_kod till element indent från rad som tal
+        om första_innehåll_kod lika med 46
+            sätt kommentar till
+            sätt c till indent
+            medan c mindre än längd_rad
+                sätt kommentar till kommentar plus element c från rad
+                sätt c till c plus 1
+
+            skriv T_COMMENT plus mellanrum plus kommentar plus mellanrum plus rad_nummer plus mellanrum plus indent plus 1 till utfil
+            skriv ny rad till utfil
+
+            om rad_nummer mindre än antal_rader
+                skriv T_NEWLINE plus mellanrum plus ny rad plus mellanrum plus rad_nummer plus mellanrum plus längd_rad plus 1 till utfil
+                skriv ny rad till utfil
+
+            sätt rad_nummer till rad_nummer plus 1
+            sätt rad_index till rad_index plus 1
+            fortsätt
+
+        sätt i till indent
+        medan i mindre än längd_rad
+            sätt bokstav till element i från rad
+            sätt bokstaven_kod till bokstav som tal
+
+            om bokstaven_kod lika med 32
+                sätt i till i plus 1
+                fortsätt
+
+            om bokstaven_kod lika med 44
+                skriv T_COMMA plus mellanrum plus , plus mellanrum plus rad_nummer plus mellanrum plus indent plus i plus 1 till utfil
+                skriv ny rad till utfil
+                sätt i till i plus 1
+                fortsätt
+
+            om bokstaven_kod lika med 34 eller bokstaven_kod lika med 39
+                sätt start_citat_kod till bokstaven_kod
+                sätt start_kolumn till indent plus i plus 1
+                sätt i till i plus 1
+                sätt text_sträng till
+
+                sätt loop_kond till SANT
+                medan i mindre än längd_rad och loop_kond lika med SANT
+                    sätt nuvarande till element i från rad
+                    sätt nuvarande_kod till nuvarande som tal
+                    om nuvarande_kod lika med start_citat_kod
+                        sätt loop_kond till FALSKT
+                    annars
+                        sätt text_sträng till text_sträng plus nuvarande
+                        sätt i till i plus 1
+
+                om i lika med längd_rad och loop_kond lika med SANT
+                    kasta Oavslutad textsträng på rad plus mellanrum plus rad_nummer
+
+                sätt i till i plus 1
+                skriv T_STRING plus mellanrum plus text_sträng plus mellanrum plus rad_nummer plus mellanrum plus start_kolumn till utfil
+                skriv ny rad till utfil
+                fortsätt
+
+            om är siffra med bokstav
+                sätt start_kolumn till indent plus i plus 1
+                sätt start_i till i
+                sätt has_comma till FALSKT
+
+                sätt num_loop till SANT
+                medan i mindre än längd_rad och num_loop lika med SANT
+                    sätt n_char till element i från rad
+                    sätt n_char_kod till n_char som tal
+
+                    om n_char_kod lika med 44
+                        sätt nästa_index till i plus 1
+                        om nästa_index mindre än längd_rad och är siffra med element nästa_index från rad
+                            sätt has_comma till SANT
+                            sätt i till i plus 2
+                        annars
+                            sätt num_loop till FALSKT
+                    annars om är siffra med n_char
+                        sätt i till i plus 1
+                    annars
+                        sätt num_loop till FALSKT
+
+                sätt siffer_sträng till
+                sätt s_idx till start_i
+                medan s_idx mindre än i
+                    sätt siffer_sträng till siffer_sträng plus element s_idx från rad
+                    sätt s_idx till s_idx plus 1
+
+                sätt t_type till T_LITERAL_INT
+                om has_comma lika med SANT
+                    sätt t_type till T_LITERAL_FLOAT
+
+                skriv t_type plus mellanrum plus siffer_sträng plus mellanrum plus rad_nummer plus mellanrum plus start_kolumn till utfil
+                skriv ny rad till utfil
+                fortsätt
+
+            sätt start_kolumn till indent plus i plus 1
+            sätt start_i till i
+
+            sätt id_loop till SANT
+            medan i mindre än längd_rad och id_loop lika med SANT
+                sätt c_char till element i från rad
+                sätt c_char_kod till c_char som tal
+
+                om c_char_kod lika med 32 eller c_char_kod lika med 44 eller c_char_kod lika med 34 eller c_char_kod lika med 39
+                    sätt id_loop till FALSKT
+                annars
+                    sätt i till i plus 1
+
+            sätt ord till
+            sätt o_idx till start_i
+            medan o_idx mindre än i
+                sätt ord till ord plus element o_idx från rad
+                sätt o_idx till o_idx plus 1
+
+            sätt t_type till hämta nyckelords typ med ord
+            skriv t_type plus mellanrum plus ord plus mellanrum plus rad_nummer plus mellanrum plus start_kolumn till utfil
+            skriv ny rad till utfil
+
+        om rad_nummer mindre än antal_rader
+            skriv T_NEWLINE plus mellanrum plus ny rad plus mellanrum plus rad_nummer plus mellanrum plus längd_rad plus 1 till utfil
+            skriv ny rad till utfil
+
+        sätt rad_nummer till rad_nummer plus 1
+        sätt rad_index till rad_index plus 1
+
+    sätt sista_indent_index till längd från indent_stack minus 1
+    medan sista_indent_index större än 0
+        ta bort sista_indent_index från indent_stack
+        skriv T_DEDENT plus mellanrum plus mellanrum plus mellanrum plus rad_nummer plus mellanrum plus 1 till utfil
+        skriv ny rad till utfil
+        sätt sista_indent_index till längd från indent_stack minus 1
+
+    stäng infil
+    stäng utfil
