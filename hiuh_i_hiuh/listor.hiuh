@@ -1,17 +1,17 @@
 
 sätt index på första matchande till grej med värden, anrop
-    sätt i till 0
-    medan i är mindre än längd från värden
-        om anrop med element i från värden
-            ge i
+    sätt x till 0
+    medan x är mindre än längd från värden
+        om anrop med element x från värden
+            ge x
 
-        sätt i till i plus 1
+        sätt x till x plus 1
 
     ge -1
 
 sätt första matchande till grej med värden, anrop
-    sätt i till index på första matchande med värden, anrop
-    om i lika med -1
+    sätt x till index på första matchande med värden, anrop
+    om x lika med -1
         kasta värdet finns inte!
 
-    ge element i från värden
+    ge element x från värden

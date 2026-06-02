@@ -336,6 +336,22 @@ class Parser:
             if isinstance(expr, (FunctionDefNode, FunctionCallNode)): return expr
 
             nt = self.peek()
+            # Check if this is a function call: expression followed by "med args"
+            if nt and nt.type == "T_KEYWORD_WITH":
+                # It's a function call! Consume 'med' and parse arguments
+                self.consume()  # consume 'med'
+                args = []
+                while True:
+                    arg_expr = self.expression()
+                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                        arg_expr = StringNode(arg_expr.name, token=t)
+                    args.append(arg_expr)
+                    if self.peek() and self.peek().type == "T_COMMA":
+                        self.consume()
+                    else:
+                        break
+                return FunctionCallNode(expr.name if hasattr(expr, 'name') else str(expr), args, token=t)
+
             is_at_boundary = not nt or nt.type in [
                 "T_NEWLINE", "T_DEDENT", "T_INDENT", "T_COMMENT",
                 "T_KEYWORD_FROM", "T_KEYWORD_IN"
@@ -343,6 +359,100 @@ class Parser:
 
             if is_at_boundary and (has_forced_trigger or self._is_tree_valid(expr)):
                 return expr
+            
+            # If we have a forced trigger (saw 'index', 'element', etc.) but we're not at a boundary,
+            # check if we can build a multi-word function call
+            if has_forced_trigger and nt and nt.type == "T_IDENTIFIER":
+                # Find the position of 'med' in remaining tokens
+                base_name = expr.name if hasattr(expr, 'name') else str(expr)
+                
+                # Look for 'med' followed by potential function call
+                best_name = base_name
+                best_consumed = 0
+                
+                # Scan tokens to find 'med' and the name before it
+                for i in range(len(self.tokens) - self.pos):
+                    tok = self.peek(i)
+                    if not tok:
+                        break
+                    
+                    # Found 'med' - this is a potential function call
+                    if tok.type == "T_KEYWORD_WITH":
+                        # Build name from tokens 0 to i-1
+                        name_parts = []
+                        for j in range(i):
+                            t = self.peek(j)
+                            if t and t.type == "T_IDENTIFIER":
+                                name_parts.append(t.value)
+                        
+                        candidate_name = " ".join(name_parts)
+                        
+                        # Try to extend candidate_name to find the actual known name
+                        # (since the full name might have more tokens)
+                        while True:
+                            extended = False
+                            for j in range(i, len(self.tokens) - self.pos):
+                                tok2 = self.peek(j)
+                                if not tok2 or tok2.type != "T_IDENTIFIER":
+                                    break
+                                
+                                test_name = candidate_name + " " + tok2.value
+                                if self.is_var_known(test_name):
+                                    candidate_name = test_name
+                                    extended = True
+                                    break
+                                else:
+                                    break
+                            if not extended:
+                                break
+                        
+                        if self.is_var_known(candidate_name):
+                            best_name = candidate_name
+                            # Count tokens from current position to end of name
+                            best_consumed = i - len(name_parts)
+                            for j in range(len(name_parts), i):
+                                t = self.peek(j)
+                                if t and t.type == "T_IDENTIFIER":
+                                    best_consumed += 1
+                        break
+                    
+                    # Try extending the name
+                    if tok.type == "T_IDENTIFIER":
+                        test_name = base_name
+                        for j in range(i + 1):
+                            t = self.peek(j)
+                            if t and t.type == "T_IDENTIFIER":
+                                if j < i:
+                                    test_name += " " + t.value
+                        
+                        extended_name = base_name
+                        for j in range(i + 1):
+                            t = self.peek(j)
+                            if t and t.type == "T_IDENTIFIER":
+                                extended_name += " " + t.value
+                        
+                        if self.is_var_known(extended_name):
+                            best_name = extended_name
+                            best_consumed = i + 1
+                
+                # Now consume the tokens needed to reach best_name
+                for _ in range(best_consumed):
+                    self.consume()
+                
+                # Check if next is 'med' - if so, it's a function call
+                if self.peek() and self.peek().type == "T_KEYWORD_WITH":
+                    self.consume()  # consume 'med'
+                    args = []
+                    while True:
+                        arg_expr = self.expression()
+                        if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                            arg_expr = StringNode(arg_expr.name, token=t)
+                        args.append(arg_expr)
+                        if self.peek() and self.peek().type == "T_COMMA":
+                            self.consume()
+                        else:
+                            break
+                    return FunctionCallNode(best_name, args, token=t)
         except:
             if t.type == "T_KEYWORD_FUNC": raise
 
@@ -473,6 +583,19 @@ class Parser:
             if name == ".":
                 return StringNode(".", token=t)
 
+            # Special handling for 'element x från list' pattern (index with variable name)
+            # This must come BEFORE the lookahead loop which would consume 'x'
+            if name in ["element", "index"] and self.peek() and self.peek().type == "T_IDENTIFIER":
+                # Tokens are: element (T_IDENTIFIER), x (T_IDENTIFIER), från (T_KEYWORD_FROM)
+                if self.peek(1) and self.peek(1).type == "T_KEYWORD_FROM":
+                    idx_name = self.consume().value  # consume 'x'
+                    self.consume()  # consume 'från'
+                    parts = []
+                    while self.peek() and self.peek().type == "T_IDENTIFIER":
+                        parts.append(self.consume().value)
+                    target = " ".join(parts)
+                    return VarAccessNode(idx_name, target=target, token=t)
+
             if not self.in_structural_statement:
                 lookahead = 0
                 while self.peek(lookahead) and self.peek(lookahead).type in ["T_IDENTIFIER", "T_KEYWORD_IN"]:
@@ -484,11 +607,52 @@ class Parser:
                         else:
                             # "i" not followed by "från" - might be membership check or standalone
                             break
+                    
+                    next_tok = self.peek(lookahead)
+                    next_combined = name + " " + next_tok.value
+                    
+                    # Try to build up the name by consuming identifiers
+                    if self.is_var_known(next_combined):
+                        # We can extend the name - consume this token and continue
+                        name = next_combined
+                        self.consume()
+                        lookahead = 0  # Reset to check from current position
+                        continue
+                    
                     if self.peek(lookahead + 1) and self.peek(lookahead + 1).type == "T_KEYWORD_FROM":
                         for _ in range(lookahead + 1):
                             name += " " + self.consume().value
                         break
                     lookahead += 1
+                
+                # After the loop, check if the current name followed by "med" is a function call
+                if self.peek() and self.peek().type == "T_KEYWORD_WITH" and self.is_var_known(name):
+                    # It's a function call! Check if we need to extend the name first
+                    # Look ahead to see if we can build up more of the name
+                    temp_pos = self.pos
+                    temp_name = name
+                    while self.peek() and self.peek().type == "T_IDENTIFIER" and \
+                          self.is_var_known(temp_name + " " + self.peek().value):
+                        temp_name += " " + self.consume().value
+                    
+                    # Now check if next token is "med"
+                    if self.peek() and self.peek().type == "T_KEYWORD_WITH":
+                        name = temp_name
+                        self.consume()  # consume 'med'
+                        args = []
+                        while True:
+                            arg_expr = self.expression()
+                            if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                                arg_expr = StringNode(arg_expr.name, token=t)
+                            args.append(arg_expr)
+                            if self.peek() and self.peek().type == "T_COMMA":
+                                self.consume()
+                            else:
+                                break
+                        return FunctionCallNode(name, args, token=t)
+                    else:
+                        # Not a function call, restore position
+                        self.pos = temp_pos
 
             if name == "längd":
                 if self.peek() and self.peek().type == "T_KEYWORD_FROM":
@@ -630,6 +794,23 @@ class Parser:
                         if self.peek() and self.peek().type == "T_COMMA": self.consume()
                         else: break
                 return FunctionCallNode(name, args, token=t)
+            
+            # Multi-word function call: check if we just parsed a known function name
+            # followed by "med args"
+            if self.peek() and self.peek().type == "T_KEYWORD_WITH":
+                self.consume()  # consume 'med'
+                args = []
+                while True:
+                    arg_expr = self.expression()
+                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                        arg_expr = StringNode(arg_expr.name, token=t)
+                    args.append(arg_expr)
+                    if self.peek() and self.peek().type == "T_COMMA":
+                        self.consume()
+                    else:
+                        break
+                return FunctionCallNode(name, args, token=t)
+            
             return VarAccessNode(name, token=t)
 
         if t.type == "T_LITERAL_INT": return IntNode(self.consume().value, token=t)

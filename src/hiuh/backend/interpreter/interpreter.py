@@ -114,10 +114,24 @@ class Interpreter:
                     raise Exception(f"Index {node.name} saknas i texten {node.target}")
 
             if isinstance(obj, list):
+                # node.name is the index - could be a number or a variable name
+                # Try to resolve it as a number first
                 try:
-                    return obj[int(node.name)]
-                except (ValueError, IndexError):
-                    raise Exception(f"Index {node.name} saknas i listan {node.target}")
+                    index = int(node.name)
+                except ValueError:
+                    # It's a variable name - look it up
+                    index_value = self.env.get(node.name)
+                    if index_value is None:
+                        raise Exception(f"Variabeln '{node.name}' finns inte i aktuell kontext")
+                    try:
+                        index = int(index_value)
+                    except (ValueError, TypeError):
+                        raise Exception(f"Variabeln '{node.name}' är inte ett giltigt index: {index_value}")
+                
+                try:
+                    return obj[index]
+                except IndexError:
+                    raise Exception(f"Index {index} finns inte i listan {node.target}")
 
             if isinstance(obj, dict):
                 val = obj.get(node.name)
@@ -230,12 +244,6 @@ class Interpreter:
                 func = self.env.get(raw_func)
             else:
                 func = raw_func
-        
-        # Debug: print what we found
-        if not func or (not callable(func) and not hasattr(func, 'body')):
-            print(f'DEBUG: func={func}, callable={callable(func) if func else None}, has_body={hasattr(func, "body") if func else None}', file=sys.stderr)
-        else:
-            print(f'DEBUG: found func for {func_name}', file=sys.stderr)
 
         if func and (callable(func) or hasattr(func, 'body')):
             # --- PUSH FUNCTION FRAME ---
