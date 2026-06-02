@@ -444,7 +444,8 @@ skriv hittat_index plus mellanrum plus hittat_namn
             # Explicitly seed the base script folder context path so the
             # interpreter's 'använd listor' locator knows exactly where to look
             import os
-            repo_root = os.getcwd()
+            # Use the project root (parent of tests directory)
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             hiuh_folder = os.path.join(repo_root, "hiuh_i_hiuh")
 
             # Seed the initial folder path context so 'använd listor' resolves there
