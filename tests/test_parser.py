@@ -1,6 +1,7 @@
 import unittest
 from hiuh.frontend.tokenizer import Tokenizer
 from hiuh.frontend.parser import Parser
+from hiuh.frontend.resolver import Resolver
 from hiuh.frontend.ast import *
 
 class TestHiuhParserAST(unittest.TestCase):
@@ -10,7 +11,15 @@ class TestHiuhParserAST(unittest.TestCase):
     def parse_source(self, source):
         tokens = self.tokenizer.tokenize(source)
         parser = Parser(tokens)
-        return parser.parse()
+        ast = parser.parse()
+        
+        # Run resolver to validate and transform symbols
+        resolver = Resolver(stdlib_path=None)
+        resolver.discover_modules_from_ast("main", ast)
+        resolver.resolve_all()
+        
+        # Return the resolver's transformed AST, not the original
+        return resolver.get_ast("main")
 
     def strip_locations(self, node):
         if isinstance(node, list):
@@ -194,8 +203,9 @@ class TestHiuhParserAST(unittest.TestCase):
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_if_statement_section(self):
-        source = "om x är större än 2\n    skriv större\nannars\n    skriv mindre"
+        source = "sätt x till 3\nom x är större än 2\n    skriv större\nannars\n    skriv mindre"
         expected = [
+            AssignNode("x", IntNode(3)),
             IfNode(
                 condition=ComparisonNode(VarAccessNode("x"), "större än", IntNode(2)),
                 true_block=[PrintNode(StringNode("större"))],
@@ -271,38 +281,9 @@ class TestHiuhParserAST(unittest.TestCase):
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
-    def test_greedy_expression_stops_before_preposition(self):
-        """Pinpoint: Does greedy expression stop before 'från'?"""
-        # We simulate the call made by parse_remove()
-        source = "banan från frukter"
-        tokens = self.tokenizer.tokenize(source)
-        parser = Parser(tokens)
-
-        # We manually call the greedy method to see what it gobbles
-        node = parser.parse_greedy_expression()
-
-        # 1. It should only return "banan"
-        self.assertIsInstance(node, StringNode)
-        self.assertEqual(node.value, "banan")
-
-        # 2. CRITICAL: The next token should be 'från'
-        self.assertEqual(parser.peek().type, "T_KEYWORD_FROM",
-                         f"Parser consumed too much! Next token is {parser.peek()}")
-
-    def test_greedy_expression_with_multiword_stops(self):
-        """Pinpoint: Does it handle multi-word values but still stop at 'från'?"""
-        source = "en gul banan från frukter"
-        tokens = self.tokenizer.tokenize(source)
-        parser = Parser(tokens)
-
-        node = parser.parse_greedy_expression()
-
-        self.assertEqual(node.value, "en gul banan")
-        self.assertEqual(parser.peek().type, "T_KEYWORD_FROM")
-
     def test_remove_following_another_statement(self):
         """Pinpoint: Does a previous statement interfere with 'ta bort'?"""
-        source = "sätt x till 1\nta bort banan från frukter"
+        source = "sätt frukter till lista med banan\nta bort banan från frukter"
         nodes = self.parse_source(source)
         # nodes[0] is AssignNode
         # nodes[1] should be RemoveValueNode

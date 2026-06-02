@@ -2,22 +2,16 @@
 from hiuh.frontend.ast import *
 
 class Parser:
-    def __init__(self, tokens, imported_names=None):
+    def __init__(self, tokens):
         self.tokens = tokens
         self.pos = 0
-        # Dynamic Scope Stack. Built-ins included.
-        self.scopes = [{"SANT", "FALSKT", "lista", "inmatning", "heltal", "text", "flyttal", "mellanrum", "ny", "rad"}]
-        self.known_types = set()
-        self.known_variables = set(imported_names) if imported_names else set()
         self.in_structural_statement = False
 
-    def enter_scope(self): self.scopes.append(set())
-    def exit_scope(self):
-        if len(self.scopes) > 1: self.scopes.pop()
-    def define_var(self, name): self.scopes[-1].add(name)
-    def is_var_known(self, name):
-        in_scopes = any(name in scope for scope in self.scopes)
-        return in_scopes or name in self.known_types or name in self.known_variables
+    # No-op methods for stateless parser (scope tracking removed)
+    def enter_scope(self): pass
+    def exit_scope(self): pass
+    def define_var(self, name): pass
+    def is_var_known(self, name): return False
 
     def peek(self, offset=0):
         if self.pos + offset >= len(self.tokens): return None
@@ -277,34 +271,6 @@ class Parser:
 
         return PrintNode(val, token=print_token)
 
-    def _is_tree_valid(self, node):
-        if isinstance(node, StringNode):
-            return True
-
-        if isinstance(node, CloseFileNode):
-            return True
-
-        if isinstance(node, VarAccessNode):
-            if hasattr(node, 'target') and node.target:
-                return self.is_var_known(node.target)
-            return self.is_var_known(node.name)
-
-        if isinstance(node, AddNode):
-            return self._is_tree_valid(node.left) or self._is_tree_valid(node.right)
-
-        if isinstance(node, (SubNode, MulNode, DivNode, ComparisonNode)):
-            return self._is_tree_valid(node.left) and self._is_tree_valid(node.right)
-
-        if isinstance(node, FunctionCallNode):
-            return self.is_var_known(node.name) or node.name == "lista"
-
-        if isinstance(node, CastNode):
-            return self._is_tree_valid(node.value)
-
-        if isinstance(node, UnaryOpNode):
-            return self._is_tree_valid(node.operand)
-        return True
-
     def parse_greedy_expression(self):
         while self.peek() and self.peek().type in ["T_NEWLINE", "T_COMMENT"]:
             self.consume()
@@ -344,7 +310,7 @@ class Parser:
                 "T_KEYWORD_FROM", "T_KEYWORD_IN"
             ] or (nt.type == "T_IDENTIFIER" and nt.value in ["för", "som", "till"])
 
-            if is_at_boundary and (has_forced_trigger or self._is_tree_valid(expr)):
+            if is_at_boundary and (has_forced_trigger or True):
                 return expr
         except:
             if t.type == "T_KEYWORD_FUNC": raise
@@ -522,7 +488,7 @@ class Parser:
                     args = []
                     while True:
                         arg_expr = self.expression()
-                        if isinstance(arg_expr, VarAccessNode) and not self.is_var_known(arg_expr.name):
+                        if isinstance(arg_expr, VarAccessNode):
                             arg_expr = StringNode(arg_expr.name, token=t)
                         args.append(arg_expr)
                         if self.peek() and self.peek().type == "T_COMMA":
@@ -534,18 +500,17 @@ class Parser:
 
                 return prop_node
 
-            # Multi-word Var
+            # Multi-word Var - consume all identifier parts
             while self.peek() and self.peek().type in ["T_IDENTIFIER", "T_KEYWORD_IN"]:
-                combined = name + " " + self.peek().value
-                if self.is_var_known(combined): name = combined; self.consume()
-                else: break
+                name = name + " " + self.peek().value
+                self.consume()
 
             # Call
             if self.peek() and self.peek().type == "T_KEYWORD_WITH":
                 self.consume(); args = []
                 while True:
                     arg_expr = self.expression()
-                    if isinstance(arg_expr, VarAccessNode) and not self.is_var_known(arg_expr.name): arg_expr = StringNode(arg_expr.name)
+                    if isinstance(arg_expr, VarAccessNode): arg_expr = StringNode(arg_expr.name)
                     args.append(arg_expr)
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
@@ -617,7 +582,6 @@ class Parser:
     def parse_type_def(self):
         type_def_token = self.consume("T_KEYWORD_TYPE")
         name = self.consume("T_IDENTIFIER").value
-        self.known_types.add(name); self.define_var(name)
         f = []
         if self.peek() and self.peek().type == "T_KEYWORD_WITH":
             self.consume()

@@ -28,7 +28,8 @@ class Char:
         return f"Char({self.value!r})"
 
 class Interpreter:
-    def __init__(self):
+    def __init__(self, registry=None):
+        self.registry = registry  # SymbolRegistry for cross-module resolution
         self.globals = Environment()
         self.globals.define("SANT", True)
         self.globals.define("FALSKT", False)
@@ -44,6 +45,8 @@ class Interpreter:
         self.call_stack = []
         self.script_dir_stack = [os.getcwd()]
         self.env = self.globals
+        self.modules = {}  # Populated by resolver
+        self._module_exports = {}  # Cache for module export values
 
     def execute(self, nodes):
         res = None
