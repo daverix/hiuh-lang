@@ -2,16 +2,22 @@
 from hiuh.frontend.ast import *
 
 class Parser:
-    def __init__(self, tokens):
+    def __init__(self, tokens, imported_names=None):
         self.tokens = tokens
         self.pos = 0
+        # Dynamic Scope Stack. Built-ins included.
+        self.scopes = [{"SANT", "FALSKT", "lista", "inmatning", "heltal", "text", "flyttal", "mellanrum", "ny", "rad"}]
+        self.known_types = set()
+        self.known_variables = set(imported_names) if imported_names else set()
         self.in_structural_statement = False
 
-    # No-op methods for stateless parser (scope tracking removed)
-    def enter_scope(self): pass
-    def exit_scope(self): pass
-    def define_var(self, name): pass
-    def is_var_known(self, name): return False
+    def enter_scope(self): self.scopes.append(set())
+    def exit_scope(self):
+        if len(self.scopes) > 1: self.scopes.pop()
+    def define_var(self, name): self.scopes[-1].add(name)
+    def is_var_known(self, name):
+        in_scopes = any(name in scope for scope in self.scopes)
+        return in_scopes or name in self.known_types or name in self.known_variables
 
     def peek(self, offset=0):
         if self.pos + offset >= len(self.tokens): return None
@@ -214,13 +220,9 @@ class Parser:
                 last_consumed = 'i'
                 continue
             
-            # Check if we just consumed 'till' - if followed by 'i', it's part of name
-            # Otherwise, 'till' is the assignment keyword and we should stop
-            if last_consumed == 'till' and current_token.type != "T_KEYWORD_IN":
-                # 'till' was the assignment keyword, put it back
-                self.pos = checkpoint + len(parts) - 1
-                parts = parts[:-1]
-                last_consumed = parts[-1] if parts else None
+            # Special handling: if 'till' is followed by 'i', it's the assignment keyword
+            if current_token.type == "T_KEYWORD_TO" and self.peek(1) and self.peek(1).type == "T_KEYWORD_IN":
+                # 'till i' pattern - stop collecting name, 'i' will be part of value expression
                 break
             
             parts.append(self.consume().value)
@@ -237,9 +239,10 @@ class Parser:
         name = " ".join(parts)
         
         target = None
-        # Check if we ended with 'till i' pattern (name ends with 'i' and next is also 'i')
-        if name.endswith(" i") and self.peek() and self.peek().type == "T_KEYWORD_IN":
-            name = name[:-2].strip()
+        # Check if we ended with 'till i' pattern (name ends with 'till i' and next is also 'i')
+        # Only treat as special pattern if name is more than just 'till i'
+        if name.endswith("till i") and name != "till i" and self.peek() and self.peek().type == "T_KEYWORD_IN":
+            name = name[:-7].strip()  # Remove 'till i'
             self.consume()  # consume 'i'
             t_parts = []
             while self.peek() and self.peek().type == "T_IDENTIFIER":
@@ -270,6 +273,34 @@ class Parser:
             return FileWriteNode(val, target_var, token=print_token)
 
         return PrintNode(val, token=print_token)
+
+    def _is_tree_valid(self, node):
+        if isinstance(node, StringNode):
+            return True
+
+        if isinstance(node, CloseFileNode):
+            return True
+
+        if isinstance(node, VarAccessNode):
+            if hasattr(node, 'target') and node.target:
+                return self.is_var_known(node.target)
+            return self.is_var_known(node.name)
+
+        if isinstance(node, AddNode):
+            return self._is_tree_valid(node.left) or self._is_tree_valid(node.right)
+
+        if isinstance(node, (SubNode, MulNode, DivNode, ComparisonNode)):
+            return self._is_tree_valid(node.left) and self._is_tree_valid(node.right)
+
+        if isinstance(node, FunctionCallNode):
+            return self.is_var_known(node.name) or node.name == "lista"
+
+        if isinstance(node, CastNode):
+            return self._is_tree_valid(node.value)
+
+        if isinstance(node, UnaryOpNode):
+            return self._is_tree_valid(node.operand)
+        return True
 
     def parse_greedy_expression(self):
         while self.peek() and self.peek().type in ["T_NEWLINE", "T_COMMENT"]:
@@ -310,7 +341,7 @@ class Parser:
                 "T_KEYWORD_FROM", "T_KEYWORD_IN"
             ] or (nt.type == "T_IDENTIFIER" and nt.value in ["för", "som", "till"])
 
-            if is_at_boundary and (has_forced_trigger or True):
+            if is_at_boundary and (has_forced_trigger or self._is_tree_valid(expr)):
                 return expr
         except:
             if t.type == "T_KEYWORD_FUNC": raise
@@ -445,6 +476,14 @@ class Parser:
             if not self.in_structural_statement:
                 lookahead = 0
                 while self.peek(lookahead) and self.peek(lookahead).type in ["T_IDENTIFIER", "T_KEYWORD_IN"]:
+                    # Check if this is "i" followed by "från" - then it's part of identifier, not membership check
+                    if self.peek(lookahead).type == "T_KEYWORD_IN":
+                        if self.peek(lookahead + 1) and self.peek(lookahead + 1).type == "T_KEYWORD_FROM":
+                            # "i" followed by "från" means "element i från x" pattern - i is part of identifier
+                            pass  # Don't break, continue
+                        else:
+                            # "i" not followed by "från" - might be membership check or standalone
+                            break
                     if self.peek(lookahead + 1) and self.peek(lookahead + 1).type == "T_KEYWORD_FROM":
                         for _ in range(lookahead + 1):
                             name += " " + self.consume().value
@@ -463,14 +502,22 @@ class Parser:
                     # Maps 'längd från x' to a function call for the built-in
                     return FunctionCallNode("längd", [VarAccessNode(target, token=first_var_token)], token=t)
 
-            # Index Get
-            if name in ["element", "index"] and self.peek() and self.peek().type == "T_LITERAL_INT":
-                idx = self.consume().value
-                if self.peek() and self.peek().type == "T_KEYWORD_FROM":
-                    self.consume()
-                    parts = []
-                    while self.peek() and self.peek().type == "T_IDENTIFIER": parts.append(self.consume().value)
-                    return VarAccessNode(str(idx), target=" ".join(parts), token=t)
+            # Index Get (integer index: element 0 from x, or variable index: element i from x)
+            if name in ["element", "index"] and self.peek() and self.peek().type in ["T_LITERAL_INT", "T_KEYWORD_IN"]:
+                idx_token = self.consume()
+                idx = idx_token.value
+                # Only treat as numeric index if it's actually an integer literal
+                # If it's 'i' or other keyword, treat it as part of identifier
+                if idx_token.type == "T_LITERAL_INT":
+                    if self.peek() and self.peek().type == "T_KEYWORD_FROM":
+                        self.consume()
+                        parts = []
+                        while self.peek() and self.peek().type == "T_IDENTIFIER": parts.append(self.consume().value)
+                        return VarAccessNode(str(idx), target=" ".join(parts), token=t)
+                else:
+                    # 'i' is not an integer literal, put it back and treat as part of identifier
+                    self.pos -= 1
+                    idx = None
 
             # Property Get
             if not self.in_structural_statement and self.peek() and self.peek().type == "T_KEYWORD_FROM":
@@ -488,7 +535,7 @@ class Parser:
                     args = []
                     while True:
                         arg_expr = self.expression()
-                        if isinstance(arg_expr, VarAccessNode):
+                        if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
                             arg_expr = StringNode(arg_expr.name, token=t)
                         args.append(arg_expr)
                         if self.peek() and self.peek().type == "T_COMMA":
@@ -500,17 +547,75 @@ class Parser:
 
                 return prop_node
 
-            # Multi-word Var - consume all identifier parts
+            # Multi-word Var
             while self.peek() and self.peek().type in ["T_IDENTIFIER", "T_KEYWORD_IN"]:
-                name = name + " " + self.peek().value
-                self.consume()
+                combined = name + " " + self.peek().value
+                if self.is_var_known(combined): name = combined; self.consume()
+                else: break
+
+            # Check for property access after multi-word var (e.g., 'element i från värden')
+            if not self.in_structural_statement and self.peek() and self.peek().type in ["T_KEYWORD_FROM", "T_KEYWORD_IN"]:
+                # 'i' can start a property access (e.g., 'element i från värden')
+                if self.peek().type == "T_KEYWORD_IN":
+                    self.consume()  # consume 'i'
+                    # Check if next is 'från'
+                    if self.peek() and self.peek().type == "T_KEYWORD_FROM":
+                        self.consume()
+                        parts = []
+                        while self.peek() and self.peek().type == "T_IDENTIFIER":
+                            parts.append(self.consume().value)
+                        target_namespace = " ".join(parts)
+                        prop_node = VarAccessNode(name, target=target_namespace, token=t)
+
+                        if self.peek() and self.peek().type == "T_KEYWORD_WITH":
+                            self.consume()
+                            args = []
+                            while True:
+                                arg_expr = self.expression()
+                                if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                                    arg_expr = StringNode(arg_expr.name, token=t)
+                                args.append(arg_expr)
+                                if self.peek() and self.peek().type == "T_COMMA":
+                                    self.consume()
+                                else:
+                                    break
+                            return FunctionCallNode(prop_node, args, token=t)
+
+                        return prop_node
+                    else:
+                        # 'i' is not followed by 'från', put it back
+                        self.pos -= 1
+                else:
+                    # Direct 'från' property access
+                    self.consume()
+                    parts = []
+                    while self.peek() and self.peek().type == "T_IDENTIFIER":
+                        parts.append(self.consume().value)
+                    target_namespace = " ".join(parts)
+                    prop_node = VarAccessNode(name, target=target_namespace, token=t)
+
+                    if self.peek() and self.peek().type == "T_KEYWORD_WITH":
+                        self.consume()
+                        args = []
+                        while True:
+                            arg_expr = self.expression()
+                            if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                                arg_expr = StringNode(arg_expr.name, token=t)
+                            args.append(arg_expr)
+                            if self.peek() and self.peek().type == "T_COMMA":
+                                self.consume()
+                            else:
+                                break
+                        return FunctionCallNode(prop_node, args, token=t)
+
+                    return prop_node
 
             # Call
             if self.peek() and self.peek().type == "T_KEYWORD_WITH":
                 self.consume(); args = []
                 while True:
                     arg_expr = self.expression()
-                    if isinstance(arg_expr, VarAccessNode): arg_expr = StringNode(arg_expr.name)
+                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name): arg_expr = StringNode(arg_expr.name)
                     args.append(arg_expr)
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
@@ -582,6 +687,7 @@ class Parser:
     def parse_type_def(self):
         type_def_token = self.consume("T_KEYWORD_TYPE")
         name = self.consume("T_IDENTIFIER").value
+        self.known_types.add(name); self.define_var(name)
         f = []
         if self.peek() and self.peek().type == "T_KEYWORD_WITH":
             self.consume()

@@ -214,12 +214,28 @@ class Interpreter:
         current_file = os.path.basename(self.script_dir_stack[-1])
 
         # Resolve function reference...
+        func = None
         if isinstance(node.name, VarAccessNode) and node.name.target:
             func_name = f"{node.name.target}.{node.name.name}"
             module_dict = self.env.get(node.name.target)
-            func = module_dict.get(node.name.name) if isinstance(module_dict, dict) else None
+            if isinstance(module_dict, dict):
+                func = module_dict.get(node.name.name)
         else:
-            func = self.env.get(node.name)
+            # Try to get the function directly from env
+            raw_func = self.env.get(node.name)
+            
+            # If we got a string back, it means the function wasn't found directly
+            # and env returned the name as a string - look up by that name
+            if isinstance(raw_func, str):
+                func = self.env.get(raw_func)
+            else:
+                func = raw_func
+        
+        # Debug: print what we found
+        if not func or (not callable(func) and not hasattr(func, 'body')):
+            print(f'DEBUG: func={func}, callable={callable(func) if func else None}, has_body={hasattr(func, "body") if func else None}', file=sys.stderr)
+        else:
+            print(f'DEBUG: found func for {func_name}', file=sys.stderr)
 
         if func and (callable(func) or hasattr(func, 'body')):
             # --- PUSH FUNCTION FRAME ---
@@ -474,7 +490,12 @@ class Interpreter:
         raise Exception(f"'{node.target_var}' är inte en öppen fil.")
 
     def visit_ImportNode(self, node):
-        path_parts = node.module_name.split('.')
+        # Handle module name - might be VarAccessNode or string
+        module_name = node.module_name
+        if isinstance(module_name, VarAccessNode):
+            module_name = module_name.name if hasattr(module_name, 'name') else str(module_name)
+        
+        path_parts = module_name.split('.')
         relative_path = os.path.sep.join(path_parts)
         module_filename = f"{relative_path}.hiuh"
 
