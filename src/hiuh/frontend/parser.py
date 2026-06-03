@@ -7,11 +7,6 @@ class Parser:
         self.pos = 0
         self.in_structural_statement = False
 
-    def is_var_known(self, name): return True
-    def enter_scope(self): pass
-    def exit_scope(self): pass
-    def define_var(self, name): pass
-
     def peek(self, offset=0):
         if self.pos + offset >= len(self.tokens): return None
         return self.tokens[self.pos + offset]
@@ -138,7 +133,7 @@ class Parser:
         open_token = self.consume("T_KEYWORD_OPEN")
         self.in_structural_statement = True
         try:
-            # Parse path - simple identifier or string
+            # Parse path - string literal or identifier (let resolver handle conversion)
             t = self.peek()
             if t.type == "T_STRING":
                 path_expr = StringNode(self.consume().value, token=t)
@@ -170,7 +165,7 @@ class Parser:
             parts.append(self.consume().value)
         var_name = " ".join(parts)
 
-        self.define_var(var_name)
+
         function_call_args = [path_expr, StringNode(mode, token=mode_token)]
         function_call_node = FunctionCallNode("öppna", function_call_args, token=open_token)
         return AssignNode(var_name, function_call_node, target_type=None, token=assign_token)
@@ -267,7 +262,7 @@ class Parser:
 
         self.consume("T_KEYWORD_TO")
         val = self.parse_greedy_expression()
-        if not target: self.define_var(name)
+
         return AssignNode(name, val, target_type=target, token=assign_token)
 
     def parse_print(self):
@@ -324,7 +319,7 @@ class Parser:
                 args = []
                 while True:
                     arg_expr = self.expression()
-                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
                         arg_expr = StringNode(arg_expr.name, token=t)
                     args.append(arg_expr)
                     if self.peek() and self.peek().type == "T_COMMA":
@@ -498,28 +493,19 @@ class Parser:
                     next_tok = self.peek(lookahead)
                     next_combined = name + " " + next_tok.value
                     
-                    # Try to build up the name by consuming identifiers
-                    if self.is_var_known(next_combined):
-                        # We can extend the name - consume this token and continue
-                        name = next_combined
-                        self.consume()
-                        lookahead = 0  # Reset to check from current position
-                        continue
-                    
-                    if self.peek(lookahead + 1) and self.peek(lookahead + 1).type == "T_KEYWORD_FROM":
-                        for _ in range(lookahead + 1):
-                            name += " " + self.consume().value
-                        break
-                    lookahead += 1
+                    # Always extend the name by consuming identifiers
+                    name = next_combined
+                    self.consume()
+                    lookahead = 0  # Reset to check from current position
+                    continue
                 
                 # After the loop, check if the current name followed by "med" is a function call
-                if self.peek() and self.peek().type == "T_KEYWORD_WITH" and self.is_var_known(name):
+                if self.peek() and self.peek().type == "T_KEYWORD_WITH":
                     # It's a function call! Check if we need to extend the name first
                     # Look ahead to see if we can build up more of the name
                     temp_pos = self.pos
                     temp_name = name
-                    while self.peek() and self.peek().type == "T_IDENTIFIER" and \
-                          self.is_var_known(temp_name + " " + self.peek().value):
+                    while self.peek() and self.peek().type == "T_IDENTIFIER":
                         temp_name += " " + self.consume().value
                     
                     # Now check if next token is "med"
@@ -529,7 +515,7 @@ class Parser:
                         args = []
                         while True:
                             arg_expr = self.expression()
-                            if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                            if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
                                 arg_expr = StringNode(arg_expr.name, token=t)
                             args.append(arg_expr)
                             if self.peek() and self.peek().type == "T_COMMA":
@@ -586,7 +572,7 @@ class Parser:
                     args = []
                     while True:
                         arg_expr = self.expression()
-                        if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                        if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
                             arg_expr = StringNode(arg_expr.name, token=t)
                         args.append(arg_expr)
                         if self.peek() and self.peek().type == "T_COMMA":
@@ -601,7 +587,7 @@ class Parser:
             # Multi-word Var
             while self.peek() and self.peek().type in ["T_IDENTIFIER", "T_KEYWORD_IN"]:
                 combined = name + " " + self.peek().value
-                if self.is_var_known(combined): name = combined; self.consume()
+                if combined: name = combined; self.consume()
                 else: break
 
             # Check for property access after multi-word var (e.g., 'element i från värden')
@@ -623,7 +609,7 @@ class Parser:
                             args = []
                             while True:
                                 arg_expr = self.expression()
-                                if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                                if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
                                     arg_expr = StringNode(arg_expr.name, token=t)
                                 args.append(arg_expr)
                                 if self.peek() and self.peek().type == "T_COMMA":
@@ -650,7 +636,7 @@ class Parser:
                         args = []
                         while True:
                             arg_expr = self.expression()
-                            if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                            if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
                                 arg_expr = StringNode(arg_expr.name, token=t)
                             args.append(arg_expr)
                             if self.peek() and self.peek().type == "T_COMMA":
@@ -666,7 +652,7 @@ class Parser:
                 self.consume(); args = []
                 while True:
                     arg_expr = self.expression()
-                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name): arg_expr = StringNode(arg_expr.name)
+                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target: arg_expr = StringNode(arg_expr.name)
                     args.append(arg_expr)
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
@@ -689,7 +675,7 @@ class Parser:
                 args = []
                 while True:
                     arg_expr = self.expression()
-                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
+                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
                         arg_expr = StringNode(arg_expr.name, token=t)
                     args.append(arg_expr)
                     if self.peek() and self.peek().type == "T_COMMA":
@@ -708,14 +694,12 @@ class Parser:
 
     def parse_block(self, params=None):
         while self.peek() and self.peek().type == "T_NEWLINE": self.consume()
-        self.consume("T_INDENT"); self.enter_scope()
-        if params:
-            for p in params: self.define_var(p)
+        self.consume("T_INDENT")
         stmts = []
         while self.peek() and self.peek().type != "T_DEDENT":
             if self.peek().type in ["T_NEWLINE", "T_COMMENT"]: self.consume(); continue
             stmts.append(self.statement())
-        self.exit_scope(); self.consume("T_DEDENT")
+        self.consume("T_DEDENT")
         return stmts
 
     def parse_if(self):
@@ -755,12 +739,11 @@ class Parser:
     def parse_type_def(self):
         type_def_token = self.consume("T_KEYWORD_TYPE")
         name = self.consume("T_IDENTIFIER").value
-        self.define_var(name)
-        f = []
+        fields = []
         if self.peek() and self.peek().type == "T_KEYWORD_WITH":
             self.consume()
             while self.peek() and self.peek().type == "T_IDENTIFIER":
-                f.append(self.consume().value)
+                fields.append(self.consume().value)
                 if self.peek() and self.peek().type == "T_COMMA": self.consume()
                 else: break
-        return TypeDefNode(name, f, token=type_def_token)
+        return TypeDefNode(name, fields, token=type_def_token)
