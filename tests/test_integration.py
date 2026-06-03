@@ -14,7 +14,6 @@ class TestHiuhFullIntegration(unittest.TestCase):
     def run_source(self, source):
         tokens = self.tokenizer.tokenize(source)
         parser = Parser(tokens)
-        parser._interpreter = self.interpreter  # Pass interpreter for wildcard imports
         nodes = parser.parse()
         return self.interpreter.execute(nodes)
 
