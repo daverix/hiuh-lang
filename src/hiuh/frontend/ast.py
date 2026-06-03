@@ -143,10 +143,11 @@ class TryCatchNode(ASTNode):
         self.finally_block = finally_block # NEW
 
 class ImportNode(ASTNode):
-    def __init__(self, module_name, alias=None, token=None):
+    def __init__(self, module_name, alias=None, import_all=False, token=None):
         super().__init__(token)
         self.module_name = module_name
         self.alias = alias
+        self.import_all = import_all  # True if no 'som' alias - imports all vars directly
 
 class CastNode(ASTNode):
     def __init__(self, value, target_type, token=None):

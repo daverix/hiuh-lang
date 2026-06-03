@@ -169,6 +169,9 @@ class Interpreter:
     # --- Stdout ---
     def visit_PrintNode(self, node):
         val = self.visit(node.value)
+        # If val is a callable function (not a FunctionCallNode), convert to string
+        if callable(val) and not isinstance(node.value, FunctionCallNode):
+            val = str(val)
         sys.stdout.write(str(val))
         return val
 
@@ -522,13 +525,16 @@ class Interpreter:
         tokenizer = Tokenizer()
         tokens = tokenizer.tokenize(module_source)
         parser = Parser(tokens)
+        parser._interpreter = self  # Pass interpreter for nested wildcard imports
         module_nodes = parser.parse()
 
+        # Track module variables for conflict detection
+        module_var_names = []
         for m_node in module_nodes:
             if m_node.__class__.__name__ == "AssignNode":
+                module_var_names.append(m_node.name)
                 if hasattr(self, 'known_variables'):
                     self.known_variables.add(m_node.name)
-
                 namespace_prefix = node.alias if node.alias else path_parts[-1]
                 if hasattr(self, 'known_variables'):
                     self.known_variables.add(f"{namespace_prefix}.{m_node.name}")
@@ -554,7 +560,42 @@ class Interpreter:
         else:
             module_exports = module_env.get_local_bindings()
 
-        namespace_name = node.alias if node.alias else path_parts[-1]
-        self.env.define(namespace_name, module_exports)
+        if node.import_all:
+            # Import all: define each export directly in the current environment
+            # Check for conflicts between modules
+            for var_name, var_value in module_exports.items():
+                # Skip internal file-related entries
+                if var_name.startswith('_'):
+                    continue
+                
+                # Check if this variable already exists (from a previous import)
+                existing = self.env.get(var_name)
+                if existing != var_name:  # Not just unfound string fallback
+                    # Check if it's from a different module (not the same var)
+                    if hasattr(self, '_imported_vars'):
+                        if var_name in self._imported_vars and self._imported_vars[var_name] != module_name:
+                            raise SyntaxError(
+                                f"Symbolen '{var_name}' är definierad i både "
+                                f"'{self._imported_vars[var_name]}' och '{module_name}'. "
+                                f"Använd 'som' för att skapa alias."
+                            )
+                    elif var_name in self.env.vars:
+                        # Variable already exists in current scope
+                        raise SyntaxError(
+                            f"Symbolen '{var_name}' är redan definierad i aktuell kontext. "
+                            f"Använd 'som' för att skapa alias."
+                        )
+                
+                # Define the variable in current environment
+                self.env.define(var_name, var_value)
+                
+                # Track imports for conflict detection
+                if not hasattr(self, '_imported_vars'):
+                    self._imported_vars = {}
+                self._imported_vars[var_name] = module_name
+        else:
+            # Named import with alias: store module under alias name
+            namespace_name = node.alias if node.alias else path_parts[-1]
+            self.env.define(namespace_name, module_exports)
 
         return module_exports

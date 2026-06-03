@@ -14,6 +14,7 @@ class TestHiuhFullIntegration(unittest.TestCase):
     def run_source(self, source):
         tokens = self.tokenizer.tokenize(source)
         parser = Parser(tokens)
+        parser._interpreter = self.interpreter  # Pass interpreter for wildcard imports
         nodes = parser.parse()
         return self.interpreter.execute(nodes)
 
@@ -292,14 +293,69 @@ använd hjälpare som h
 sätt meddelande till hälsa från h med David
 skriv meddelande
 skriv ny rad
-skriv hälsa med David
+skriv hälsa från h med David
     """
             with patch('sys.stdout', new=StringIO()) as fake_out:
                 self.run_source(source)
-                self.assertEqual(fake_out.getvalue().strip(), "Hej David\nhälsa med David")
+                self.assertEqual(fake_out.getvalue().strip(), "Hej David\nHej David")
         finally:
             if os.path.exists(module_filename):
                 os.remove(module_filename)
+
+    def test_module_wildcard_import(self):
+        """Tests that 'använd modul' (without 'som') imports all variables directly."""
+        module_filename = "verktyg.hiuh"
+
+        # Create a module that exposes multiple variables
+        with open(module_filename, "w", encoding="utf-8") as f:
+            f.write("""
+sätt meddelande till Hej fràn Hiuh
+sätt faktor till 10
+sätt hälsa till grej med namn
+    ge Hej plus mellanrum plus namn
+""")
+
+        try:
+            # Wildcard import: all variables are available directly (no 'som')
+            source = """
+använd verktyg
+skriv meddelande
+skriv faktor
+sätt hälsning till hälsa med Världen
+skriv hälsning
+"""
+            with patch('sys.stdout', new=StringIO()) as fake_out:
+                self.run_source(source)
+                self.assertEqual(fake_out.getvalue().strip(), "Hej fràn Hiuh10Hej Världen")
+        finally:
+            if os.path.exists(module_filename):
+                os.remove(module_filename)
+
+    def test_module_wildcard_import_conflict(self):
+        """Tests that importing modules with conflicting variable names raises a SyntaxError."""
+        module_a = "modul_a.hiuh"
+        module_b = "modul_b.hiuh"
+
+        # Both modules expose 'namn'
+        with open(module_a, "w", encoding="utf-8") as f:
+            f.write("sätt namn till Alfa\n")
+        with open(module_b, "w", encoding="utf-8") as f:
+            f.write("sätt namn till Beta\n")
+
+        try:
+            source = """
+använd modul_a
+använd modul_b
+"""
+            with patch('sys.stdout', new=StringIO()) as fake_out:
+                with self.assertRaises(SyntaxError) as cm:
+                    self.run_source(source)
+                self.assertIn("namn", str(cm.exception))
+                self.assertIn("modul_a", str(cm.exception))
+                self.assertIn("modul_b", str(cm.exception))
+        finally:
+            if os.path.exists(module_a): os.remove(module_a)
+            if os.path.exists(module_b): os.remove(module_b)
 
     def test_module_directory_import(self):
         dir_name = "verktyg"

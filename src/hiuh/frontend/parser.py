@@ -10,6 +10,7 @@ class Parser:
         self.known_types = set()
         self.known_variables = set(imported_names) if imported_names else set()
         self.in_structural_statement = False
+        self._interpreter = None  # Set by caller for wildcard import resolution
 
     def enter_scope(self): self.scopes.append(set())
     def exit_scope(self):
@@ -74,11 +75,12 @@ class Parser:
         import_token = self.consume("T_KEYWORD_IMPORT") # använd
 
         # Parse module name (greedy string to support filenames/multiword paths)
-        # Note: because we made 'som' a hard boundary before, parse_greedy_expression will stop perfectly!
         module_expr = self.parse_greedy_expression()
         module_name = module_expr.value if hasattr(module_expr, 'value') else str(module_expr)
 
         alias = None
+        import_all = False  # Default: use alias if present
+        
         # Support: använd matematik som matte
         if self.peek() and self.peek().value == "som":
             self.consume() # som
@@ -86,8 +88,23 @@ class Parser:
             while self.peek() and self.peek().type == "T_IDENTIFIER":
                 parts.append(self.consume().value)
             alias = " ".join(parts)
+        else:
+            # No 'som' - import all variables directly from the module
+            import_all = True
 
-        return ImportNode(module_name, alias, token=import_token)
+        import_node = ImportNode(module_name, alias, import_all=import_all, token=import_token)
+        
+        # For wildcard imports, we need to execute immediately so that
+        # the parser knows the variable names for subsequent statements
+        if import_all and hasattr(self, '_interpreter'):
+            self._interpreter.visit(import_node)
+            # Add all exported variable names to known_variables
+            if hasattr(self._interpreter, '_imported_vars'):
+                for var_name in self._interpreter._imported_vars:
+                    if self._interpreter._imported_vars[var_name] == module_name:
+                        self.known_variables.add(var_name)
+        
+        return import_node
 
     def parse_append(self):
         append_token = self.consume() # lägg

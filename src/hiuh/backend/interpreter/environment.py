@@ -14,3 +14,7 @@ class Environment:
             return self.parent.get(name)
         # README: If variable not found, return the name as a string
         return name
+
+    def get_local_bindings(self):
+        """Returns a dict of variables defined in this environment only (not parent)."""
+        return {k: v for k, v in self.vars.items() if not k.startswith('_')}

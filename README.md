@@ -353,8 +353,18 @@ använd bibliotek.exempel
 använd mattematik som matte
 
 sätt s till slumpa från matte
-skriv nästa tal från s
+skriv s
 skriv ny rad
 skriv min variabel
 ```
+
+### Import modes
+
+**Without `som`**: `använd bibliotek.exempel`
+All variables from the module are imported directly into the current scope. Use this when you want to access variables directly without a namespace prefix.
+
+**With `som`**: `använd mattematik som matte`
+Creates a namespace alias. Access variables through the alias: `slumpa från matte`.
+
+**Conflict handling**: If two modules export the same variable name and both are imported without `som`, the compiler will raise an error. Use `som` to create aliases in that case.
 
