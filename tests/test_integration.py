@@ -291,10 +291,12 @@ sätt hälsa till grej med namn
 använd hjälpare som h
 sätt meddelande till hälsa från h med David
 skriv meddelande
+skriv ny rad
+skriv hälsa med David
     """
             with patch('sys.stdout', new=StringIO()) as fake_out:
                 self.run_source(source)
-                self.assertEqual(fake_out.getvalue().strip(), "Hej David")
+                self.assertEqual(fake_out.getvalue().strip(), "Hej David\nhälsa med David")
         finally:
             if os.path.exists(module_filename):
                 os.remove(module_filename)
@@ -315,7 +317,7 @@ sätt addera till grej med a, b
             # We import from a directory via dot separation and use the default name 'matematik'
             source = """
 använd verktyg.matematik
-sätt summa till addera från matematik med 10, 5
+sätt summa till addera med 10, 5
 skriv summa
             """
             with patch('sys.stdout', new=StringIO()) as fake_out:
@@ -435,8 +437,8 @@ sätt matchar_hiuh till grej med text_stycke
 sätt namn_lista till lista med Java, Python, Hiuh, Kotlin
 
 . 3. Invoke your high-order lookup functions using the callback
-sätt hittat_index till index på första matchande från listor med namn_lista, matchar_hiuh
-sätt hittat_namn till första matchande från listor med namn_lista, matchar_hiuh
+sätt hittat_index till index på första matchande med namn_lista, matchar_hiuh
+sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
 
 skriv hittat_index plus mellanrum plus hittat_namn
 """

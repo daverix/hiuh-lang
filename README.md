@@ -355,6 +355,6 @@ använd mattematik som matte
 sätt s till slumpa från matte
 skriv nästa tal från s
 skriv ny rad
-skriv min variabel från exempel
+skriv min variabel
 ```
 
