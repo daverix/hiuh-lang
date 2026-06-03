@@ -48,7 +48,6 @@ class Tokenizer:
             "använd": "T_KEYWORD_IMPORT",
             "öppna": "T_KEYWORD_OPEN",
             "stäng": "T_KEYWORD_CLOSE",
-            "för": "T_KEYWORD_FOR",
             "som": "T_KEYWORD_AS"
         }
 
@@ -62,9 +61,7 @@ class Tokenizer:
 
         for line_idx, line in enumerate(lines, 1):
             if not line.strip():
-                if line_idx < len(lines):
-                    tokens.append(Token("T_NEWLINE", "\n", line_idx, len(line) + 1))
-                continue
+                continue  # Skip empty lines entirely
 
             indent = 0
             while indent < len(line) and line[indent] == ' ':
