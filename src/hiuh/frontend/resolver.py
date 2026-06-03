@@ -115,14 +115,48 @@ class Resolver:
         return None
     
     def resolve_all(self):
-        """Run both passes to resolve all modules."""
-        for module_name, module in self.modules.items():
+        # Pass 1: Collect all declarations
+        for module_name, module in list(self.modules.items()):
             self._collect_declarations(module_name, module.ast)
         
-        for module_name, module in self.modules.items():
+        # Pass 2: Flatten imports - replace ImportNode with module exports
+        for module_name, module in list(self.modules.items()):
+            module.ast = self._flatten_imports(module.ast, module_name)
+        
+        # Pass 3: Transform AST
+        for module_name, module in list(self.modules.items()):
             module.ast = self._transform_ast(module.ast, module_name)
         
         return len(self.errors) == 0
+    
+    def _flatten_imports(self, ast: list, module_name: str) -> list:
+        """Replace ImportNode with imports from modules."""
+        result = []
+        for node in ast:
+            if isinstance(node, ImportNode):
+                # ImportNode - inject the module's exports
+                imported = self.modules.get(node.module_name)
+                if imported:
+                    for export in imported.ast or []:
+                        result.append(export)
+            elif isinstance(node, (FunctionDefNode, WhileNode, IfNode)):
+                result.append(self._flatten_node(node, module_name))
+            else:
+                result.append(node)
+        return result
+    
+    def _flatten_node(self, node, module_name):
+        if isinstance(node, FunctionDefNode):
+            body = self._flatten_imports(node.body or [], module_name)
+            return FunctionDefNode(node.params, body, line=node.line, column=node.column)
+        if isinstance(node, WhileNode):
+            body = self._flatten_imports(node.body or [], module_name)
+            return WhileNode(node.condition, body, line=node.line, column=node.column)
+        if isinstance(node, IfNode):
+            t = self._flatten_imports(node.true_block or [], module_name)
+            f = self._flatten_imports(node.false_block or [], module_name) if node.false_block else None
+            return IfNode(node.condition, t, f, line=node.line, column=node.column)
+        return node
     
     def _collect_declarations(self, module_name: str, ast: list):
         """Pass 1: Walk AST and collect all declarations including nested scopes."""

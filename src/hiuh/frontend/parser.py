@@ -453,10 +453,10 @@ class Parser:
                     p.append(self.consume().value)
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
-            return FunctionDefNode(p, self.parse_block(params=p), token=t)
+            return FunctionDefNode(p, self.parse_block(params=p), line=t.line, column=t.column)
 
         if t.type == "T_IDENTIFIER" and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
-            self.consume(); self.consume(); return StringNode("\n", token=t)
+            self.consume(); self.consume(); return StringNode("\n", line=t.line, column=t.column)
 
         if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_KEYWORD_IN"]:
             name = self.consume().value
@@ -708,11 +708,11 @@ class Parser:
         false_b = None
         if self.peek() and self.peek().type == "T_KEYWORD_ELSE":
             self.consume(); false_b = self.parse_block()
-        return IfNode(cond, true_b, false_b, token=if_token)
+        return IfNode(cond, true_b, false_b, line=if_token.line, column=if_token.column)
 
     def parse_while(self):
         while_token = self.consume("T_KEYWORD_WHILE")
-        return WhileNode(self.expression(), self.parse_block(), token=while_token)
+        return WhileNode(self.expression(), self.parse_block(), line=while_token.line, column=while_token.column)
 
     def parse_try_catch(self):
         try_token = self.consume("T_KEYWORD_TRY")
