@@ -83,11 +83,11 @@ class Parser:
         return ImportNode(module_name, alias, import_all=import_all, token=import_token)
 
     def parse_append(self):
-        append_token = self.consume() # lägg
-        self.consume() # till
+        append_token = self.consume()  # lägg
+        self.consume()  # till
 
-        # Parse the value to add (could be an expression)
-        val = self.parse_greedy_expression()
+        # Parse the value - use term() which stops at T_KEYWORD_IN
+        val = self.term()
 
         # Expect 'i'
         self.consume("T_KEYWORD_IN")
