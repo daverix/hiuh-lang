@@ -522,11 +522,11 @@ använd ordlista
 använd listor
 
 sätt fruktantal till ny ordlista
-putta i fruktantal med äpple, 2
-putta i fruktantal med banan, 1
-putta i fruktantal med citron, 3
+putta från fruktantal med äpple, 2
+putta från fruktantal med banan, 1
+putta från fruktantal med citron, 3
 
-rensa i fruktantal med banan
+rensa från fruktantal med banan
 
 sätt fruktpar till värden i fruktantal
 
