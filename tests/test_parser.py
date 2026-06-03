@@ -313,9 +313,7 @@ medan inte i slutet från fil
 
 stäng fil"""
 
-        tokens = self.tokenizer.tokenize(source)
-        parser = Parser(tokens)
-        actual_nodes = parser.parse()
+        actual_nodes = self.parse_source(source)
 
         expected_nodes = [
             # öppna källkod_test.hiuh för läsning som fil

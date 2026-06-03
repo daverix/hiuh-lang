@@ -18,6 +18,32 @@ class Resolver:
         self.modules = {}
         self.errors = []
         self.main_module = None
+        self._register_builtins()
+    
+    def _register_builtins(self):
+        """Register built-in symbols."""
+        # Ensure modules exist for both 'main' and '__main__' module names
+        for mod in ['__main__', 'main']:
+            self.registry.add_module(mod, "")
+        # Built-in variables
+        for mod in ['__main__', 'main']:
+            self.registry.add_var(mod, "SANT")
+            self.registry.add_var(mod, "FALSKT")
+            self.registry.add_var(mod, "mellanrum")
+            self.registry.add_var(mod, "ny")
+            self.registry.add_var(mod, "rad")
+            self.registry.add_var(mod, "lista")
+            self.registry.add_var(mod, "inmatning")
+            self.registry.add_var(mod, "heltal")
+            self.registry.add_var(mod, "text")
+            self.registry.add_var(mod, "flyttal")
+        # Built-in functions
+        for mod in ['__main__', 'main']:
+            self.registry.add_func(mod, "lista", [], None)
+            self.registry.add_func(mod, "inmatning", [], None)
+            self.registry.add_func(mod, "heltal", [], None)
+            self.registry.add_func(mod, "text", [], None)
+            self.registry.add_func(mod, "flyttal", [], None)
     
     def discover_modules(self, main_file_path: str):
         main_dir = os.path.dirname(os.path.abspath(main_file_path))
