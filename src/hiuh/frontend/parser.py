@@ -2,23 +2,15 @@
 from hiuh.frontend.ast import *
 
 class Parser:
-    def __init__(self, tokens, imported_names=None):
+    def __init__(self, tokens):
         self.tokens = tokens
         self.pos = 0
-        # Dynamic Scope Stack. Built-ins included.
-        self.scopes = [{"SANT", "FALSKT", "lista", "inmatning", "heltal", "text", "flyttal", "mellanrum", "ny", "rad"}]
-        self.known_types = set()
-        self.known_variables = set(imported_names) if imported_names else set()
         self.in_structural_statement = False
-        self._interpreter = None  # Set by caller for wildcard import resolution
 
-    def enter_scope(self): self.scopes.append(set())
-    def exit_scope(self):
-        if len(self.scopes) > 1: self.scopes.pop()
-    def define_var(self, name): self.scopes[-1].add(name)
-    def is_var_known(self, name):
-        in_scopes = any(name in scope for scope in self.scopes)
-        return in_scopes or name in self.known_types or name in self.known_variables
+    def is_var_known(self, name): return True
+    def enter_scope(self): pass
+    def exit_scope(self): pass
+    def define_var(self, name): pass
 
     def peek(self, offset=0):
         if self.pos + offset >= len(self.tokens): return None
@@ -72,39 +64,28 @@ class Parser:
         return self.expression()
 
     def parse_import(self):
-        import_token = self.consume("T_KEYWORD_IMPORT") # använd
-
-        # Parse module name (greedy string to support filenames/multiword paths)
-        module_expr = self.parse_greedy_expression()
-        module_name = module_expr.value if hasattr(module_expr, 'value') else str(module_expr)
+        import_token = self.consume("T_KEYWORD_IMPORT")
+        # Parse module name - simple identifier or string
+        t = self.peek()
+        if t.type == "T_STRING":
+            module_name = self.consume().value
+        elif t.type == "T_IDENTIFIER":
+            module_name = self.consume().value
+        else:
+            raise SyntaxError("Förväntade modulnamn")
 
         alias = None
-        import_all = False  # Default: use alias if present
-        
-        # Support: använd matematik som matte
-        if self.peek() and self.peek().value == "som":
-            self.consume() # som
+        import_all = False
+        if self.peek() and self.peek().type == "T_KEYWORD_AS":
+            self.consume()
             parts = []
             while self.peek() and self.peek().type == "T_IDENTIFIER":
                 parts.append(self.consume().value)
             alias = " ".join(parts)
         else:
-            # No 'som' - import all variables directly from the module
             import_all = True
 
-        import_node = ImportNode(module_name, alias, import_all=import_all, token=import_token)
-        
-        # For wildcard imports, we need to execute immediately so that
-        # the parser knows the variable names for subsequent statements
-        if import_all and hasattr(self, '_interpreter'):
-            self._interpreter.visit(import_node)
-            # Add all exported variable names to known_variables
-            if hasattr(self._interpreter, '_imported_vars'):
-                for var_name in self._interpreter._imported_vars:
-                    if self._interpreter._imported_vars[var_name] == module_name:
-                        self.known_variables.add(var_name)
-        
-        return import_node
+        return ImportNode(module_name, alias, import_all=import_all, token=import_token)
 
     def parse_append(self):
         append_token = self.consume() # lägg
@@ -154,20 +135,31 @@ class Parser:
         return RemoveValueNode(target_expr, list_name, token=remove_token)
 
     def parse_open_file(self):
-        open_token = self.consume() # öppna
+        open_token = self.consume("T_KEYWORD_OPEN")
         self.in_structural_statement = True
         try:
-            path_expr = self.parse_greedy_expression()
+            # Parse path - simple identifier or string
+            t = self.peek()
+            if t.type == "T_STRING":
+                path_expr = StringNode(self.consume().value, token=t)
+            elif t.type == "T_IDENTIFIER":
+                path_expr = VarAccessNode(self.consume().value, token=t)
+            else:
+                raise SyntaxError("Förväntade filnamn eller sökväg")
 
             mode = "läsning"
             mode_token = open_token
-            if self.peek() and self.peek().value == "för":
-                self.consume() # för
-                mode_token = self.consume("T_IDENTIFIER")
-                mode = mode_token.value # läsning / skrivning
+            # Check for 'för mode' after path
+            if self.peek() and self.peek().type == "T_IDENTIFIER" and self.peek().value == "för":
+                self.consume()  # för
+                # Consume mode identifier (could be multi-word)
+                mode_parts = []
+                while self.peek() and self.peek().type == "T_IDENTIFIER" and self.peek().value not in ["som"]:
+                    mode_parts.append(self.consume().value)
+                mode = " ".join(mode_parts) if mode_parts else "läsning"
 
-            if self.peek() and self.peek().value == "som":
-                assign_token = self.consume() # som
+            if self.peek() and self.peek().type == "T_KEYWORD_AS":
+                assign_token = self.consume()  # som
             else:
                 raise SyntaxError("Förväntade 'som' efter filnamnet")
         finally:
@@ -291,34 +283,6 @@ class Parser:
 
         return PrintNode(val, token=print_token)
 
-    def _is_tree_valid(self, node):
-        if isinstance(node, StringNode):
-            return True
-
-        if isinstance(node, CloseFileNode):
-            return True
-
-        if isinstance(node, VarAccessNode):
-            if hasattr(node, 'target') and node.target:
-                return self.is_var_known(node.target)
-            return self.is_var_known(node.name)
-
-        if isinstance(node, AddNode):
-            return self._is_tree_valid(node.left) or self._is_tree_valid(node.right)
-
-        if isinstance(node, (SubNode, MulNode, DivNode, ComparisonNode)):
-            return self._is_tree_valid(node.left) and self._is_tree_valid(node.right)
-
-        if isinstance(node, FunctionCallNode):
-            return self.is_var_known(node.name) or node.name == "lista"
-
-        if isinstance(node, CastNode):
-            return self._is_tree_valid(node.value)
-
-        if isinstance(node, UnaryOpNode):
-            return self._is_tree_valid(node.operand)
-        return True
-
     def parse_greedy_expression(self):
         while self.peek() and self.peek().type in ["T_NEWLINE", "T_COMMENT"]:
             self.consume()
@@ -374,102 +338,8 @@ class Parser:
                 "T_KEYWORD_FROM", "T_KEYWORD_IN"
             ] or (nt.type == "T_IDENTIFIER" and nt.value in ["för", "som", "till"])
 
-            if is_at_boundary and (has_forced_trigger or self._is_tree_valid(expr)):
+            if is_at_boundary:
                 return expr
-            
-            # If we have a forced trigger (saw 'index', 'element', etc.) but we're not at a boundary,
-            # check if we can build a multi-word function call
-            if has_forced_trigger and nt and nt.type == "T_IDENTIFIER":
-                # Find the position of 'med' in remaining tokens
-                base_name = expr.name if hasattr(expr, 'name') else str(expr)
-                
-                # Look for 'med' followed by potential function call
-                best_name = base_name
-                best_consumed = 0
-                
-                # Scan tokens to find 'med' and the name before it
-                for i in range(len(self.tokens) - self.pos):
-                    tok = self.peek(i)
-                    if not tok:
-                        break
-                    
-                    # Found 'med' - this is a potential function call
-                    if tok.type == "T_KEYWORD_WITH":
-                        # Build name from tokens 0 to i-1
-                        name_parts = []
-                        for j in range(i):
-                            t = self.peek(j)
-                            if t and t.type == "T_IDENTIFIER":
-                                name_parts.append(t.value)
-                        
-                        candidate_name = " ".join(name_parts)
-                        
-                        # Try to extend candidate_name to find the actual known name
-                        # (since the full name might have more tokens)
-                        while True:
-                            extended = False
-                            for j in range(i, len(self.tokens) - self.pos):
-                                tok2 = self.peek(j)
-                                if not tok2 or tok2.type != "T_IDENTIFIER":
-                                    break
-                                
-                                test_name = candidate_name + " " + tok2.value
-                                if self.is_var_known(test_name):
-                                    candidate_name = test_name
-                                    extended = True
-                                    break
-                                else:
-                                    break
-                            if not extended:
-                                break
-                        
-                        if self.is_var_known(candidate_name):
-                            best_name = candidate_name
-                            # Count tokens from current position to end of name
-                            best_consumed = i - len(name_parts)
-                            for j in range(len(name_parts), i):
-                                t = self.peek(j)
-                                if t and t.type == "T_IDENTIFIER":
-                                    best_consumed += 1
-                        break
-                    
-                    # Try extending the name
-                    if tok.type == "T_IDENTIFIER":
-                        test_name = base_name
-                        for j in range(i + 1):
-                            t = self.peek(j)
-                            if t and t.type == "T_IDENTIFIER":
-                                if j < i:
-                                    test_name += " " + t.value
-                        
-                        extended_name = base_name
-                        for j in range(i + 1):
-                            t = self.peek(j)
-                            if t and t.type == "T_IDENTIFIER":
-                                extended_name += " " + t.value
-                        
-                        if self.is_var_known(extended_name):
-                            best_name = extended_name
-                            best_consumed = i + 1
-                
-                # Now consume the tokens needed to reach best_name
-                for _ in range(best_consumed):
-                    self.consume()
-                
-                # Check if next is 'med' - if so, it's a function call
-                if self.peek() and self.peek().type == "T_KEYWORD_WITH":
-                    self.consume()  # consume 'med'
-                    args = []
-                    while True:
-                        arg_expr = self.expression()
-                        if isinstance(arg_expr, VarAccessNode) and not arg_expr.target and not self.is_var_known(arg_expr.name):
-                            arg_expr = StringNode(arg_expr.name, token=t)
-                        args.append(arg_expr)
-                        if self.peek() and self.peek().type == "T_COMMA":
-                            self.consume()
-                        else:
-                            break
-                    return FunctionCallNode(best_name, args, token=t)
         except:
             if t.type == "T_KEYWORD_FUNC": raise
 
@@ -885,7 +755,7 @@ class Parser:
     def parse_type_def(self):
         type_def_token = self.consume("T_KEYWORD_TYPE")
         name = self.consume("T_IDENTIFIER").value
-        self.known_types.add(name); self.define_var(name)
+        self.define_var(name)
         f = []
         if self.peek() and self.peek().type == "T_KEYWORD_WITH":
             self.consume()

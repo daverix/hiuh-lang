@@ -525,7 +525,6 @@ class Interpreter:
         tokenizer = Tokenizer()
         tokens = tokenizer.tokenize(module_source)
         parser = Parser(tokens)
-        parser._interpreter = self  # Pass interpreter for nested wildcard imports
         module_nodes = parser.parse()
 
         # Track module variables for conflict detection
