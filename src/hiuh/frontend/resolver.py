@@ -305,9 +305,13 @@ class Resolver:
                     kwargs[key] = VarAccessNode(value.name, value.target)
                 else:
                     kwargs[key] = transformed
-            elif key in ['params', 'fields', 'alias', 'module_name', 'error_var', 'target_type', 'target_var', 'target_list', 'op']:
+            elif key in ['params', 'fields', 'alias', 'module_name', 'error_var', 'target_type', 'target_var', 'target_list', 'op', 'args']:
                 # These are simple values, not AST nodes - skip transformation
-                kwargs[key] = value
+                # BUT args should still be transformed to resolve VarAccessNode -> StringNode
+                if key == 'args':
+                    kwargs[key] = self._transform_nodes(value, module_name)
+                else:
+                    kwargs[key] = value
             elif isinstance(value, ASTNode):
                 kwargs[key] = self._transform_node(value, module_name)
             elif isinstance(value, list):

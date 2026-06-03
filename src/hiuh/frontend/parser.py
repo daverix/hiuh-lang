@@ -319,8 +319,7 @@ class Parser:
                 args = []
                 while True:
                     arg_expr = self.expression()
-                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
-                        arg_expr = StringNode(arg_expr.name, token=t)
+                    # Keep VarAccessNode
                     args.append(arg_expr)
                     if self.peek() and self.peek().type == "T_COMMA":
                         self.consume()
@@ -515,8 +514,6 @@ class Parser:
                         args = []
                         while True:
                             arg_expr = self.expression()
-                            if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
-                                arg_expr = StringNode(arg_expr.name, token=t)
                             args.append(arg_expr)
                             if self.peek() and self.peek().type == "T_COMMA":
                                 self.consume()
@@ -572,8 +569,6 @@ class Parser:
                     args = []
                     while True:
                         arg_expr = self.expression()
-                        if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
-                            arg_expr = StringNode(arg_expr.name, token=t)
                         args.append(arg_expr)
                         if self.peek() and self.peek().type == "T_COMMA":
                             self.consume()
@@ -658,7 +653,6 @@ class Parser:
                 self.consume(); args = []
                 while True:
                     arg_expr = self.expression()
-                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target: arg_expr = StringNode(arg_expr.name)
                     args.append(arg_expr)
                     if self.peek() and self.peek().type == "T_COMMA": self.consume()
                     else: break
@@ -681,8 +675,7 @@ class Parser:
                 args = []
                 while True:
                     arg_expr = self.expression()
-                    if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
-                        arg_expr = StringNode(arg_expr.name, token=t)
+                    # Keep VarAccessNode
                     args.append(arg_expr)
                     if self.peek() and self.peek().type == "T_COMMA":
                         self.consume()
