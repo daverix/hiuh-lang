@@ -484,10 +484,10 @@ class Parser:
                     # Check if this is "i" followed by "från" - then it's part of identifier, not membership check
                     if self.peek(lookahead).type == "T_KEYWORD_IN":
                         if self.peek(lookahead + 1) and self.peek(lookahead + 1).type == "T_KEYWORD_FROM":
-                            # "i" followed by "från" means "element i från x" pattern - i is part of identifier
-                            pass  # Don't break, continue
+                            # "i" followed by "från" - continue extending
+                            pass
                         else:
-                            # "i" not followed by "från" - might be membership check or standalone
+                            # "i" NOT followed by "från" - this is membership check, stop extending
                             break
                     
                     next_tok = self.peek(lookahead)
@@ -586,6 +586,12 @@ class Parser:
 
             # Multi-word Var
             while self.peek() and self.peek().type in ["T_IDENTIFIER", "T_KEYWORD_IN"]:
+                # Stop on "i" unless followed by "från" (property access pattern)
+                if self.peek().type == "T_KEYWORD_IN":
+                    if self.peek(1) and self.peek(1).type == "T_KEYWORD_FROM":
+                        pass  # Continue - is property access
+                    else:
+                        break  # Stop - is membership check
                 combined = name + " " + self.peek().value
                 if combined: name = combined; self.consume()
                 else: break
