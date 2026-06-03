@@ -457,5 +457,39 @@ skriv hittat_index plus mellanrum plus hittat_namn
             # Expected exact console dump: "2 Hiuh"
             self.assertEqual(fake_out.getvalue().strip(), "2 Hiuh")
 
+    def test_ordlista_utility_callbacks(self):
+        """Verify that ordlista.hiuh can be imported and executed with high-order callback functions."""
+        source = """
+använd ordlista
+använd listor
+
+sätt fruktantal till ny ordlista
+putta i fruktantal med äpple, 2
+putta i fruktantal med banan, 1
+putta i fruktantal med citron, 3
+
+rensa i fruktantal med banan
+
+sätt fruktpar till värden i fruktantal
+
+sätt fruktfunk till grej med par
+    sätt fruktnamn till nyckel i par
+    sätt fruktantal till värde i par
+    skriv fruktnamn plus mellanrum plus fruktantal
+
+för varje med fruktpar, fruktfunk
+
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            import os
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            hiuh_folder = os.path.join(repo_root, "hiuh_i_hiuh")
+
+            self.interpreter.script_dir_stack = [hiuh_folder]
+
+            self.run_source(source)
+
+            self.assertEqual(fake_out.getvalue().strip(), "äpple 2\ncitron 3")
+
 if __name__ == '__main__':
     unittest.main()

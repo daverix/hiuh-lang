@@ -6,7 +6,9 @@ typ par med nyckel, värde
 
 sätt ny ordlista till grej med värden
     sätt putta till grej med nyckel, värde
-        lägg till par med nyckel, värde
+        sätt listvärde till par med nyckel, värde
+        lägg till listvärde i värden
+
     sätt hämta till grej med nyckel
         sätt m till grej med p
             sätt parnyckel till nyckel från p
@@ -14,6 +16,14 @@ sätt ny ordlista till grej med värden
         ge första matchande i listor med värden, m
 
     sätt rensa till grej med nyckel
+        sätt x till längd från värden minus 1
+        medan x är större än 0
+            sätt listpar till element x från värden
+            sätt n till nyckel från listpar
+            om nyckel är lika med n
+                ta bort element x från värden
+
+            sätt x till x minus 1
 
     ge ordlista med värden, putta, hämta, rensa
 
