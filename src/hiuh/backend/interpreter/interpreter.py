@@ -202,10 +202,15 @@ class Interpreter:
                 return value
 
         # Instantiate types (e.g. sätt p till person)
-        if callable(value) and isinstance(node.value, VarAccessNode):
-            value = value()
+        try:
+            if callable(value) and isinstance(node.value, VarAccessNode):
+                value = value()
+        except ReturnException as e:
+            # Catch the return payload thrown by 'ge' and pass it back
+            return e.value
+        finally:
+            self.env.define(node.name, value)
 
-        self.env.define(node.name, value)
         return value
 
     # --- Stdout ---
