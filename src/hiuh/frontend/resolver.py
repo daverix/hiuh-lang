@@ -31,6 +31,8 @@ class Resolver:
         # Local variables tracked per module (for scope resolution)
         self.local_vars = {}  # module_name -> set of variable names
         
+        self._current_module = None
+        
         self._register_builtins()
     
     def _register_builtins(self):
@@ -281,7 +283,8 @@ class Resolver:
     
     def _transform_module_ast(self, module_name: str, ast: list) -> list:
         """Transform all AST nodes in a module."""
-        return self._transform_nodes(ast, module_name)
+        self._current_module = module_name
+        return self._visit_nodes(ast)
     
     def resolve_all(self):
         # Pass 1: Mark all ImportNodes as resolved AND collect local variables
@@ -389,108 +392,275 @@ class Resolver:
                 if node.finally_block:
                     self._collect_local_vars_recursive(node.finally_block, module_name)
     
-    def _transform_nodes(self, nodes: list, module_name: str) -> list:
-        """Recursively transform a list of nodes."""
-        result = []
-        for node in nodes:
-            transformed = self._transform_node(node, module_name)
-            result.append(transformed)
-        return result
+    # === Visitor Pattern Implementation ===
     
-    def _transform_node(self, node: ASTNode, module_name: str) -> ASTNode:
-        """Transform a single node, recursively transforming children."""
+    def _visit_nodes(self, nodes: list) -> list:
+        """Visit a list of nodes, returning transformed list."""
+        return [self.visit(node) for node in nodes]
+    
+    def visit(self, node: ASTNode) -> ASTNode:
+        """Main visitor dispatch method."""
         if node is None:
             return None
         
-        # Mark ImportNode as resolved (points to ModuleRegistry)
-        if isinstance(node, ImportNode):
-            node.resolved = True
-            return node
+        method_name = f"visit_{type(node).__name__}"
+        visitor = getattr(self, method_name, None)
         
-        # Special handling for TryCatchNode
-        if isinstance(node, TryCatchNode):
-            # Add error_var to scope for entire try-catch structure
-            if node.error_var:
-                self._add_local_var(module_name, node.error_var)
-            
-            # Transform try_block (error_var is in scope for consistency)
-            transformed_try = self._transform_nodes(node.try_block, module_name)
-            
-            transformed_catch = self._transform_nodes(node.catch_block, module_name) if node.catch_block else []
-            transformed_finally = self._transform_nodes(node.finally_block, module_name) if node.finally_block else None
-            
-            return TryCatchNode(
-                try_block=transformed_try,
-                error_var=node.error_var,
-                catch_block=transformed_catch,
-                finally_block=transformed_finally,
+        if visitor is None:
+            return node  # No visitor method, return as-is
+        
+        return visitor(node)
+    
+    # === Literal nodes - return as-is ===
+    
+    def visit_IntNode(self, node): return node
+    def visit_FloatNode(self, node): return node
+    def visit_BoolNode(self, node): return node
+    def visit_StringNode(self, node): return node
+    
+    # === ImportNode - mark as resolved ===
+    
+    def visit_ImportNode(self, node):
+        node.resolved = True
+        return node
+    
+    # === VarAccessNode - resolve or stringify ===
+    
+    def visit_VarAccessNode(self, node):
+        return self._resolve_var_access(node)
+    
+    # === Expression nodes - transform children ===
+    
+    def visit_AddNode(self, node):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        if left is node.left and right is node.right:
+            return node
+        return AddNode(left=left, right=right, token=node)
+    
+    def visit_SubNode(self, node):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        if left is node.left and right is node.right:
+            return node
+        return SubNode(left=left, right=right, token=node)
+    
+    def visit_MulNode(self, node):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        if left is node.left and right is node.right:
+            return node
+        return MulNode(left=left, right=right, token=node)
+    
+    def visit_DivNode(self, node):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        if left is node.left and right is node.right:
+            return node
+        return DivNode(left=left, right=right, token=node)
+    
+    def visit_NotNode(self, node):
+        condition = self.visit(node.condition)
+        if condition is node.condition:
+            return node
+        return NotNode(condition=condition, token=node)
+    
+    def visit_UnaryOpNode(self, node):
+        operand = self.visit(node.operand)
+        if operand is node.operand:
+            return node
+        return UnaryOpNode(op=node.op, operand=operand, token=node)
+    
+    # === ComparisonNode - special handling for stringification ===
+    
+    def visit_ComparisonNode(self, node):
+        op = node.op.strip() if hasattr(node, 'op') and node.op else ''
+        
+        # Membership check (i) should NOT be stringified
+        if op == 'i':
+            left = self.visit(node.left)
+            right = self.visit(node.right)
+            if left is node.left and right is node.right:
+                return node
+            return ComparisonNode(left=left, right=right, op=op, token=node)
+        
+        left = node.left
+        right = node.right
+        
+        # Check if left is unresolved (e.g., 'a större än 2' where 'a' is unknown)
+        left_unresolved = isinstance(left, VarAccessNode) and self._is_unresolved(left)
+        
+        if left_unresolved:
+            left_str = self._get_string_value(left)
+            right_str = self._get_string_value(self.visit(right))
+            return StringNode(f"{left_str} {op} {right_str}".strip(), token=node)
+        
+        # If right is unresolved and looks like an identifier (not a number), treat it as
+        # a string literal and keep the comparison for evaluation
+        right_unresolved = isinstance(right, VarAccessNode) and self._is_unresolved(right)
+        
+        if right_unresolved:
+            # Right is an unresolved identifier - treat as string literal
+            # Keep comparison, but transform right to a StringNode
+            return ComparisonNode(
+                left=self.visit(left),
+                right=StringNode(right.name, token=right),
+                op=op,
                 token=node
             )
         
-        # Special handling for ComparisonNode
-        if isinstance(node, ComparisonNode):
-            left = node.left
-            right = node.right
-            op = node.op if hasattr(node, 'op') and node.op else ''
-            
-            # Membership check (i) should NOT be stringified
-            if op.strip() == 'i':
-                return self._copy_and_transform(node, module_name)
-            
-            # Stringify if left is unresolved (e.g., 'a större än 2' where 'a' is unknown)
-            left_unresolved = isinstance(left, VarAccessNode) and self._is_unresolved(left, module_name)
-            
-            if left_unresolved:
-                left_str = self._get_string_value(left)
-                right_str = self._get_string_value(right)
-                return StringNode(f"{left_str} {op} {right_str}".strip(), token=node)
-            
-            # If right is unresolved and looks like an identifier (not a number), treat it as
-            # a string literal and keep the comparison for evaluation
-            right_unresolved = isinstance(right, VarAccessNode) and self._is_unresolved(right, module_name)
-            
-            if right_unresolved:
-                # Right is an unresolved identifier - treat as string literal
-                # Keep comparison, but transform right to a StringNode
-                return ComparisonNode(
-                    left=self._transform_node(left, module_name),
-                    right=StringNode(right.name, token=right),
-                    op=op,
-                    token=node
-                )
+        # Normal case - transform children
+        new_left = self.visit(left)
+        new_right = self.visit(right)
         
-        # VarAccessNode: resolve or stringify
-        if isinstance(node, VarAccessNode):
-            return self._resolve_var_access(node, module_name)
-
-        # Create a copy of the node with transformed children
-        new_node = self._copy_and_transform(node, module_name)
-        return new_node
-
-    def _is_unresolved(self, node: ASTNode, module_name: str) -> bool:
+        if new_left is left and new_right is right:
+            return node
+        
+        return ComparisonNode(left=new_left, right=new_right, op=op, token=node)
+    
+    # === Function nodes ===
+    
+    def visit_FunctionDefNode(self, node):
+        # Collect params as local vars
+        for p in node.params:
+            self._add_local_var(self._current_module, p)
+        
+        body = self._visit_nodes(node.body)
+        if body is node.body:
+            return node
+        return FunctionDefNode(params=node.params, body=body, line=node.line, column=node.column)
+    
+    def visit_FunctionCallNode(self, node):
+        args = self._visit_nodes(node.args)
+        if args is node.args:
+            return node
+        return FunctionCallNode(name=node.name, args=args, token=node)
+    
+    def visit_ReturnNode(self, node):
+        value = self.visit(node.value)
+        if value is node.value:
+            return node
+        return ReturnNode(value=value, token=node)
+    
+    # === Statement nodes - transform children ===
+    
+    def visit_AssignNode(self, node):
+        value = self.visit(node.value)
+        if value is node.value:
+            return node
+        return AssignNode(name=node.name, value=value, target_type=node.target_type, token=node)
+    
+    def visit_PrintNode(self, node):
+        value = self.visit(node.value)
+        if value is node.value:
+            return node
+        return PrintNode(value=value, token=node)
+    
+    def visit_IfNode(self, node):
+        condition = self.visit(node.condition)
+        true_block = self._visit_nodes(node.true_block or [])
+        false_block = self._visit_nodes(node.false_block) if node.false_block else None
+        
+        if condition is node.condition and true_block is node.true_block and false_block is node.false_block:
+            return node
+        
+        return IfNode(
+            condition=condition,
+            true_block=true_block,
+            false_block=false_block,
+            line=node.line,
+            column=node.column
+        )
+    
+    def visit_WhileNode(self, node):
+        condition = self.visit(node.condition)
+        body = self._visit_nodes(node.body or [])
+        
+        if condition is node.condition and body is node.body:
+            return node
+        
+        return WhileNode(condition=condition, body=body, line=node.line, column=node.column)
+    
+    def visit_TryCatchNode(self, node):
+        if node.error_var:
+            self._add_local_var(self._current_module, node.error_var)
+        
+        try_block = self._visit_nodes(node.try_block)
+        catch_block = self._visit_nodes(node.catch_block) if node.catch_block else []
+        finally_block = self._visit_nodes(node.finally_block) if node.finally_block else None
+        
+        if try_block is node.try_block and catch_block is node.catch_block and finally_block is node.finally_block:
+            return node
+        
+        return TryCatchNode(
+            try_block=try_block,
+            error_var=node.error_var,
+            catch_block=catch_block,
+            finally_block=finally_block,
+            token=node
+        )
+    
+    def visit_TypeDefNode(self, node):
+        return node  # No transformation needed
+    
+    def visit_CastNode(self, node):
+        value = self.visit(node.value)
+        if value is node.value:
+            return node
+        return CastNode(value=value, target_type=node.target_type, token=node)
+    
+    def visit_AppendNode(self, node):
+        value = self.visit(node.value)
+        if value is node.value:
+            return node
+        return AppendNode(target_list=node.target_list, value=value, token=node)
+    
+    def visit_RemoveIndexNode(self, node):
+        index = self.visit(node.index)
+        if index is node.index:
+            return node
+        return RemoveIndexNode(target_list=node.target_list, index=index, token=node)
+    
+    def visit_RemoveValueNode(self, node):
+        value = self.visit(node.value)
+        if value is node.value:
+            return node
+        return RemoveValueNode(target_list=node.target_list, value=value, token=node)
+    
+    def visit_FileWriteNode(self, node):
+        value = self.visit(node.value)
+        if value is node.value:
+            return node
+        return FileWriteNode(target_var=node.target_var, value=value, token=node)
+    
+    def visit_CloseFileNode(self, node):
+        return node  # No transformation needed
+    
+    # === Helper methods ===
+    
+    def _is_unresolved(self, node: VarAccessNode) -> bool:
         """Check if a VarAccessNode cannot be resolved in the current scope."""
         # If it has a target (qualified access), check that target
-        if isinstance(node, VarAccessNode) and node.target:
-            return not self.module_registry.resolve_symbol(node.target, module_name)
+        if node.target:
+            return not self.module_registry.resolve_symbol(node.target, self._current_module)
         
         # Check if it's a known symbol in the registry (including stdlib)
-        if isinstance(node, VarAccessNode):
-            name = node.name
-            # Check local vars first
-            if self._is_local_var(name, module_name):
-                return False
-            # Check module registry (includes stdlib symbols)
-            if self.module_registry.resolve_symbol(name, module_name):
-                return False
-            # Check stdlib (__main__) directly
-            if '__main__' in self.module_registry.modules and name in self.module_registry.modules['__main__'].symbols:
-                return False
+        name = node.name
+        # Check local vars first
+        if self._is_local_var(name):
+            return False
+        # Check module registry (includes stdlib symbols)
+        if self.module_registry.resolve_symbol(name, self._current_module):
+            return False
+        # Check stdlib (__main__) directly
+        if '__main__' in self.module_registry.modules and name in self.module_registry.modules['__main__'].symbols:
+            return False
         
         return True
     
-    def _is_local_var(self, name: str, module_name: str) -> bool:
-        """Check if a name is a local variable in the module."""
-        return name in self.local_vars.get(module_name, set())
+    def _is_local_var(self, name: str) -> bool:
+        """Check if a name is a local variable in the current module."""
+        return name in self.local_vars.get(self._current_module, set())
     
     def _get_string_value(self, node: ASTNode) -> str:
         """Get the string value of a node for stringification."""
@@ -507,64 +677,20 @@ class Resolver:
         else:
             return str(node)
     
-    def _copy_and_transform(self, node: ASTNode, module_name: str) -> ASTNode:
-        """Create a copy of node with transformed children."""
-        cls = type(node)
-        kwargs = {}
-        
-        for key, value in node.__dict__.items():
-            if key in ['line', 'column']:
-                continue
-            elif key == 'name' and isinstance(value, VarAccessNode):
-                kwargs[key] = value
-            elif key == 'params' and isinstance(node, FunctionDefNode):
-                for p in value:
-                    self._add_local_var(module_name, p)
-                kwargs[key] = value
-            elif key == 'body' and isinstance(node, FunctionDefNode):
-                kwargs[key] = self._transform_nodes(value, module_name)
-            elif key == 'body' and isinstance(node, WhileNode):
-                kwargs[key] = self._transform_nodes(value or [], module_name)
-            elif key == 'true_block':
-                kwargs[key] = self._transform_nodes(value or [], module_name)
-            elif key == 'false_block':
-                kwargs[key] = self._transform_nodes(value or [], module_name) if value else None
-            elif key == 'condition':
-                kwargs[key] = self._transform_node(value, module_name) if value else None
-            elif key in ['params', 'fields', 'alias', 'error_var', 'target_type', 'target_var', 'target_list', 'op', 'args']:
-                if key == 'args':
-                    kwargs[key] = self._transform_nodes(value, module_name)
-                else:
-                    kwargs[key] = value
-            elif key == 'module_name':
-                # Preserve module_name as-is (it's a string, not an AST to transform)
-                kwargs[key] = value
-            elif isinstance(value, ASTNode):
-                kwargs[key] = self._transform_node(value, module_name)
-            elif isinstance(value, list):
-                if value and isinstance(value[0], str):
-                    kwargs[key] = value
-                else:
-                    kwargs[key] = self._transform_nodes(value, module_name)
-            else:
-                kwargs[key] = value
-        
-        return cls(**kwargs)
-    
-    def _resolve_var_access(self, node: VarAccessNode, module_name: str) -> ASTNode:
+    def _resolve_var_access(self, node: VarAccessNode) -> ASTNode:
         """Resolve a variable/field access - return StringNode if unknown."""
         if node.target:
-            symbol = self.module_registry.resolve_symbol(node.target, module_name)
-            is_local = self._is_local_var(node.target, module_name)
+            symbol = self.module_registry.resolve_symbol(node.target, self._current_module)
+            is_local = self._is_local_var(node.target)
             if symbol or is_local:
                 return node
             return StringNode(f"{node.target}.{node.name}", token=node)
         
-        symbol = self.module_registry.resolve_symbol(node.name, module_name)
+        symbol = self.module_registry.resolve_symbol(node.name, self._current_module)
         if symbol:
             return node
         
-        if self._is_local_var(node.name, module_name):
+        if self._is_local_var(node.name):
             return node
         
         # Check stdlib (__main__) for built-in constants like 'mellanrum'
@@ -574,9 +700,9 @@ class Resolver:
         # Try individual parts
         name_parts = node.name.split()
         for part in name_parts:
-            if self._is_local_var(part, module_name):
+            if self._is_local_var(part):
                 return node
-            if self.module_registry.resolve_symbol(part, module_name):
+            if self.module_registry.resolve_symbol(part, self._current_module):
                 return node
         
         # Unknown symbol - transform to string literal
