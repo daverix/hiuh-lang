@@ -237,8 +237,10 @@ class TestHiuhParserAST(unittest.TestCase):
 
     def test_stdin_section(self):
         source = "sätt t till nästa rad från inmatning"
-        ast = self.parse_source(source)
-        self.assertIsInstance(ast[0], AssignNode)
+        expected = [
+            AssignNode("t", VarAccessNode("nästa rad", target="inmatning"))
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_error_handling_section(self):
         """Test try-catch error handling. 'fel' is in scope in both try and catch blocks."""
