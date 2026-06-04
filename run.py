@@ -3,10 +3,10 @@
 import os
 import sys
 
-from hiuh.frontend.module_registry import ModuleRegistry
-
-# Ensure the 'src' directory is in the python path
+# Ensure the 'src' directory is in the python path - BEFORE any hiuh imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+
+from hiuh.frontend.module_registry import ModuleRegistry
 
 from hiuh.frontend.resolver import Resolver
 from hiuh.backend.interpreter.interpreter import Interpreter
