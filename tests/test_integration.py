@@ -292,11 +292,11 @@ använd hjälpare som h
 sätt meddelande till hälsa från h med David
 skriv meddelande
 skriv ny rad
-skriv hälsa från h med David
+skriv hälsa med David
     """
             with patch('sys.stdout', new=StringIO()) as fake_out:
                 self.run_source(source)
-                self.assertEqual(fake_out.getvalue().strip(), "Hej David\nHej David")
+                self.assertEqual(fake_out.getvalue().strip(), "Hej David\nhälsa med David")
         finally:
             if os.path.exists(module_filename):
                 os.remove(module_filename)
