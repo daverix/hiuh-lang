@@ -13,7 +13,7 @@ sätt ny ordlista till grej med värden
         sätt m till grej med p
             sätt parnyckel till nyckel från p
             ge parnyckel lika med nyckel
-        ge första matchande i listor med värden, m
+        ge första matchande med värden, m
 
     sätt rensa till grej med nyckel
         sätt x till längd från värden minus 1
