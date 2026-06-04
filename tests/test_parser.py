@@ -1,17 +1,22 @@
 import os
 import unittest
-from hiuh.frontend.tokenizer import Tokenizer
+
+from hiuh.frontend.ast import *
+from hiuh.frontend.module_registry import ModuleRegistry
 from hiuh.frontend.parser import Parser
 from hiuh.frontend.resolver import Resolver
-from hiuh.frontend.ast import *
+from hiuh.frontend.tokenizer import Tokenizer
+
 
 class TestHiuhParserAST(unittest.TestCase):
     def setUp(self):
         self.tokenizer = Tokenizer()
         self.repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.hiuh_folder = os.path.join(self.repo_root, "hiuh_i_hiuh")
+        self.module_registry = ModuleRegistry(os.path.join(self.repo_root, "build", "symbols"))
+        self.resolver = Resolver(self.module_registry, self.hiuh_folder)
 
-    def parse_source(self, source, stdlib_path=None, modules=None):
+    def parse_source(self, source, modules=None):
         """Parse source and run resolver to get transformed AST.
         
         Args:
@@ -24,19 +29,18 @@ class TestHiuhParserAST(unittest.TestCase):
         ast = parser.parse()
         
         # Run resolver to validate and transform symbols
-        resolver = Resolver(stdlib_path=stdlib_path)
-        resolver.discover_modules_from_ast("main", ast, stdlib_path or self.hiuh_folder)
+        self.resolver.discover_modules_from_ast("main", ast, self.hiuh_folder)
         
         # Register in-memory module sources if provided
         if modules:
             for name, module_source in modules.items():
-                resolver.register_module_source(name, module_source)
-        
-        resolver.discover_imports("main")
-        resolver.resolve_all()
+                self.resolver.register_module_source(name, module_source)
+
+        self.resolver.discover_imports("main")
+        self.resolver.resolve_all()
         
         # Return the resolver's transformed AST, not the original
-        return resolver.get_ast("main")
+        return self.resolver.get_ast("main")
 
     def strip_locations(self, node):
         if isinstance(node, list):
@@ -448,7 +452,7 @@ sätt namn_lista till lista
 
 sätt hittat_index till index på första matchande med namn_lista, matchar_hiuh
         """
-        nodes = self.parse_source(source, stdlib_path=self.hiuh_folder)
+        nodes = self.parse_source(source)
 
         # Expected AST structure after resolver:
         # ImportNode is marked resolved (symbols in ModuleRegistry)
@@ -456,7 +460,7 @@ sätt hittat_index till index på första matchande med namn_lista, matchar_hiuh
         expected = [
             ImportNode("listor", import_all=True, resolved=True),
             # Local code (no inlined functions from listor)
-            AssignNode("matchar_hiuh", FunctionDefNode(["text_stycke"], [ReturnNode(StringNode("text_stycke lika med Hiuhi do"))])),
+            AssignNode("matchar_hiuh", FunctionDefNode(["text_stycke"], [ReturnNode(ComparisonNode(VarAccessNode("text_stycke"), "lika med", StringNode("Hiuhi do")))])),
             AssignNode("namn_lista", FunctionCallNode("lista", [])),
             AssignNode("hittat_index", FunctionCallNode("index på första matchande", [VarAccessNode("namn_lista"), VarAccessNode("matchar_hiuh")]))
         ]
@@ -473,7 +477,7 @@ sätt matchar till grej med x
 
 sätt resultat till första matchande med lista, matchar
         """
-        nodes = self.parse_source(source, stdlib_path=self.hiuh_folder)
+        nodes = self.parse_source(source)
 
         # ImportNode should be marked as resolved
         import_nodes = [n for n in nodes if isinstance(n, ImportNode)]
@@ -496,7 +500,7 @@ använd ordlista
 
 sätt min_ordlista till ny tom ordlista
         """
-        nodes = self.parse_source(source, stdlib_path=self.hiuh_folder)
+        nodes = self.parse_source(source)
 
         # Check that we have an ImportNode (resolved) and the local assignment
         import_nodes = [n for n in nodes if isinstance(n, ImportNode)]
@@ -526,33 +530,16 @@ sätt min_lista till lista
 sätt resultat till köra med min_lista, grej med n
 skriv n
         """
-        
-        def parse_with_registry(source_str, modules):
-            tokens = self.tokenizer.tokenize(source_str)
-            parser = Parser(tokens)
-            ast = parser.parse()
-            
-            resolver = Resolver()
-            resolver.discover_modules_from_ast("main", ast)
-            
-            if modules:
-                for name, module_source in modules.items():
-                    resolver.register_module_source(name, module_source)
-            
-            resolver.discover_imports("main")
-            resolver.resolve_all()
-            
-            return resolver.get_ast("main"), resolver.get_module_registry()
-        
-        nodes, registry = parse_with_registry(source, {"test_callbacks": callbacks_source})
-        
-        # With no-flatten design: ImportNode is in AST, functions are in registry
+
+        self.resolver.register_module_source("test_callbacks", callbacks_source)
+        nodes = self.parse_source(source)
+
         import_nodes = [n for n in nodes if isinstance(n, ImportNode)]
         self.assertEqual(len(import_nodes), 1)
         self.assertTrue(import_nodes[0].resolved)
         
         # Check function is in module registry
-        test_module = registry.get_module("test_callbacks")
+        test_module = self.module_registry.get_module("test_callbacks")
         self.assertIsNotNone(test_module)
         köra_sym = test_module.get_symbol("köra")
         self.assertIsNotNone(köra_sym)
@@ -570,20 +557,8 @@ sätt namn_lista till lista
 
 sätt hittat_index till index på första matchande med namn_lista, matchar_hiuh
         """
-        
-        def parse_with_registry(source_str):
-            tokens = self.tokenizer.tokenize(source_str)
-            parser = Parser(tokens)
-            ast = parser.parse()
-            
-            resolver = Resolver()
-            resolver.discover_modules_from_ast("main", ast, self.hiuh_folder)
-            resolver.discover_imports("main")
-            resolver.resolve_all()
-            
-            return resolver.get_ast("main"), resolver.get_module_registry()
-        
-        nodes, registry = parse_with_registry(source)
+
+        nodes = self.parse_source(source)
         
         # Verify ImportNode is resolved
         import_nodes = [n for n in nodes if isinstance(n, ImportNode)]
@@ -591,7 +566,7 @@ sätt hittat_index till index på första matchande med namn_lista, matchar_hiuh
         self.assertTrue(import_nodes[0].resolved)
         
         # Check function is in module registry
-        listor_module = registry.get_module("listor")
+        listor_module = self.module_registry.get_module("listor")
         self.assertIsNotNone(listor_module)
         index_sym = listor_module.get_symbol("index på första matchande")
         self.assertIsNotNone(index_sym)

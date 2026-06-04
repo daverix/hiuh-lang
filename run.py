@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-import sys
 import os
+import sys
+
+from hiuh.frontend.module_registry import ModuleRegistry
 
 # Ensure the 'src' directory is in the python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
-from hiuh.frontend.tokenizer import Tokenizer
-from hiuh.frontend.parser import Parser
 from hiuh.frontend.resolver import Resolver
 from hiuh.backend.interpreter.interpreter import Interpreter
 
@@ -36,12 +36,17 @@ def compile_and_run(file_path: str, cli_args: list):
     if not os.path.exists(abs_path):
         print(f"Fel: Filen '{abs_path}' hittades inte.")
         return
-    
+
+    working_dir = os.path.dirname(os.path.abspath(__file__))
+
     # Get stdlib path (if available)
     stdlib_path = get_stdlib_path()
-    
+    symbols_dir = os.path.join(working_dir, "build", "symbols")
+
+    module_registry = ModuleRegistry(symbols_dir)
+
     # Discover and parse all modules
-    resolver = Resolver(stdlib_path=stdlib_path)
+    resolver = Resolver(module_registry, stdlib_path=stdlib_path)
     
     try:
         main_module = resolver.discover_modules(abs_path)
@@ -66,7 +71,7 @@ def compile_and_run(file_path: str, cli_args: list):
     nodes = main_module_info.ast
     
     # Execute with interpreter
-    interpreter = Interpreter(resolver.registry)
+    interpreter = Interpreter(module_registry)
     interpreter.globals.define("argument", cli_args)
     interpreter.script_dir_stack = [base_dir]
     interpreter.modules = resolver.modules  # Pass module info for future use

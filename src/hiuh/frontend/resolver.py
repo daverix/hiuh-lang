@@ -16,14 +16,14 @@ from hiuh.frontend.module_registry import ModuleRegistry, FunctionSignature
 
 
 class Resolver:
-    def __init__(self, stdlib_path: str = None, target_dir: str = None):
+    def __init__(self, module_registry: ModuleRegistry, stdlib_path: str | None = None, target_dir: None | str = None):
         self.stdlib_path = stdlib_path
         self.target_dir = target_dir
         self.errors = []
         self.main_module = None
         
         # Module registry: stores AST and symbol table for each module
-        self.module_registry = ModuleRegistry(target_dir=target_dir)
+        self.module_registry = module_registry
         
         # Internal module storage for raw AST parsing
         self.modules = {}  # name -> ModuleInfo (parsed AST)
@@ -192,7 +192,7 @@ class Resolver:
         self.main_module = main_name
         return main_name
     
-    def discover_modules_from_ast(self, module_name: str, ast: list, script_dir: str = None):
+    def discover_modules_from_ast(self, module_name: str, ast: list, script_dir: str):
         module = ModuleInfo(module_name, script_dir or "")
         module.ast = ast
         self.modules[module_name] = module
@@ -307,8 +307,7 @@ class Resolver:
             self.module_registry.modules[module_name].ast = module.ast
         
         # Save symbol tables to target directory
-        if self.target_dir:
-            self.module_registry.save()
+        self.module_registry.save()
         
         return len(self.errors) == 0
     
@@ -346,38 +345,49 @@ class Resolver:
     
     def _mark_imports_resolved(self, ast: list, module_name: str = None):
         """Mark all ImportNodes as resolved and collect local vars (Pass 1+2)."""
+        self._collect_local_vars_recursive(ast, module_name)
+        
         for node in ast:
             if isinstance(node, ImportNode):
                 if module_name:
                     node.resolved = True
-            elif isinstance(node, AssignNode):
+    
+    def _collect_local_vars_recursive(self, ast: list, module_name: str = None):
+        """Recursively collect all local variables from AST nodes."""
+        if not module_name:
+            return
+        
+        for node in ast:
+            if isinstance(node, AssignNode):
                 if isinstance(node.value, FunctionDefNode):
-                    # Collect params and recurse into body
-                    if module_name:
-                        for p in node.value.params:
-                            self._add_local_var(module_name, p)
-                    self._mark_imports_resolved(node.value.body or [], module_name)
-                elif module_name:
+                    # It's a function definition - collect the function name as a local var
+                    # (so it can be referenced within the same scope)
+                    self._add_local_var(module_name, node.name)
+                    # Collect function params
+                    for p in node.value.params:
+                        self._add_local_var(module_name, p)
+                    # Recursively collect from function body
+                    self._collect_local_vars_recursive(node.value.body or [], module_name)
+                else:
                     # Non-function assignment - this is a local variable
                     self._add_local_var(module_name, node.name)
             elif isinstance(node, FunctionDefNode):
-                # Collect params
-                if module_name:
-                    for p in node.params:
-                        self._add_local_var(module_name, p)
-                self._mark_imports_resolved(node.body or [], module_name)
+                # Standalone function definition (not in an AssignNode)
+                for p in node.params:
+                    self._add_local_var(module_name, p)
+                self._collect_local_vars_recursive(node.body or [], module_name)
             elif isinstance(node, IfNode):
-                self._mark_imports_resolved(node.true_block or [], module_name)
-                self._mark_imports_resolved(node.false_block or [], module_name)
+                self._collect_local_vars_recursive(node.true_block or [], module_name)
+                self._collect_local_vars_recursive(node.false_block or [], module_name)
             elif isinstance(node, WhileNode):
-                self._mark_imports_resolved(node.body or [], module_name)
+                self._collect_local_vars_recursive(node.body or [], module_name)
             elif isinstance(node, TryCatchNode):
-                if module_name and node.error_var:
+                if node.error_var:
                     self._add_local_var(module_name, node.error_var)
-                self._mark_imports_resolved(node.try_block or [], module_name)
-                self._mark_imports_resolved(node.catch_block or [], module_name)
+                self._collect_local_vars_recursive(node.try_block or [], module_name)
+                self._collect_local_vars_recursive(node.catch_block or [], module_name)
                 if node.finally_block:
-                    self._mark_imports_resolved(node.finally_block, module_name)
+                    self._collect_local_vars_recursive(node.finally_block, module_name)
     
     def _transform_nodes(self, nodes: list, module_name: str) -> list:
         """Recursively transform a list of nodes."""
@@ -529,11 +539,7 @@ class Resolver:
             if key in ['line', 'column']:
                 continue
             elif key == 'name' and isinstance(value, VarAccessNode):
-                transformed = self._transform_node(value, module_name)
-                if isinstance(transformed, StringNode) and value.target:
-                    kwargs[key] = VarAccessNode(value.name, value.target)
-                else:
-                    kwargs[key] = transformed
+                kwargs[key] = value
             elif key == 'params' and isinstance(node, FunctionDefNode):
                 for p in value:
                     self._add_local_var(module_name, p)
@@ -598,11 +604,7 @@ class Resolver:
         
         # Unknown symbol - transform to string literal
         return StringNode(node.name, token=node)
-    
-    def get_module_registry(self) -> ModuleRegistry:
-        """Get the module registry (for use by backends)."""
-        return self.module_registry
-    
+
     def get_ast(self, module_name: str = None) -> list:
         """Get the AST for a module."""
         if module_name is None:

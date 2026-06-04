@@ -4,6 +4,7 @@ from io import StringIO
 from unittest.mock import patch
 
 from hiuh.backend.interpreter.interpreter import Interpreter
+from hiuh.frontend.module_registry import ModuleRegistry
 from hiuh.frontend.parser import Parser
 from hiuh.frontend.resolver import Resolver
 from hiuh.frontend.tokenizer import Tokenizer
@@ -12,15 +13,19 @@ from hiuh.frontend.tokenizer import Tokenizer
 class TestHiuhFullIntegration(unittest.TestCase):
     def setUp(self):
         self.tokenizer = Tokenizer()
-        self.interpreter = Interpreter()
+
+        self.repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.hiuh_folder = os.path.join(self.repo_root, "hiuh_i_hiuh")
+        self.module_registry = ModuleRegistry(os.path.join(self.repo_root, "build", "symbols"))
+        self.interpreter = Interpreter(self.module_registry)
 
     def run_source(self, source, script_dir=None):
         tokens = self.tokenizer.tokenize(source)
         parser = Parser(tokens)
         nodes = parser.parse()
-        
+
         # Use Resolver to resolve imports (marks ImportNode.resolved = True)
-        resolver = Resolver()
+        resolver = Resolver(self.module_registry, self.hiuh_folder, script_dir)
         resolver.discover_modules_from_ast("main", nodes, script_dir)
         resolver.discover_imports("main")  # Load imported modules
         resolver.resolve_all()
@@ -29,7 +34,6 @@ class TestHiuhFullIntegration(unittest.TestCase):
         # Pass module registry and script directory to interpreter
         if script_dir:
             self.interpreter.script_dir_stack = [script_dir]
-        self.interpreter.module_registry = resolver.get_module_registry()
         
         return self.interpreter.execute(nodes)
 
@@ -514,17 +518,8 @@ sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
 skriv hittat_index plus mellanrum plus hittat_namn
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
-            # Explicitly seed the base script folder context path so the
-            # interpreter's 'använd listor' locator knows exactly where to look
-            import os
-            # Use the project root (parent of tests directory)
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            hiuh_folder = os.path.join(repo_root, "hiuh_i_hiuh")
+            self.run_source(source)
 
-            self.run_source(source, script_dir=hiuh_folder)
-
-            # Index of 'Hiuh' in [Java, Python, Hiuh, Kotlin] is 2
-            # Expected exact console dump: "2 Hiuh"
             self.assertEqual(fake_out.getvalue().strip(), "2 Hiuh")
 
     def test_ordlista_utility_callbacks(self):
@@ -551,11 +546,7 @@ för varje med fruktpar, fruktfunk
 
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
-            import os
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            hiuh_folder = os.path.join(repo_root, "hiuh_i_hiuh")
-
-            self.run_source(source, script_dir=hiuh_folder)
+            self.run_source(source)
 
             self.assertEqual(fake_out.getvalue().strip(), "äpple 2\ncitron 3")
 

@@ -3,6 +3,8 @@ import os
 import sys
 from hiuh.frontend.ast import *
 from hiuh.backend.interpreter.environment import Environment
+from hiuh.frontend.module_registry import ModuleRegistry
+
 
 class ReturnException(Exception):
     """Internal interpreter exception used to bubble return values out of nested scopes."""
@@ -28,8 +30,7 @@ class Char:
         return f"Char({self.value!r})"
 
 class Interpreter:
-    def __init__(self, registry=None, module_registry=None):
-        self.registry = registry  # Legacy SymbolRegistry
+    def __init__(self, module_registry: ModuleRegistry):
         self.module_registry = module_registry  # ModuleRegistry for cross-module resolution
         self.globals = Environment()
         self.globals.define("SANT", True)
