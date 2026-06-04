@@ -141,11 +141,12 @@ class TryCatchNode(ASTNode):
         self.finally_block = finally_block
 
 class ImportNode(ASTNode):
-    def __init__(self, module_name, alias=None, import_all=False, token=None):
+    def __init__(self, module_name, alias=None, import_all=False, resolved=False, token=None):
         super().__init__(token.line if token else None, token.column if token else None)
         self.module_name = module_name
         self.alias = alias
         self.import_all = import_all
+        self.resolved = resolved  # False by default, set True by resolver
 
 class CastNode(ASTNode):
     def __init__(self, value, target_type, token=None):

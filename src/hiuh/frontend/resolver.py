@@ -3,12 +3,11 @@
 Resolver: Resolves imports and symbol references across modules.
 
 Uses ModuleRegistry to store each module's AST and symbol table together.
-This makes it easy to switch between AST and symbol-based representations
-for different backends (e.g., interpreter vs x86).
+Does NOT flatten imports - keeps ImportNode intact for backends to resolve.
 
 Two-pass:
-  1. Collect all declarations into symbol table
-  2. Resolve all symbol references and transform AST
+  1. Collect all declarations into symbol table (via ModuleRegistry)
+  2. Resolve symbol references and transform AST
 """
 
 import os
@@ -27,7 +26,7 @@ class Resolver:
         self.module_registry = ModuleRegistry(target_dir=target_dir)
         
         # Internal module storage for raw AST parsing
-        self.modules = {}  # name -> ModuleInfo (parsed AST, not symbol table)
+        self.modules = {}  # name -> ModuleInfo (parsed AST)
         
         # Local variables tracked per module (for scope resolution)
         self.local_vars = {}  # module_name -> set of variable names
@@ -92,15 +91,63 @@ class Resolver:
         
         # Register all top-level declarations from this module
         for node in ast:
-            if isinstance(node, AssignNode):
-                if isinstance(node.value, FunctionDefNode):
-                    self.module_registry.modules[name].add_symbol(
-                        node.name, "func", FunctionSignature(params=node.value.params)
-                    )
-                else:
-                    self.module_registry.modules[name].add_symbol(node.name, "var")
-            elif isinstance(node, TypeDefNode):
-                self.module_registry.modules[name].add_symbol(node.name, "type")
+            self._register_node_declarations(node, name)
+    
+    def _register_node_declarations(self, node: ASTNode, module_name: str):
+        """Register declarations from a node into the module registry."""
+        if node is None:
+            return
+        
+        if isinstance(node, ImportNode):
+            # Record the import
+            self.module_registry.add_import(module_name, node.module_name)
+            return
+        
+        if isinstance(node, TypeDefNode):
+            self.module_registry.modules[module_name].add_symbol(node.name, "type")
+            return
+        
+        if isinstance(node, AssignNode):
+            if isinstance(node.value, FunctionDefNode):
+                self.module_registry.modules[module_name].add_symbol(
+                    node.name, "func", FunctionSignature(params=node.value.params)
+                )
+            else:
+                self.module_registry.modules[module_name].add_symbol(node.name, "var")
+            return
+        
+        # Recursively handle nested structures
+        if isinstance(node, FunctionDefNode):
+            # Register params
+            for param in node.params:
+                self._add_local_var(module_name, param)
+            # Register body declarations
+            for stmt in node.body or []:
+                self._register_node_declarations(stmt, module_name)
+            return
+        
+        if isinstance(node, IfNode):
+            for stmt in (node.true_block or []):
+                self._register_node_declarations(stmt, module_name)
+            for stmt in (node.false_block or []):
+                self._register_node_declarations(stmt, module_name)
+            return
+        
+        if isinstance(node, WhileNode):
+            for stmt in (node.body or []):
+                self._register_node_declarations(stmt, module_name)
+            return
+        
+        if isinstance(node, TryCatchNode):
+            if node.error_var:
+                self._add_local_var(module_name, node.error_var)
+            for stmt in (node.try_block or []):
+                self._register_node_declarations(stmt, module_name)
+            for stmt in (node.catch_block or []):
+                self._register_node_declarations(stmt, module_name)
+            if node.finally_block:
+                for stmt in node.finally_block:
+                    self._register_node_declarations(stmt, module_name)
     
     def discover_imports(self, module_name: str):
         """Discover and load imports for an already registered module."""
@@ -110,20 +157,23 @@ class Resolver:
         
         for node in module.ast:
             if isinstance(node, ImportNode):
-                # If the imported module is already registered, no need to load from disk
-                if node.module_name not in self.modules:
-                    # Try to load from disk
-                    if module.path and module.path != "<in_memory>":
-                        if os.path.isdir(module.path):
-                            base_dir = module.path
-                        elif os.path.isfile(module.path):
-                            base_dir = os.path.dirname(module.path)
-                        else:
-                            base_dir = module.path
-                        file_path = self._find_module_file(node.module_name, module_name)
-                        if file_path:
-                            self._load_module(node.module_name, file_path, base_dir)
-                            self.discover_imports(node.module_name)
+                # If the imported module is already registered, skip
+                if node.module_name in self.modules:
+                    continue
+                
+                # Try to load from disk
+                if module.path and module.path != "<in_memory>":
+                    if os.path.isdir(module.path):
+                        base_dir = module.path
+                    elif os.path.isfile(module.path):
+                        base_dir = os.path.dirname(module.path)
+                    else:
+                        base_dir = module.path
+                    
+                    file_path = self._find_module_file(node.module_name, module_name)
+                    if file_path:
+                        self._load_module(node.module_name, file_path, base_dir)
+                        self.discover_imports(node.module_name)
     
     def discover_modules(self, main_file_path: str):
         main_dir = os.path.dirname(os.path.abspath(main_file_path))
@@ -147,6 +197,10 @@ class Resolver:
         
         # Register in module registry
         self.module_registry.add_module(module_name, script_dir or "", ast)
+        
+        # Register all declarations
+        for node in ast:
+            self._register_node_declarations(node, module_name)
         
         # If script_dir is provided, also use it as stdlib_path fallback
         if script_dir and not self.stdlib_path:
@@ -183,56 +237,13 @@ class Resolver:
         # Register in module registry
         self.module_registry.add_module(module_name, file_path, ast)
         
-        # Load and flatten all nested imports recursively
-        self._load_all_imports(module_name, base_dir)
-    
-    def _load_all_imports(self, module_name: str, base_dir: str):
-        """Recursively load all imports for a module and flatten them."""
-        module = self.modules.get(module_name)
-        if not module or not module.ast:
-            return
-        
-        # First, find and load any imports this module has
-        imports_to_load = []
-        for node in module.ast:
-            if isinstance(node, ImportNode):
-                if node.module_name not in self.modules:
-                    file_path = self._find_module_file(node.module_name, module_name)
-                    if file_path:
-                        self._load_module(node.module_name, file_path, base_dir)
-                        imports_to_load.append(node.module_name)
-        
-        # Recursively load imports of imported modules
-        for imported_name in imports_to_load:
-            self._load_all_imports(imported_name, base_dir)
-        
-        # Flatten this module's imports (replace ImportNode with exports)
-        module.ast = self._flatten_imports(module.ast, module_name)
-        
-        # Also flatten imports inside nested structures
-        self._flatten_nested_imports(module.ast, module_name)
-    
-    def _flatten_nested_imports(self, ast: list, module_name: str):
-        """Flatten imports inside nested structures (functions, if, while)."""
+        # Register all declarations
         for node in ast:
-            if isinstance(node, FunctionDefNode) and node.body:
-                node.body = self._flatten_imports(node.body, module_name)
-                self._flatten_nested_imports(node.body, module_name)
-            elif isinstance(node, IfNode):
-                if node.true_block:
-                    node.true_block = self._flatten_imports(node.true_block, module_name)
-                    self._flatten_nested_imports(node.true_block, module_name)
-                if node.false_block:
-                    node.false_block = self._flatten_imports(node.false_block, module_name)
-                    self._flatten_nested_imports(node.false_block, module_name)
-            elif isinstance(node, WhileNode) and node.body:
-                node.body = self._flatten_imports(node.body, module_name)
-                self._flatten_nested_imports(node.body, module_name)
+            self._register_node_declarations(node, module_name)
     
     def _find_module_file(self, module_name: str, from_module: str) -> str:
         from_module_info = self.modules.get(from_module)
         if from_module_info and from_module_info.path:
-            # Determine the search directory
             if os.path.isdir(from_module_info.path):
                 search_dir = from_module_info.path
             else:
@@ -251,7 +262,7 @@ class Resolver:
             if os.path.exists(stdlib_path):
                 return stdlib_path
         
-        # Fallback: check the current working directory (for modules in project root)
+        # Fallback: check current working directory
         cwd = os.getcwd()
         if os.path.exists(cwd) and os.path.isdir(cwd):
             path_parts = module_name.split('.')
@@ -261,165 +272,29 @@ class Resolver:
         
         return None
     
+    def _transform_module_ast(self, module_name: str, ast: list) -> list:
+        """Transform all AST nodes in a module."""
+        return self._transform_nodes(ast, module_name)
+    
     def resolve_all(self):
-        # Pass 1: Collect all declarations into symbol table
+        # Transform all modules and update both modules dict and ModuleRegistry
         for module_name, module in list(self.modules.items()):
-            self._collect_declarations(module_name, module.ast)
-        
-        # Pass 2: Flatten imports - replace ImportNode with module exports
-        for module_name, module in list(self.modules.items()):
-            module.ast = self._flatten_imports(module.ast, module_name)
-        
-        # Pass 3: Transform AST
-        for module_name, module in list(self.modules.items()):
-            module.ast = self._transform_ast(module.ast, module_name)
-        
-        # Pass 4: Update ModuleRegistry with transformed ASTs
-        self._update_module_registry()
+            transformed_ast = self._transform_module_ast(module_name, module.ast)
+            
+            # Update the module's AST
+            module.ast = transformed_ast
+            
+            # Update the ModuleRegistry with transformed AST
+            if module_name in self.module_registry.modules:
+                self.module_registry.modules[module_name].ast = transformed_ast
+            else:
+                self.module_registry.add_module(module_name, module.path or "", transformed_ast)
         
         # Save symbol tables to target directory
         if self.target_dir:
             self.module_registry.save()
         
         return len(self.errors) == 0
-    
-    def _update_module_registry(self):
-        """Update ModuleRegistry with final ASTs and symbols."""
-        for module_name, module_info in self.modules.items():
-            # Update AST
-            if module_name in self.module_registry.modules:
-                self.module_registry.modules[module_name].ast = module_info.ast
-            else:
-                self.module_registry.add_module(module_name, module_info.path or "", module_info.ast)
-    
-    def get_module_registry(self) -> ModuleRegistry:
-        """Get the module registry (for use by backends)."""
-        return self.module_registry
-    
-    def _flatten_imports(self, ast: list, module_name: str) -> list:
-        """Replace ImportNode with imports from modules."""
-        result = []
-        for node in ast:
-            if isinstance(node, ImportNode):
-                # ImportNode - inject the module's exports
-                imported = self.modules.get(node.module_name)
-                if imported and imported.ast:
-                    # Recursively flatten the imported module's imports too
-                    flattened_imported = self._flatten_imports(imported.ast, node.module_name)
-                    for export in flattened_imported:
-                        result.append(export)
-            elif isinstance(node, TypeDefNode):
-                # TypeDefNode: flatten nested imports in the type definition
-                result.append(TypeDefNode(
-                    node.name,
-                    node.fields,
-                    token=node
-                ))
-            elif isinstance(node, AssignNode) and isinstance(node.value, FunctionDefNode):
-                # Flatten imports inside function bodies
-                new_value = FunctionDefNode(
-                    node.value.params,
-                    self._flatten_imports(node.value.body, module_name),
-                    line=node.value.line,
-                    column=node.value.column
-                )
-                result.append(AssignNode(
-                    node.name, new_value,
-                    target_type=node.target_type,
-                    token=node
-                ))
-            elif isinstance(node, (FunctionDefNode, WhileNode, IfNode)):
-                result.append(self._flatten_node(node, module_name))
-            else:
-                result.append(node)
-        return result
-    
-    def _flatten_node(self, node, module_name):
-        if isinstance(node, FunctionDefNode):
-            body = self._flatten_imports(node.body or [], module_name)
-            return FunctionDefNode(node.params, body, line=node.line, column=node.column)
-        if isinstance(node, WhileNode):
-            body = self._flatten_imports(node.body or [], module_name)
-            return WhileNode(node.condition, body, line=node.line, column=node.column)
-        if isinstance(node, IfNode):
-            t = self._flatten_imports(node.true_block or [], module_name)
-            f = self._flatten_imports(node.false_block or [], module_name) if node.false_block else None
-            return IfNode(node.condition, t, f, line=node.line, column=node.column)
-        return node
-    
-    def _collect_declarations(self, module_name: str, ast: list):
-        """Pass 1: Walk AST and collect all declarations including nested scopes."""
-        for node in ast:
-            self._collect_node_declarations(node, module_name)
-    
-    def _collect_node_declarations(self, node: ASTNode, module_name: str):
-        """Collect declarations from a single node and its children."""
-        if node is None:
-            return
-        
-        if isinstance(node, ImportNode):
-            self.module_registry.add_import(module_name, node.module_name)
-            # Skip disk loading if module is already registered (in-memory module)
-            if node.module_name in self.modules:
-                return
-            
-            # Determine base directory for module resolution
-            importing_module = self.modules.get(module_name)
-            if importing_module and importing_module.path and importing_module.path != "<in_memory>":
-                if os.path.isdir(importing_module.path):
-                    base_dir = importing_module.path
-                elif os.path.isfile(importing_module.path):
-                    base_dir = os.path.dirname(importing_module.path)
-                else:
-                    base_dir = importing_module.path
-            else:
-                base_dir = os.getcwd()
-            
-            file_path = self._find_module_file(node.module_name, module_name)
-            if file_path:
-                self._load_module(node.module_name, file_path, base_dir)
-                imported_module = self.modules.get(node.module_name)
-                if imported_module:
-                    self._collect_declarations(node.module_name, imported_module.ast)
-        
-        elif isinstance(node, TypeDefNode):
-            self.module_registry.modules[module_name].add_symbol(node.name, "type")
-        
-        elif isinstance(node, TryCatchNode):
-            # error_var is in scope only for catch_block and finally_block
-            pass
-        
-        elif isinstance(node, AssignNode):
-            if isinstance(node.value, FunctionDefNode):
-                self.module_registry.modules[module_name].add_symbol(
-                    node.name, "func", FunctionSignature(params=node.value.params)
-                )
-                # Collect params as local vars
-                self._add_local_var(module_name, node.name)
-                for param in node.value.params:
-                    self._add_local_var(module_name, param)
-            else:
-                self.module_registry.modules[module_name].add_symbol(node.name, "var")
-                self._add_local_var(module_name, node.name)
-        
-        elif isinstance(node, FunctionDefNode):
-            # Params are registered by the parent AssignNode, skip processing body
-            pass
-        
-        elif isinstance(node, IfNode):
-            # Collect from condition (might have assignments)
-            for n in node.true_block or []:
-                self._collect_node_declarations(n, module_name)
-            for n in node.false_block or []:
-                self._collect_node_declarations(n, module_name)
-        
-        elif isinstance(node, WhileNode):
-            for n in node.body or []:
-                self._collect_node_declarations(n, module_name)
-    
-    def _transform_ast(self, ast: list, module_name: str) -> list:
-        """Pass 2: Transform AST - resolve VarAccessNode to StringNode when unknown."""
-        return self._transform_nodes(ast, module_name)
     
     def _transform_nodes(self, nodes: list, module_name: str) -> list:
         """Recursively transform a list of nodes."""
@@ -434,20 +309,20 @@ class Resolver:
         if node is None:
             return None
         
-        # Skip ImportNode - imports should have been flattened already
+        # Mark ImportNode as resolved (points to ModuleRegistry)
         if isinstance(node, ImportNode):
+            node.resolved = True
             return node
         
-        # Special handling for TryCatchNode - handle error_var scope correctly
+        # Special handling for TryCatchNode
         if isinstance(node, TryCatchNode):
-            # Transform try_block FIRST (error_var not in scope yet)
-            transformed_try = self._transform_nodes(node.try_block, module_name)
-            
-            # Add error_var to scope for catch_block
+            # Add error_var to scope for entire try-catch structure
             if node.error_var:
                 self._add_local_var(module_name, node.error_var)
             
-            # Transform catch_block and finally_block
+            # Transform try_block (error_var is in scope for consistency)
+            transformed_try = self._transform_nodes(node.try_block, module_name)
+            
             transformed_catch = self._transform_nodes(node.catch_block, module_name) if node.catch_block else []
             transformed_finally = self._transform_nodes(node.finally_block, module_name) if node.finally_block else None
             
@@ -478,11 +353,11 @@ class Resolver:
                 right_str = self._get_string_value(right)
                 return StringNode(f"{left_str} {op} {right_str}".strip(), token=node)
         
-        # Check if this is a VarAccessNode that should become StringNode
+        # VarAccessNode: resolve or stringify
         if isinstance(node, VarAccessNode):
             return self._resolve_var_access(node, module_name)
         
-        # Special handling for FunctionCallNode with string name
+        # FunctionCallNode with string name - check if it's a local callback
         if isinstance(node, FunctionCallNode) and isinstance(node.name, str):
             func_name = node.name
             if func_name:
@@ -491,9 +366,10 @@ class Resolver:
                 if sym and sym.type == 'func':
                     pass
                 elif self._is_local_var(func_name, module_name):
+                    # It's a local variable (callback parameter) - convert to VarAccessNode
                     return FunctionCallNode(name=VarAccessNode(func_name, target=None), args=node.args, token=node)
         
-        # Special handling for FunctionCallNode with StringNode name
+        # FunctionCallNode with StringNode name - check if it's a known type
         if isinstance(node, FunctionCallNode) and isinstance(node.name, StringNode):
             func_name = node.name.value
             if func_name:
@@ -567,14 +443,25 @@ class Resolver:
                 for p in value:
                     self._add_local_var(module_name, p)
                 kwargs[key] = value
-            elif key in ['params', 'fields', 'alias', 'module_name', 'error_var', 'target_type', 'target_var', 'target_list', 'op', 'args']:
+            elif key == 'body' and isinstance(node, FunctionDefNode):
+                self._collect_local_vars_from_body(module_name, value)
+                kwargs[key] = self._transform_nodes(value, module_name)
+            elif key == 'body' and isinstance(node, WhileNode):
+                kwargs[key] = self._transform_nodes(value or [], module_name)
+            elif key == 'true_block':
+                kwargs[key] = self._transform_nodes(value or [], module_name)
+            elif key == 'false_block':
+                kwargs[key] = self._transform_nodes(value or [], module_name) if value else None
+            elif key == 'condition':
+                kwargs[key] = self._transform_node(value, module_name) if value else None
+            elif key in ['params', 'fields', 'alias', 'error_var', 'target_type', 'target_var', 'target_list', 'op', 'args']:
                 if key == 'args':
                     kwargs[key] = self._transform_nodes(value, module_name)
                 else:
                     kwargs[key] = value
-            elif key == 'body' and isinstance(node, FunctionDefNode):
-                self._collect_local_vars_from_body(module_name, value)
-                kwargs[key] = self._transform_nodes(value, module_name)
+            elif key == 'module_name':
+                # Preserve module_name as-is (it's a string, not an AST to transform)
+                kwargs[key] = value
             elif isinstance(value, ASTNode):
                 kwargs[key] = self._transform_node(value, module_name)
             elif isinstance(value, list):
@@ -614,11 +501,22 @@ class Resolver:
         # Unknown symbol - transform to string literal
         return StringNode(node.name, token=node)
     
+    def get_module_registry(self) -> ModuleRegistry:
+        """Get the module registry (for use by backends)."""
+        return self.module_registry
+    
     def get_ast(self, module_name: str = None) -> list:
-        """Get the AST for a module (transformed if resolve_all was called)."""
+        """Get the AST for a module."""
         if module_name is None:
             module_name = self.main_module
         return self.modules.get(module_name, ModuleInfo("", "")).ast
+    
+    def get_imports(self, module_name: str) -> list:
+        """Get the list of imported module names for a module."""
+        module = self.module_registry.get_module(module_name)
+        if module:
+            return module.imports
+        return []
 
 
 class ModuleInfo:
@@ -629,8 +527,3 @@ class ModuleInfo:
         self.tokens = None
         self.ast = None
         self.imports = []
-
-    def flatten(self, resolver, module_name: str):
-        """Flatten imports in this module's AST."""
-        if self.ast:
-            self.ast = resolver._flatten_imports(self.ast, module_name)

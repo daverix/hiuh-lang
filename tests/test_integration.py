@@ -19,15 +19,16 @@ class TestHiuhFullIntegration(unittest.TestCase):
         parser = Parser(tokens)
         nodes = parser.parse()
         
-        # Use Resolver to flatten imports so no ImportNode reaches the interpreter
+        # Use Resolver to resolve imports (marks ImportNode.resolved = True)
         resolver = Resolver()
         resolver.discover_modules_from_ast("main", nodes, script_dir)
         resolver.resolve_all()
         nodes = resolver.get_ast("main")
 
-        # Pass script directory to interpreter
+        # Pass module registry and script directory to interpreter
         if script_dir:
             self.interpreter.script_dir_stack = [script_dir]
+        self.interpreter.module_registry = resolver.get_module_registry()
         
         return self.interpreter.execute(nodes)
 

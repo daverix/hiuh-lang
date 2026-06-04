@@ -28,8 +28,9 @@ class Char:
         return f"Char({self.value!r})"
 
 class Interpreter:
-    def __init__(self, registry=None):
-        self.registry = registry  # SymbolRegistry for cross-module resolution
+    def __init__(self, registry=None, module_registry=None):
+        self.registry = registry  # Legacy SymbolRegistry
+        self.module_registry = module_registry  # ModuleRegistry for cross-module resolution
         self.globals = Environment()
         self.globals.define("SANT", True)
         self.globals.define("FALSKT", False)
@@ -92,6 +93,34 @@ class Interpreter:
 
     def no_visit_method(self, node):
         raise Exception(f"Interpreter: visit_{type(node).__name__} is not implemented")
+    
+    def visit_ImportNode(self, node):
+        """Handle resolved ImportNode by loading module from ModuleRegistry."""
+        if not getattr(node, 'resolved', False):
+            raise Exception(f"ImportNode for '{node.module_name}' is not resolved")
+        
+        # Look up the module in the module registry
+        if self.module_registry and node.module_name in self.module_registry.modules:
+            module = self.module_registry.modules[node.module_name]
+            
+            # Execute the module's AST to populate the environment
+            if module.ast:
+                prev_env = self.env
+                module_env = Environment(prev_env)
+                self.env = module_env
+                try:
+                    for stmt in module.ast:
+                        if isinstance(stmt, ImportNode) and not getattr(stmt, 'resolved', False):
+                            continue  # Skip unresolved nested imports
+                        self.visit(stmt)
+                    
+                    # Copy module-level definitions to parent environment
+                    for name, value in module_env.vars.items():
+                        prev_env.define(name, value)
+                finally:
+                    self.env = prev_env
+        # If not in registry, the import resolved to nothing (module has no exports)
+        return None
 
     # --- Literals ---
     def visit_IntNode(self, node): return int(node.value)
