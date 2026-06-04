@@ -140,8 +140,8 @@ class ModuleRegistry:
     for different backends (e.g., interpreter vs x86).
     """
     
-    def __init__(self, target_dir: str = None):
-        self.target_dir = target_dir
+    def __init__(self, symbols_dir: str):
+        self.symbols_dir = symbols_dir
         self.modules: dict[str, ModuleEntry] = {}
         self.errors: list[str] = []
     
@@ -241,10 +241,10 @@ class ModuleRegistry:
             module_name: If provided, save only that module's symbols.
                         Otherwise save all modules.
         """
-        if not self.target_dir:
+        if not self.symbols_dir:
             return
         
-        os.makedirs(self.target_dir, exist_ok=True)
+        os.makedirs(self.symbols_dir, exist_ok=True)
         
         modules_to_save = []
         if module_name:
@@ -258,7 +258,7 @@ class ModuleRegistry:
             
             # Create safe filename from module name
             safe_name = name.replace('.', '_').replace('/', '_')
-            filepath = os.path.join(self.target_dir, f"{safe_name}.json")
+            filepath = os.path.join(self.symbols_dir, f"{safe_name}.json")
             
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(module.to_dict(), f, indent=2, ensure_ascii=False)
@@ -273,11 +273,11 @@ class ModuleRegistry:
         Returns:
             ModuleEntry if found, None otherwise
         """
-        if not self.target_dir:
+        if not self.symbols_dir:
             return None
         
         safe_name = module_name.replace('.', '_').replace('/', '_')
-        filepath = os.path.join(self.target_dir, f"{safe_name}.json")
+        filepath = os.path.join(self.symbols_dir, f"{safe_name}.json")
         
         if not os.path.exists(filepath):
             return None
@@ -291,12 +291,12 @@ class ModuleRegistry:
     
     def load_all(self):
         """Load all symbol tables from the target directory."""
-        if not self.target_dir or not os.path.exists(self.target_dir):
+        if not self.symbols_dir or not os.path.exists(self.symbols_dir):
             return
         
-        for filename in os.listdir(self.target_dir):
+        for filename in os.listdir(self.symbols_dir):
             if filename.endswith('.json'):
-                filepath = os.path.join(self.target_dir, filename)
+                filepath = os.path.join(self.symbols_dir, filename)
                 with open(filepath, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 
