@@ -327,7 +327,8 @@ class Resolver:
                 if isinstance(node, ImportNode) and node.import_all:
                     if node.module_name in self.module_registry.modules:
                         imported_module = self.module_registry.modules[node.module_name]
-                        for symbol_name in imported_module.symbols:
+                        for symbol_name, symbol in imported_module.symbols.items():
+                            # Check for conflict with existing symbol
                             if symbol_name in importing_module.symbols:
                                 # Conflict with existing symbol in module
                                 raise SyntaxError(
@@ -426,14 +427,30 @@ class Resolver:
             if op.strip() == 'i':
                 return self._copy_and_transform(node, module_name)
             
-            # Other comparisons: stringify if any operand is unresolved
+            # Stringify if left is unresolved (e.g., 'a större än 2' where 'a' is unknown)
             left_unresolved = isinstance(left, VarAccessNode) and self._is_unresolved(left, module_name)
-            right_unresolved = isinstance(right, VarAccessNode) and self._is_unresolved(right, module_name)
             
-            if left_unresolved or right_unresolved:
+            if left_unresolved:
                 left_str = self._get_string_value(left)
                 right_str = self._get_string_value(right)
                 return StringNode(f"{left_str} {op} {right_str}".strip(), token=node)
+            
+            # If right is unresolved and looks like an identifier (not a number), treat it as
+            # a string literal and keep the comparison for evaluation
+            right_unresolved = isinstance(right, VarAccessNode) and self._is_unresolved(right, module_name)
+            
+            if right_unresolved:
+                # Right is an unresolved identifier - treat as string literal
+                # Keep comparison, but transform right to a StringNode
+                return ComparisonNode(
+                    left=self._transform_node(left, module_name),
+                    right=StringNode(right.name, token=right),
+                    op=op,
+                    token=node
+                )
+            
+            # Otherwise, keep the comparison for evaluation
+            return self._copy_and_transform(node, module_name)
         
         # VarAccessNode: resolve or stringify
         if isinstance(node, VarAccessNode):

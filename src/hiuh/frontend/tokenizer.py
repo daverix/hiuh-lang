@@ -113,9 +113,12 @@ class Tokenizer:
                     tokens.append(Token("T_STRING", val, line_idx, indent + start + 1))
                     continue
 
-                if self.is_digit(char):
+                if self.is_digit(char) or (char == '-' and i + 1 < len(content) and self.is_digit(content[i + 1])):
                     start = i
                     has_comma = False
+                    # Handle negative numbers
+                    if char == '-':
+                        i += 1  # Skip the minus
                     while i < len(content):
                         if content[i] == ',':
                             if (i + 1) < len(content) and self.is_digit(content[i+1]):

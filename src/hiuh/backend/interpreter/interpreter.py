@@ -417,8 +417,14 @@ class Interpreter:
             raise err
 
     def visit_TypeDefNode(self, node):
-        # Store constructor: returns a new dict with defined fields
-        self.env.define(node.name, lambda: {f.strip(): None for f in node.fields})
+        # Store constructor: takes field values and returns a dict with field names as keys
+        def make_constructor(*args):
+            result = {}
+            for i, field in enumerate(node.fields):
+                field_name = field.strip()
+                result[field_name] = args[i] if i < len(args) else None
+            return result
+        self.env.define(node.name, make_constructor)
 
     def visit_CastNode(self, node):
         val = self.visit(node.value)
