@@ -383,86 +383,58 @@ class Resolver:
         """Visit an import node - load module if not already loaded."""
         # Check if module is already loaded
         if node.module_name not in self.modules:
-            # Try to find and load the module
-            from_module_info = self.modules.get(self._current_module)
-            search_dirs = []
-            
-            if from_module_info and from_module_info.path and from_module_info.path != "<in_memory>":
-                if os.path.isdir(from_module_info.path):
-                    search_dirs.append(from_module_info.path)
-                elif os.path.isfile(from_module_info.path):
-                    search_dirs.append(os.path.dirname(from_module_info.path))
-            
-            if self.stdlib_path and os.path.isdir(self.stdlib_path):
-                search_dirs.append(self.stdlib_path)
-            
-            search_dirs.append(os.getcwd())
-            
-            path_parts = node.module_name.split('.')
-            
-            file_path = None
-            for search_dir in search_dirs:
-                local_path = os.path.join(search_dir, *path_parts) + '.hiuh'
-                if os.path.exists(local_path):
-                    file_path = local_path
-                    break
-            
-            if not file_path:
-                for search_dir in search_dirs:
-                    dir_path = os.path.join(search_dir, *path_parts[:-1])
-                    if os.path.isdir(dir_path):
-                        candidate = os.path.join(dir_path, path_parts[-1] + '.hiuh')
-                        if os.path.exists(candidate):
-                            file_path = candidate
-                            break
-            
+            file_path = self._find_module_file(node.module_name)
             if file_path:
                 self._load_module(node.module_name, file_path, os.path.dirname(file_path))
                 # Recursively discover imports in the newly loaded module
-                self._discover_imports_for_module(node.module_name)
+                self._visit_imports_in_module(node.module_name)
         
         node.resolved = True
         return node
     
-    def _discover_imports_for_module(self, module_name: str):
-        """Recursively discover and load imports for a module."""
+    def _find_module_file(self, module_name: str, from_module: str = None) -> str | None:
+        """Find the file path for a module, searching from the given module's location."""
+        from_module_info = self.modules.get(from_module or self._current_module)
+        search_dirs = []
+        
+        if from_module_info and from_module_info.path and from_module_info.path != "<in_memory>":
+            if os.path.isdir(from_module_info.path):
+                search_dirs.append(from_module_info.path)
+            elif os.path.isfile(from_module_info.path):
+                search_dirs.append(os.path.dirname(from_module_info.path))
+        
+        if self.stdlib_path and os.path.isdir(self.stdlib_path):
+            search_dirs.append(self.stdlib_path)
+        
+        search_dirs.append(os.getcwd())
+        
+        path_parts = module_name.split('.')
+        
+        # Try flat file first (verktyg.matematik -> verktyg.matematik.hiuh)
+        for search_dir in search_dirs:
+            local_path = os.path.join(search_dir, *path_parts) + '.hiuh'
+            if os.path.exists(local_path):
+                return local_path
+        
+        # Try directory module (verktyg.matematik -> verktyg/matematik.hiuh)
+        for search_dir in search_dirs:
+            dir_path = os.path.join(search_dir, *path_parts[:-1])
+            if os.path.isdir(dir_path):
+                candidate = os.path.join(dir_path, path_parts[-1] + '.hiuh')
+                if os.path.exists(candidate):
+                    return candidate
+        
+        return None
+    
+    def _visit_imports_in_module(self, module_name: str):
+        """Visit all ImportNodes in a module to trigger loading of dependencies."""
         module = self.modules.get(module_name)
         if not module or not module.ast:
             return
         
         for node in module.ast:
-            if isinstance(node, ImportNode) and node.module_name not in self.modules:
-                # Try to load this import
-                path_parts = node.module_name.split('.')
-                
-                search_dirs = []
-                if module.path and module.path != "<in_memory>":
-                    if os.path.isfile(module.path):
-                        search_dirs.append(os.path.dirname(module.path))
-                
-                if self.stdlib_path and os.path.isdir(self.stdlib_path):
-                    search_dirs.append(self.stdlib_path)
-                search_dirs.append(os.getcwd())
-                
-                file_path = None
-                for search_dir in search_dirs:
-                    local_path = os.path.join(search_dir, *path_parts) + '.hiuh'
-                    if os.path.exists(local_path):
-                        file_path = local_path
-                        break
-                
-                if not file_path:
-                    for search_dir in search_dirs:
-                        dir_path = os.path.join(search_dir, *path_parts[:-1])
-                        if os.path.isdir(dir_path):
-                            candidate = os.path.join(dir_path, path_parts[-1] + '.hiuh')
-                            if os.path.exists(candidate):
-                                file_path = candidate
-                                break
-                
-                if file_path:
-                    self._load_module(node.module_name, file_path, os.path.dirname(file_path))
-                    self._discover_imports_for_module(node.module_name)
+            if isinstance(node, ImportNode):
+                self.visit(node)
     
     def _check_wildcard_import_conflicts(self):
         """Check for symbol conflicts between wildcard imports in each module."""
