@@ -20,3 +20,4 @@ sätt för varje till grej med värden, anrop
     sätt x till 0
     medan x är mindre än längd från värden
         anrop med element x
+        sätt x till x plus 1
