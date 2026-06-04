@@ -465,27 +465,7 @@ class Resolver:
         # VarAccessNode: resolve or stringify
         if isinstance(node, VarAccessNode):
             return self._resolve_var_access(node, module_name)
-        
-        # FunctionCallNode with string name - check if it's a local callback
-        if isinstance(node, FunctionCallNode) and isinstance(node.name, str):
-            func_name = node.name
-            if func_name:
-                # Check if it's a known function - if so, keep as string
-                sym = self.module_registry.resolve_symbol(func_name, module_name)
-                if sym and sym.type == 'func':
-                    pass
-                elif self._is_local_var(func_name, module_name):
-                    # It's a local variable (callback parameter) - convert to VarAccessNode
-                    return FunctionCallNode(name=VarAccessNode(func_name, target=None), args=node.args, token=node)
-        
-        # FunctionCallNode with StringNode name - check if it's a known type
-        if isinstance(node, FunctionCallNode) and isinstance(node.name, StringNode):
-            func_name = node.name.value
-            if func_name:
-                sym = self.module_registry.resolve_symbol(func_name, module_name)
-                if sym and sym.type == 'type' and node.args:
-                    return FunctionCallNode(name=VarAccessNode(func_name, target=None), args=node.args, token=node)
-        
+
         # Create a copy of the node with transformed children
         new_node = self._copy_and_transform(node, module_name)
         return new_node
