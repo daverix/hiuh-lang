@@ -207,10 +207,9 @@ class Interpreter:
                 value = value()
         except ReturnException as e:
             # Catch the return payload thrown by 'ge' and pass it back
-            return e.value
-        finally:
-            self.env.define(node.name, value)
+            value = e.value
 
+        self.env.define(node.name, value)
         return value
 
     # --- Stdout ---
