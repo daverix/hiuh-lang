@@ -32,6 +32,7 @@ class Resolver:
         self.local_vars = {}  # module_name -> set of variable names
         
         self._current_module = None
+        self._pass = 1  # 1 = collect declarations, 2 = resolve references
         
         self._register_builtins()
     
@@ -287,12 +288,10 @@ class Resolver:
         return self._visit_nodes(ast)
     
     def resolve_all(self):
-        # Pass 1: Mark all ImportNodes as resolved AND collect local variables
+        # Pass 1: Collect local variables
+        self._pass = 1
         for module_name, module in list(self.modules.items()):
-            self._mark_imports_resolved(module.ast, module_name)
-        
-        # Check for wildcard import conflicts after all imports are marked resolved
-        self._check_wildcard_import_conflicts()
+            self._collect_local_vars(module.ast, module_name)
         
         # Pass 2: Update ModuleRegistry with ASTs
         for module_name, module in list(self.modules.items()):
@@ -301,61 +300,21 @@ class Resolver:
             else:
                 self.module_registry.add_module(module_name, module.path or "", module.ast)
         
-        # Pass 3: Transform AST for symbol resolution (VarAccessNode, etc.)
+        # Pass 2: Transform AST for symbol resolution (includes import discovery via visitor)
+        self._pass = 2
         for module_name, module in list(self.modules.items()):
-            module.ast = self._transform_module_ast(module_name, module.ast)
+            self._current_module = module_name
+            module.ast = self._visit_nodes(module.ast)
         
-        # Pass 4: Update ModuleRegistry with transformed ASTs
-        for module_name, module in list(self.modules.items()):
-            self.module_registry.modules[module_name].ast = module.ast
+        # Check for wildcard import conflicts after all imports are resolved
+        self._check_wildcard_import_conflicts()
         
         # Save symbol tables to target directory
         self.module_registry.save()
         
         return len(self.errors) == 0
     
-    def _check_wildcard_import_conflicts(self):
-        """Check for symbol conflicts between wildcard imports in each module."""
-        for module_name, module in self.modules.items():
-            if module_name not in self.module_registry.modules:
-                continue
-            
-            importing_module = self.module_registry.modules[module_name]
-            
-            # Track which module each symbol comes from (for conflict reporting)
-            imported_symbols = {}  # symbol_name -> module_name
-            
-            for node in module.ast:
-                if isinstance(node, ImportNode) and node.import_all:
-                    if node.module_name in self.module_registry.modules:
-                        imported_module = self.module_registry.modules[node.module_name]
-                        for symbol_name, symbol in imported_module.symbols.items():
-                            # Check for conflict with existing symbol
-                            if symbol_name in importing_module.symbols:
-                                # Conflict with existing symbol in module
-                                raise SyntaxError(
-                                    f"Symbol '{symbol_name}' is already defined in '{module_name}' "
-                                    f"(conflicts with wildcard import from '{node.module_name}')"
-                                )
-                            if symbol_name in imported_symbols:
-                                # Conflict between two wildcard imports
-                                other_module = imported_symbols[symbol_name]
-                                raise SyntaxError(
-                                    f"Symbol '{symbol_name}' is defined in both "
-                                    f"'{other_module}' and '{node.module_name}'"
-                                )
-                            imported_symbols[symbol_name] = node.module_name
-    
-    def _mark_imports_resolved(self, ast: list, module_name: str = None):
-        """Mark all ImportNodes as resolved and collect local vars (Pass 1+2)."""
-        self._collect_local_vars_recursive(ast, module_name)
-        
-        for node in ast:
-            if isinstance(node, ImportNode):
-                if module_name:
-                    node.resolved = True
-    
-    def _collect_local_vars_recursive(self, ast: list, module_name: str = None):
+    def _collect_local_vars(self, ast: list, module_name: str):
         """Recursively collect all local variables from AST nodes."""
         if not module_name:
             return
@@ -370,7 +329,7 @@ class Resolver:
                     for p in node.value.params:
                         self._add_local_var(module_name, p)
                     # Recursively collect from function body
-                    self._collect_local_vars_recursive(node.value.body or [], module_name)
+                    self._collect_local_vars(node.value.body or [], module_name)
                 else:
                     # Non-function assignment - this is a local variable
                     self._add_local_var(module_name, node.name)
@@ -378,19 +337,19 @@ class Resolver:
                 # Standalone function definition (not in an AssignNode)
                 for p in node.params:
                     self._add_local_var(module_name, p)
-                self._collect_local_vars_recursive(node.body or [], module_name)
+                self._collect_local_vars(node.body or [], module_name)
             elif isinstance(node, IfNode):
-                self._collect_local_vars_recursive(node.true_block or [], module_name)
-                self._collect_local_vars_recursive(node.false_block or [], module_name)
+                self._collect_local_vars(node.true_block or [], module_name)
+                self._collect_local_vars(node.false_block or [], module_name)
             elif isinstance(node, WhileNode):
-                self._collect_local_vars_recursive(node.body or [], module_name)
+                self._collect_local_vars(node.body or [], module_name)
             elif isinstance(node, TryCatchNode):
                 if node.error_var:
                     self._add_local_var(module_name, node.error_var)
-                self._collect_local_vars_recursive(node.try_block or [], module_name)
-                self._collect_local_vars_recursive(node.catch_block or [], module_name)
+                self._collect_local_vars(node.try_block or [], module_name)
+                self._collect_local_vars(node.catch_block or [], module_name)
                 if node.finally_block:
-                    self._collect_local_vars_recursive(node.finally_block, module_name)
+                    self._collect_local_vars(node.finally_block, module_name)
     
     # === Visitor Pattern Implementation ===
     
@@ -421,8 +380,123 @@ class Resolver:
     # === ImportNode - mark as resolved ===
     
     def visit_ImportNode(self, node):
+        """Visit an import node - load module if not already loaded."""
+        # Check if module is already loaded
+        if node.module_name not in self.modules:
+            # Try to find and load the module
+            from_module_info = self.modules.get(self._current_module)
+            search_dirs = []
+            
+            if from_module_info and from_module_info.path and from_module_info.path != "<in_memory>":
+                if os.path.isdir(from_module_info.path):
+                    search_dirs.append(from_module_info.path)
+                elif os.path.isfile(from_module_info.path):
+                    search_dirs.append(os.path.dirname(from_module_info.path))
+            
+            if self.stdlib_path and os.path.isdir(self.stdlib_path):
+                search_dirs.append(self.stdlib_path)
+            
+            search_dirs.append(os.getcwd())
+            
+            path_parts = node.module_name.split('.')
+            
+            file_path = None
+            for search_dir in search_dirs:
+                local_path = os.path.join(search_dir, *path_parts) + '.hiuh'
+                if os.path.exists(local_path):
+                    file_path = local_path
+                    break
+            
+            if not file_path:
+                for search_dir in search_dirs:
+                    dir_path = os.path.join(search_dir, *path_parts[:-1])
+                    if os.path.isdir(dir_path):
+                        candidate = os.path.join(dir_path, path_parts[-1] + '.hiuh')
+                        if os.path.exists(candidate):
+                            file_path = candidate
+                            break
+            
+            if file_path:
+                self._load_module(node.module_name, file_path, os.path.dirname(file_path))
+                # Recursively discover imports in the newly loaded module
+                self._discover_imports_for_module(node.module_name)
+        
         node.resolved = True
         return node
+    
+    def _discover_imports_for_module(self, module_name: str):
+        """Recursively discover and load imports for a module."""
+        module = self.modules.get(module_name)
+        if not module or not module.ast:
+            return
+        
+        for node in module.ast:
+            if isinstance(node, ImportNode) and node.module_name not in self.modules:
+                # Try to load this import
+                path_parts = node.module_name.split('.')
+                
+                search_dirs = []
+                if module.path and module.path != "<in_memory>":
+                    if os.path.isfile(module.path):
+                        search_dirs.append(os.path.dirname(module.path))
+                
+                if self.stdlib_path and os.path.isdir(self.stdlib_path):
+                    search_dirs.append(self.stdlib_path)
+                search_dirs.append(os.getcwd())
+                
+                file_path = None
+                for search_dir in search_dirs:
+                    local_path = os.path.join(search_dir, *path_parts) + '.hiuh'
+                    if os.path.exists(local_path):
+                        file_path = local_path
+                        break
+                
+                if not file_path:
+                    for search_dir in search_dirs:
+                        dir_path = os.path.join(search_dir, *path_parts[:-1])
+                        if os.path.isdir(dir_path):
+                            candidate = os.path.join(dir_path, path_parts[-1] + '.hiuh')
+                            if os.path.exists(candidate):
+                                file_path = candidate
+                                break
+                
+                if file_path:
+                    self._load_module(node.module_name, file_path, os.path.dirname(file_path))
+                    self._discover_imports_for_module(node.module_name)
+    
+    def _check_wildcard_import_conflicts(self):
+        """Check for symbol conflicts between wildcard imports in each module."""
+        for module_name, module in self.modules.items():
+            if module_name not in self.module_registry.modules:
+                continue
+            
+            importing_module = self.module_registry.modules[module_name]
+            
+            # Track which module each symbol comes from (for conflict reporting)
+            imported_symbols = {}  # symbol_name -> module_name
+            
+            for node in module.ast:
+                if isinstance(node, ImportNode) and node.import_all:
+                    if node.module_name in self.modules:
+                        imported_module_info = self.modules[node.module_name]
+                        for stmt in imported_module_info.ast or []:
+                            if isinstance(stmt, AssignNode):
+                                symbol_name = stmt.name
+                                # Check for conflict with existing symbol
+                                if symbol_name in importing_module.symbols:
+                                    # Conflict with existing symbol in module
+                                    raise SyntaxError(
+                                        f"Symbol '{symbol_name}' is already defined in '{module_name}' "
+                                        f"(conflicts with wildcard import from '{node.module_name}')"
+                                    )
+                                if symbol_name in imported_symbols:
+                                    # Conflict between two wildcard imports
+                                    other_module = imported_symbols[symbol_name]
+                                    raise SyntaxError(
+                                        f"Symbol '{symbol_name}' is defined in both "
+                                        f"'{other_module}' and '{node.module_name}'"
+                                    )
+                                imported_symbols[symbol_name] = node.module_name
     
     # === VarAccessNode - resolve or stringify ===
     
@@ -521,9 +595,10 @@ class Resolver:
     # === Function nodes ===
     
     def visit_FunctionDefNode(self, node):
-        # Collect params as local vars
-        for p in node.params:
-            self._add_local_var(self._current_module, p)
+        # Collect params as local vars (pass 1 only)
+        if self._pass == 1:
+            for p in node.params:
+                self._add_local_var(self._current_module, p)
         
         body = self._visit_nodes(node.body)
         if body is node.body:
@@ -582,7 +657,7 @@ class Resolver:
         return WhileNode(condition=condition, body=body, line=node.line, column=node.column)
     
     def visit_TryCatchNode(self, node):
-        if node.error_var:
+        if self._pass == 1 and node.error_var:
             self._add_local_var(self._current_module, node.error_var)
         
         try_block = self._visit_nodes(node.try_block)
