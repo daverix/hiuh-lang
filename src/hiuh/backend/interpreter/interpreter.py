@@ -237,6 +237,14 @@ class Interpreter:
             module_dict = self.env.get(node.name.target)
             if isinstance(module_dict, dict):
                 func = module_dict.get(node.name.name)
+        elif isinstance(node.name, VarAccessNode):
+            # VarAccessNode without target - look up the name directly
+            func_name = node.name.name
+            raw_func = self.env.get(func_name)
+            if isinstance(raw_func, str):
+                func = self.env.get(raw_func)
+            else:
+                func = raw_func
         else:
             # Try to get the function directly from env
             raw_func = self.env.get(node.name)

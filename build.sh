@@ -16,7 +16,11 @@ fi
 echo "Checking dependencies..."
 # Add dependency checks here (e.g., pip install ...)
 
-# 3. Run comprehensive tests
+# 3. Create output directories
+echo "Creating output directories..."
+mkdir -p build/symbols
+
+# 4. Run comprehensive tests
 echo "--- Running unit tests (Requirement check for core files) ---"
 
 # FIX: Explicitly set PYTHONPATH to include the current directory ('.') and 'src'
@@ -30,7 +34,7 @@ else
     exit 1
 fi
 
-# 4. Compilation step (Placeholder for x86 backend)
+# 5. Compilation step (Placeholder for x86 backend)
 echo "--- Compiling to x86 backend (Placeholder) ---"
 # In a real scenario, this would involve calling the actual compiler backend generators.
 # Here we simulate success.

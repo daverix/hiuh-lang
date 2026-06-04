@@ -7,14 +7,18 @@ Two-pass:
 """
 
 import os
+import json
 from hiuh.frontend.ast import *
 from hiuh.frontend.registry import SymbolRegistry, SymbolInfo
+from hiuh.frontend.symbol_table import SymbolTable, FunctionSignature
 
 
 class Resolver:
-    def __init__(self, stdlib_path: str = None):
+    def __init__(self, stdlib_path: str = None, target_dir: str = None):
         self.registry = SymbolRegistry()
+        self.symbol_table = SymbolTable(target_dir=target_dir)
         self.stdlib_path = stdlib_path
+        self.target_dir = target_dir
         self.modules = {}
         self.errors = []
         self.main_module = None
@@ -44,6 +48,61 @@ class Resolver:
             self.registry.add_func(mod, "heltal", [], None)
             self.registry.add_func(mod, "text", [], None)
             self.registry.add_func(mod, "flyttal", [], None)
+    
+    def register_module_source(self, name: str, source: str):
+        """Register a module by parsing source code string (for testing).
+        
+        Args:
+            name: Module name (e.g., "test_verktyg")
+            source: Source code as string
+        """
+        from hiuh.frontend.tokenizer import Tokenizer
+        from hiuh.frontend.parser import Parser
+        
+        tokenizer = Tokenizer()
+        tokens = tokenizer.tokenize(source)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        
+        module = ModuleInfo(name, "<in_memory>")
+        module.source = source
+        module.tokens = tokens
+        module.ast = ast
+        self.modules[name] = module
+        self.registry.add_module(name, "<in_memory>")
+        
+        # Register all top-level declarations from this module
+        for node in ast:
+            if isinstance(node, AssignNode):
+                if isinstance(node.value, FunctionDefNode):
+                    self.registry.add_func(name, node.name, node.value.params, None)
+                else:
+                    self.registry.add_var(name, node.name)
+            elif isinstance(node, TypeDefNode):
+                self.registry.add_type(name, node.name, node.fields)
+    
+    def discover_imports(self, module_name: str):
+        """Discover and load imports for an already registered module."""
+        module = self.modules.get(module_name)
+        if not module or not module.ast:
+            return
+        
+        for node in module.ast:
+            if isinstance(node, ImportNode):
+                # If the imported module is already registered, no need to load from disk
+                if node.module_name not in self.modules:
+                    # Try to load from disk
+                    if module.path and module.path != "<in_memory>":
+                        if os.path.isdir(module.path):
+                            base_dir = module.path
+                        elif os.path.isfile(module.path):
+                            base_dir = os.path.dirname(module.path)
+                        else:
+                            base_dir = module.path
+                        file_path = self._find_module_file(node.module_name, module_name)
+                        if file_path:
+                            self._load_module(node.module_name, file_path, base_dir)
+                            self.discover_imports(node.module_name)
     
     def discover_modules(self, main_file_path: str):
         main_dir = os.path.dirname(os.path.abspath(main_file_path))
@@ -177,7 +236,7 @@ class Resolver:
         return None
     
     def resolve_all(self):
-        # Pass 1: Collect all declarations
+        # Pass 1: Collect all declarations into symbol table
         for module_name, module in list(self.modules.items()):
             self._collect_declarations(module_name, module.ast)
         
@@ -189,7 +248,54 @@ class Resolver:
         for module_name, module in list(self.modules.items()):
             module.ast = self._transform_ast(module.ast, module_name)
         
+        # Save symbol table to target directory
+        if self.target_dir:
+            self._save_symbol_table()
+        
         return len(self.errors) == 0
+    
+    def _save_symbol_table(self):
+        """Save the symbol table to the target directory (one file per module)."""
+        if not self.target_dir:
+            return
+        
+        os.makedirs(self.target_dir, exist_ok=True)
+        
+        for module_name, module_info in self.modules.items():
+            # Build symbols for this module
+            symbols = {}
+            imports = self.registry.deps.get(module_name, [])
+            
+            # Add symbols from registry
+            if module_name in self.registry.symbols:
+                for name, info in self.registry.symbols[module_name].items():
+                    sig = None
+                    if info.signature and hasattr(info.signature, 'params'):
+                        sig = {
+                            'params': info.signature.params or [],
+                            'return_type': None
+                        }
+                    symbols[name] = {
+                        'name': name,
+                        'type': info.type,
+                        'module': module_name,
+                        'signature': sig,
+                        'target': None
+                    }
+            
+            data = {
+                'name': module_name,
+                'path': module_info.path or '',
+                'imports': imports,
+                'exports': list(symbols.keys()),
+                'symbols': symbols
+            }
+            
+            # Create safe filename from module name
+            safe_name = module_name.replace('.', '_').replace('/', '_')
+            filepath = os.path.join(self.target_dir, f"{safe_name}.json")
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
     
     def _flatten_imports(self, ast: list, module_name: str) -> list:
         """Replace ImportNode with imports from modules."""
@@ -254,28 +360,28 @@ class Resolver:
         
         if isinstance(node, ImportNode):
             self.registry.add_import(module_name, node.module_name)
-            if node.module_name not in self.modules:
-                # Determine base directory for module resolution
-                importing_module = self.modules.get(module_name)
-                if importing_module and importing_module.path:
-                    if os.path.isdir(importing_module.path):
-                        # path is already a directory
-                        base_dir = importing_module.path
-                    elif os.path.isfile(importing_module.path):
-                        # path is a file, use its directory
-                        base_dir = os.path.dirname(importing_module.path)
-                    else:
-                        # path might be a string like "/some/path" without actual file existence
-                        base_dir = importing_module.path
+            # Skip disk loading if module is already registered (in-memory module)
+            if node.module_name in self.modules:
+                return
+            
+            # Determine base directory for module resolution
+            importing_module = self.modules.get(module_name)
+            if importing_module and importing_module.path and importing_module.path != "<in_memory>":
+                if os.path.isdir(importing_module.path):
+                    base_dir = importing_module.path
+                elif os.path.isfile(importing_module.path):
+                    base_dir = os.path.dirname(importing_module.path)
                 else:
-                    base_dir = os.getcwd()
-                
-                file_path = self._find_module_file(node.module_name, module_name)
-                if file_path:
-                    self._load_module(node.module_name, file_path, base_dir)
-                    imported_module = self.modules.get(node.module_name)
-                    if imported_module:
-                        self._collect_declarations(node.module_name, imported_module.ast)
+                    base_dir = importing_module.path
+            else:
+                base_dir = os.getcwd()
+            
+            file_path = self._find_module_file(node.module_name, module_name)
+            if file_path:
+                self._load_module(node.module_name, file_path, base_dir)
+                imported_module = self.modules.get(node.module_name)
+                if imported_module:
+                    self._collect_declarations(node.module_name, imported_module.ast)
         
         elif isinstance(node, TypeDefNode):
             self.registry.add_type(module_name, node.name, node.fields)
@@ -384,6 +490,22 @@ class Resolver:
         # Check if this is a VarAccessNode that should become StringNode
         if isinstance(node, VarAccessNode):
             return self._resolve_var_access(node, module_name)
+        
+        # Special handling for FunctionCallNode with string name
+        # Convert string names to VarAccessNode if the name is in local_vars
+        # AND it's not a known function (i.e., it's a callback parameter)
+        # This handles function parameters used as callbacks
+        if isinstance(node, FunctionCallNode) and isinstance(node.name, str):
+            func_name = node.name
+            if func_name:
+                # Check if it's a known function - if so, keep as string
+                sym = self.registry.resolve(func_name, module_name)
+                if sym and sym.type == 'func':
+                    # It's a known function, keep as string
+                    pass
+                elif func_name in self.registry.local_vars.get(module_name, set()):
+                    # It's a local variable (callback parameter) - convert to VarAccessNode
+                    return FunctionCallNode(name=VarAccessNode(func_name, target=None), args=node.args, token=node)
         
         # Special handling for FunctionCallNode - convert stringified type names back to VarAccessNode
         # This applies when name is a StringNode (was stringified during transformation)
@@ -541,3 +663,8 @@ class ModuleInfo:
         self.tokens = None
         self.ast = None
         self.imports = []
+
+    def flatten(self, resolver, module_name: str):
+        """Flatten imports in this module's AST."""
+        if self.ast:
+            self.ast = resolver._flatten_imports(self.ast, module_name)
