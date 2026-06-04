@@ -162,18 +162,21 @@ class Resolver:
                     continue
                 
                 # Try to load from disk
-                if module.path and module.path != "<in_memory>":
+                if module.path and module.path != "<in_memory>" and os.path.exists(module.path):
                     if os.path.isdir(module.path):
                         base_dir = module.path
                     elif os.path.isfile(module.path):
                         base_dir = os.path.dirname(module.path)
                     else:
                         base_dir = module.path
-                    
-                    file_path = self._find_module_file(node.module_name, module_name)
-                    if file_path:
-                        self._load_module(node.module_name, file_path, base_dir)
-                        self.discover_imports(node.module_name)
+                else:
+                    # Use stdlib_path if available
+                    base_dir = self.stdlib_path if self.stdlib_path else "."
+                
+                file_path = self._find_module_file(node.module_name, module_name)
+                if file_path:
+                    self._load_module(node.module_name, file_path, base_dir)
+                    self.discover_imports(node.module_name)
     
     def discover_modules(self, main_file_path: str):
         main_dir = os.path.dirname(os.path.abspath(main_file_path))
@@ -243,32 +246,36 @@ class Resolver:
     
     def _find_module_file(self, module_name: str, from_module: str) -> str:
         from_module_info = self.modules.get(from_module)
+        search_dirs = []
+        
+        # Collect search directories
         if from_module_info and from_module_info.path:
             if os.path.isdir(from_module_info.path):
-                search_dir = from_module_info.path
-            else:
-                search_dir = os.path.dirname(from_module_info.path)
-            
-            if search_dir and os.path.exists(search_dir):
-                path_parts = module_name.split('.')
-                local_path = os.path.join(search_dir, *path_parts) + '.hiuh'
-                if os.path.exists(local_path):
-                    return local_path
+                search_dirs.append(from_module_info.path)
+            elif os.path.isfile(from_module_info.path):
+                search_dirs.append(os.path.dirname(from_module_info.path))
         
-        # Fallback: check stdlib_path
         if self.stdlib_path and os.path.isdir(self.stdlib_path):
-            path_parts = module_name.split('.')
-            stdlib_path = os.path.join(self.stdlib_path, *path_parts) + '.hiuh'
-            if os.path.exists(stdlib_path):
-                return stdlib_path
+            search_dirs.append(self.stdlib_path)
         
-        # Fallback: check current working directory
-        cwd = os.getcwd()
-        if os.path.exists(cwd) and os.path.isdir(cwd):
-            path_parts = module_name.split('.')
-            cwd_path = os.path.join(cwd, *path_parts) + '.hiuh'
-            if os.path.exists(cwd_path):
-                return cwd_path
+        # Also check current working directory
+        search_dirs.append(os.getcwd())
+        
+        path_parts = module_name.split('.')
+        
+        # Try each search directory for a flat file (verktyg.matematik -> verktyg.matematik.hiuh)
+        for search_dir in search_dirs:
+            local_path = os.path.join(search_dir, *path_parts) + '.hiuh'
+            if os.path.exists(local_path):
+                return local_path
+        
+        # Also check for directory modules (verktyg.matematik -> verktyg/matematik.hiuh)
+        for search_dir in search_dirs:
+            dir_path = os.path.join(search_dir, *path_parts[:-1])
+            if os.path.isdir(dir_path):
+                file_path = os.path.join(dir_path, path_parts[-1] + '.hiuh')
+                if os.path.exists(file_path):
+                    return file_path
         
         return None
     
@@ -277,24 +284,65 @@ class Resolver:
         return self._transform_nodes(ast, module_name)
     
     def resolve_all(self):
-        # Transform all modules and update both modules dict and ModuleRegistry
+        # Pass 1: Mark all ImportNodes as resolved AND collect local variables
         for module_name, module in list(self.modules.items()):
-            transformed_ast = self._transform_module_ast(module_name, module.ast)
-            
-            # Update the module's AST
-            module.ast = transformed_ast
-            
-            # Update the ModuleRegistry with transformed AST
+            self._mark_imports_resolved(module.ast, module_name)
+        
+        # Pass 2: Update ModuleRegistry with ASTs
+        for module_name, module in list(self.modules.items()):
             if module_name in self.module_registry.modules:
-                self.module_registry.modules[module_name].ast = transformed_ast
+                self.module_registry.modules[module_name].ast = module.ast
             else:
-                self.module_registry.add_module(module_name, module.path or "", transformed_ast)
+                self.module_registry.add_module(module_name, module.path or "", module.ast)
+        
+        # Pass 3: Transform AST for symbol resolution (VarAccessNode, etc.)
+        for module_name, module in list(self.modules.items()):
+            module.ast = self._transform_module_ast(module_name, module.ast)
+        
+        # Pass 4: Update ModuleRegistry with transformed ASTs
+        for module_name, module in list(self.modules.items()):
+            self.module_registry.modules[module_name].ast = module.ast
         
         # Save symbol tables to target directory
         if self.target_dir:
             self.module_registry.save()
         
         return len(self.errors) == 0
+    
+    def _mark_imports_resolved(self, ast: list, module_name: str = None):
+        """Mark all ImportNodes as resolved and collect local vars (Pass 1+2)."""
+        for node in ast:
+            if isinstance(node, ImportNode):
+                if module_name:
+                    node.resolved = True
+            elif isinstance(node, AssignNode):
+                if isinstance(node.value, FunctionDefNode):
+                    # Collect params and recurse into body
+                    if module_name:
+                        for p in node.value.params:
+                            self._add_local_var(module_name, p)
+                    self._mark_imports_resolved(node.value.body or [], module_name)
+                elif module_name:
+                    # Non-function assignment - this is a local variable
+                    self._add_local_var(module_name, node.name)
+            elif isinstance(node, FunctionDefNode):
+                # Collect params
+                if module_name:
+                    for p in node.params:
+                        self._add_local_var(module_name, p)
+                self._mark_imports_resolved(node.body or [], module_name)
+            elif isinstance(node, IfNode):
+                self._mark_imports_resolved(node.true_block or [], module_name)
+                self._mark_imports_resolved(node.false_block or [], module_name)
+            elif isinstance(node, WhileNode):
+                self._mark_imports_resolved(node.body or [], module_name)
+            elif isinstance(node, TryCatchNode):
+                if module_name and node.error_var:
+                    self._add_local_var(module_name, node.error_var)
+                self._mark_imports_resolved(node.try_block or [], module_name)
+                self._mark_imports_resolved(node.catch_block or [], module_name)
+                if node.finally_block:
+                    self._mark_imports_resolved(node.finally_block, module_name)
     
     def _transform_nodes(self, nodes: list, module_name: str) -> list:
         """Recursively transform a list of nodes."""
@@ -406,25 +454,6 @@ class Resolver:
         else:
             return str(node)
     
-    def _collect_local_vars_from_body(self, module_name: str, body: list):
-        """Recursively collect local variable names from a function body."""
-        for stmt in body:
-            if isinstance(stmt, AssignNode):
-                if stmt.value is not None and not isinstance(stmt.value, FunctionDefNode):
-                    self._add_local_var(module_name, stmt.name)
-            elif isinstance(stmt, WhileNode):
-                self._collect_local_vars_from_body(module_name, stmt.body or [])
-            elif isinstance(stmt, IfNode):
-                self._collect_local_vars_from_body(module_name, stmt.true_block or [])
-                if stmt.false_block:
-                    self._collect_local_vars_from_body(module_name, stmt.false_block)
-            elif isinstance(stmt, TryCatchNode):
-                self._collect_local_vars_from_body(module_name, stmt.try_block or [])
-                if stmt.catch_block:
-                    self._collect_local_vars_from_body(module_name, stmt.catch_block)
-                if stmt.finally_block:
-                    self._collect_local_vars_from_body(module_name, stmt.finally_block)
-    
     def _copy_and_transform(self, node: ASTNode, module_name: str) -> ASTNode:
         """Create a copy of node with transformed children."""
         cls = type(node)
@@ -444,7 +473,6 @@ class Resolver:
                     self._add_local_var(module_name, p)
                 kwargs[key] = value
             elif key == 'body' and isinstance(node, FunctionDefNode):
-                self._collect_local_vars_from_body(module_name, value)
                 kwargs[key] = self._transform_nodes(value, module_name)
             elif key == 'body' and isinstance(node, WhileNode):
                 kwargs[key] = self._transform_nodes(value or [], module_name)

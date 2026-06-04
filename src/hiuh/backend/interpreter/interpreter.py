@@ -117,6 +117,11 @@ class Interpreter:
                     # Copy module-level definitions to parent environment
                     for name, value in module_env.vars.items():
                         prev_env.define(name, value)
+                    
+                    # If there's an alias, also store the module environment for qualified access (h.hälsa)
+                    if node.alias:
+                        # Store a reference that can be used for qualified access
+                        prev_env.define(node.alias, module_env)
                 finally:
                     self.env = prev_env
         # If not in registry, the import resolved to nothing (module has no exports)
@@ -263,9 +268,16 @@ class Interpreter:
         func = None
         if isinstance(node.name, VarAccessNode) and node.name.target:
             func_name = f"{node.name.target}.{node.name.name}"
-            module_dict = self.env.get(node.name.target)
-            if isinstance(module_dict, dict):
-                func = module_dict.get(node.name.name)
+            module_obj = self.env.get(node.name.target)
+            
+            # Support both dict and Environment for module access
+            if isinstance(module_obj, dict):
+                func = module_obj.get(node.name.name)
+            elif hasattr(module_obj, 'vars'):
+                # It's an Environment object - get from its vars
+                func = module_obj.vars.get(node.name.name)
+            else:
+                func = None
         elif isinstance(node.name, VarAccessNode):
             # VarAccessNode without target - look up the name directly
             func_name = node.name.name

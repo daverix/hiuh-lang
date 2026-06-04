@@ -22,6 +22,7 @@ class TestHiuhFullIntegration(unittest.TestCase):
         # Use Resolver to resolve imports (marks ImportNode.resolved = True)
         resolver = Resolver()
         resolver.discover_modules_from_ast("main", nodes, script_dir)
+        resolver.discover_imports("main")  # Load imported modules
         resolver.resolve_all()
         nodes = resolver.get_ast("main")
 
