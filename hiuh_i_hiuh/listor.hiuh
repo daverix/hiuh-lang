@@ -19,5 +19,5 @@ sätt första matchande till grej med värden, anrop
 sätt för varje till grej med värden, anrop
     sätt x till 0
     medan x är mindre än längd från värden
-        anrop med element x
+        anrop med element x från värden
         sätt x till x plus 1
