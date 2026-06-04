@@ -32,6 +32,7 @@ class Resolver:
         self.local_vars = {}  # module_name -> set of variable names
         
         self._current_module = None
+        self._registering = False  # True during registration pass, False during resolution
         
         self._register_builtins()
     
@@ -91,65 +92,12 @@ class Resolver:
         # Register in module registry
         self.module_registry.add_module(name, "<in_memory>", ast)
         
-        # Register all top-level declarations from this module
+        # Register all declarations using visitor
+        self._current_module = name
+        self._registering = True
         for node in ast:
-            self._register_node_declarations(node, name)
-    
-    def _register_node_declarations(self, node: ASTNode, module_name: str):
-        """Register declarations from a node into the module registry."""
-        if node is None:
-            return
-        
-        if isinstance(node, ImportNode):
-            # Record the import
-            self.module_registry.add_import(module_name, node.module_name)
-            return
-        
-        if isinstance(node, TypeDefNode):
-            self.module_registry.modules[module_name].add_symbol(node.name, "type")
-            return
-        
-        if isinstance(node, AssignNode):
-            if isinstance(node.value, FunctionDefNode):
-                self.module_registry.modules[module_name].add_symbol(
-                    node.name, "func", FunctionSignature(params=node.value.params)
-                )
-            else:
-                self.module_registry.modules[module_name].add_symbol(node.name, "var")
-            return
-        
-        # Recursively handle nested structures
-        if isinstance(node, FunctionDefNode):
-            # Register params
-            for param in node.params:
-                self._add_local_var(module_name, param)
-            # Register body declarations
-            for stmt in node.body or []:
-                self._register_node_declarations(stmt, module_name)
-            return
-        
-        if isinstance(node, IfNode):
-            for stmt in (node.true_block or []):
-                self._register_node_declarations(stmt, module_name)
-            for stmt in (node.false_block or []):
-                self._register_node_declarations(stmt, module_name)
-            return
-        
-        if isinstance(node, WhileNode):
-            for stmt in (node.body or []):
-                self._register_node_declarations(stmt, module_name)
-            return
-        
-        if isinstance(node, TryCatchNode):
-            if node.error_var:
-                self._add_local_var(module_name, node.error_var)
-            for stmt in (node.try_block or []):
-                self._register_node_declarations(stmt, module_name)
-            for stmt in (node.catch_block or []):
-                self._register_node_declarations(stmt, module_name)
-            if node.finally_block:
-                for stmt in node.finally_block:
-                    self._register_node_declarations(stmt, module_name)
+            self.visit(node)
+        self._registering = False
     
     def discover_imports(self, module_name: str):
         """Discover and load imports for an already registered module."""
@@ -203,9 +151,12 @@ class Resolver:
         # Register in module registry
         self.module_registry.add_module(module_name, script_dir or "", ast)
         
-        # Register all declarations
+        # Register all declarations using visitor
+        self._current_module = module_name
+        self._registering = True
         for node in ast:
-            self._register_node_declarations(node, module_name)
+            self.visit(node)
+        self._registering = False
         
         # If script_dir is provided, also use it as stdlib_path fallback
         if script_dir and not self.stdlib_path:
@@ -242,9 +193,12 @@ class Resolver:
         # Register in module registry
         self.module_registry.add_module(module_name, file_path, ast)
         
-        # Register all declarations
+        # Register all declarations using visitor
+        self._current_module = module_name
+        self._registering = True
         for node in ast:
-            self._register_node_declarations(node, module_name)
+            self.visit(node)
+        self._registering = False
     
     def _find_module_file(self, module_name: str, from_module: str) -> str:
         from_module_info = self.modules.get(from_module)
@@ -280,11 +234,6 @@ class Resolver:
                     return file_path
         
         return None
-    
-    def _transform_module_ast(self, module_name: str, ast: list) -> list:
-        """Transform all AST nodes in a module."""
-        self._current_module = module_name
-        return self._visit_nodes(ast)
     
     def resolve_all(self):
         # Single pass: collect local vars AND transform AST (imports resolved via visitor)
@@ -325,14 +274,18 @@ class Resolver:
     # === ImportNode - mark as resolved ===
     
     def visit_ImportNode(self, node):
-        """Visit an import node - load module if not already loaded."""
-        # Check if module is already loaded
-        if node.module_name not in self.modules:
-            file_path = self._find_module_file(node.module_name)
-            if file_path:
-                self._load_module(node.module_name, file_path, os.path.dirname(file_path))
-                # Recursively discover imports in the newly loaded module
-                self._visit_imports_in_module(node.module_name)
+        """Visit an import node."""
+        if self._registering:
+            # Registration pass: just record the import
+            self.module_registry.add_import(self._current_module, node.module_name)
+        else:
+            # Resolution pass: load module if not already loaded
+            if node.module_name not in self.modules:
+                file_path = self._find_module_file(node.module_name)
+                if file_path:
+                    self._load_module(node.module_name, file_path, os.path.dirname(file_path))
+                    # Recursively discover imports in the newly loaded module
+                    self._visit_imports_in_module(node.module_name)
         
         node.resolved = True
         return node
@@ -536,7 +489,16 @@ class Resolver:
     # === Statement nodes - transform children ===
     
     def visit_AssignNode(self, node):
-        # Collect the variable name as a local var
+        if self._registering:
+            # Registration pass: register symbol in module registry
+            if isinstance(node.value, FunctionDefNode):
+                self.module_registry.modules[self._current_module].add_symbol(
+                    node.name, "func", FunctionSignature(params=node.value.params)
+                )
+            else:
+                self.module_registry.modules[self._current_module].add_symbol(node.name, "var")
+        
+        # Always collect the variable name as a local var
         self._add_local_var(self._current_module, node.name)
         
         value = self.visit(node.value)
@@ -595,6 +557,8 @@ class Resolver:
         )
     
     def visit_TypeDefNode(self, node):
+        if self._registering:
+            self.module_registry.modules[self._current_module].add_symbol(node.name, "type")
         return node  # No transformation needed
     
     def visit_CastNode(self, node):
