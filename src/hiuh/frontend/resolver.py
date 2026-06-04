@@ -429,11 +429,26 @@ class Resolver:
         new_node = self._copy_and_transform(node, module_name)
         return new_node
     
-    def _is_unresolved(self, node: VarAccessNode, module_name: str) -> bool:
+    def _is_unresolved(self, node: ASTNode, module_name: str) -> bool:
         """Check if a VarAccessNode cannot be resolved in the current scope."""
-        if node.target:
+        # If it has a target (qualified access), check that target
+        if isinstance(node, VarAccessNode) and node.target:
             return not self.module_registry.resolve_symbol(node.target, module_name)
-        return not self.module_registry.resolve_symbol(node.name, module_name) and not self._is_local_var(node.name, module_name)
+        
+        # Check if it's a known symbol in the registry (including stdlib)
+        if isinstance(node, VarAccessNode):
+            name = node.name
+            # Check local vars first
+            if self._is_local_var(name, module_name):
+                return False
+            # Check module registry (includes stdlib symbols)
+            if self.module_registry.resolve_symbol(name, module_name):
+                return False
+            # Check stdlib (__main__) directly
+            if '__main__' in self.module_registry.modules and name in self.module_registry.modules['__main__'].symbols:
+                return False
+        
+        return True
     
     def _is_local_var(self, name: str, module_name: str) -> bool:
         """Check if a name is a local variable in the module."""
@@ -516,6 +531,10 @@ class Resolver:
             return node
         
         if self._is_local_var(node.name, module_name):
+            return node
+        
+        # Check stdlib (__main__) for built-in constants like 'mellanrum'
+        if '__main__' in self.module_registry.modules and node.name in self.module_registry.modules['__main__'].symbols:
             return node
         
         # Try individual parts
