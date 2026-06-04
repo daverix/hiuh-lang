@@ -292,21 +292,6 @@ class Parser:
 
         checkpoint = self.pos
 
-        has_forced_trigger = False
-        i = 0
-        while self.peek(i) and self.peek(i).type not in ["T_NEWLINE", "T_DEDENT", "T_INDENT"]:
-            tok = self.peek(i)
-
-            if tok.value in ["för", "som", "till"] or tok.type in ["T_KEYWORD_FROM", "T_KEYWORD_IN"]:
-                break
-
-            if tok.value in ["element", "index", "inmatning", "mellanrum", "längd"] or \
-               tok.type in ["T_OP_ADD", "T_OP_SUB", "T_OP_MUL", "T_OP_DIV"]:
-                has_forced_trigger = True
-                break
-
-            i += 1
-
         try:
             expr = self.expression()
             if isinstance(expr, (FunctionDefNode, FunctionCallNode)): return expr
