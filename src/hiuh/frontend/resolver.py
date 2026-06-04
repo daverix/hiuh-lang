@@ -288,6 +288,9 @@ class Resolver:
         for module_name, module in list(self.modules.items()):
             self._mark_imports_resolved(module.ast, module_name)
         
+        # Check for wildcard import conflicts after all imports are marked resolved
+        self._check_wildcard_import_conflicts()
+        
         # Pass 2: Update ModuleRegistry with ASTs
         for module_name, module in list(self.modules.items()):
             if module_name in self.module_registry.modules:
@@ -308,6 +311,37 @@ class Resolver:
             self.module_registry.save()
         
         return len(self.errors) == 0
+    
+    def _check_wildcard_import_conflicts(self):
+        """Check for symbol conflicts between wildcard imports in each module."""
+        for module_name, module in self.modules.items():
+            if module_name not in self.module_registry.modules:
+                continue
+            
+            importing_module = self.module_registry.modules[module_name]
+            
+            # Track which module each symbol comes from (for conflict reporting)
+            imported_symbols = {}  # symbol_name -> module_name
+            
+            for node in module.ast:
+                if isinstance(node, ImportNode) and node.import_all:
+                    if node.module_name in self.module_registry.modules:
+                        imported_module = self.module_registry.modules[node.module_name]
+                        for symbol_name in imported_module.symbols:
+                            if symbol_name in importing_module.symbols:
+                                # Conflict with existing symbol in module
+                                raise SyntaxError(
+                                    f"Symbol '{symbol_name}' is already defined in '{module_name}' "
+                                    f"(conflicts with wildcard import from '{node.module_name}')"
+                                )
+                            if symbol_name in imported_symbols:
+                                # Conflict between two wildcard imports
+                                other_module = imported_symbols[symbol_name]
+                                raise SyntaxError(
+                                    f"Symbol '{symbol_name}' is defined in both "
+                                    f"'{other_module}' and '{node.module_name}'"
+                                )
+                            imported_symbols[symbol_name] = node.module_name
     
     def _mark_imports_resolved(self, ast: list, module_name: str = None):
         """Mark all ImportNodes as resolved and collect local vars (Pass 1+2)."""
