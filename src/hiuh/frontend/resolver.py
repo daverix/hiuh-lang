@@ -166,6 +166,14 @@ class Resolver:
             if os.path.exists(stdlib_path):
                 return stdlib_path
         
+        # Fallback: check the current working directory (for modules in project root)
+        cwd = os.getcwd()
+        if os.path.exists(cwd) and os.path.isdir(cwd):
+            path_parts = module_name.split('.')
+            cwd_path = os.path.join(cwd, *path_parts) + '.hiuh'
+            if os.path.exists(cwd_path):
+                return cwd_path
+        
         return None
     
     def resolve_all(self):
@@ -195,6 +203,26 @@ class Resolver:
                     flattened_imported = self._flatten_imports(imported.ast, node.module_name)
                     for export in flattened_imported:
                         result.append(export)
+            elif isinstance(node, TypeDefNode):
+                # TypeDefNode: flatten nested imports in the type definition
+                result.append(TypeDefNode(
+                    node.name,
+                    node.fields,
+                    token=node
+                ))
+            elif isinstance(node, AssignNode) and isinstance(node.value, FunctionDefNode):
+                # Flatten imports inside function bodies
+                new_value = FunctionDefNode(
+                    node.value.params,
+                    self._flatten_imports(node.value.body, module_name),
+                    line=node.value.line,
+                    column=node.value.column
+                )
+                result.append(AssignNode(
+                    node.name, new_value,
+                    target_type=node.target_type,
+                    token=node
+                ))
             elif isinstance(node, (FunctionDefNode, WhileNode, IfNode)):
                 result.append(self._flatten_node(node, module_name))
             else:
@@ -261,12 +289,18 @@ class Resolver:
                 self.registry.add_func(module_name, node.name, node.value.params, None)
                 # Collect params as local vars
                 self.registry.add_local_vars(module_name, node.value.params)
-                # Collect declarations from function body
-                for body_node in node.value.body:
-                    self._collect_node_declarations(body_node, module_name)
+                # NOTE: Do NOT iterate over function body here.
+                # Function bodies should be processed with their own module context,
+                # not the importing module's context. Skip to avoid polluting local_vars.
             else:
                 self.registry.add_var(module_name, node.name)
                 self.registry.add_local_vars(module_name, [node.name])
+        
+        elif isinstance(node, FunctionDefNode):
+            # Params are registered by the parent AssignNode, skip processing body
+            # to avoid adding params to wrong module's local_vars when functions
+            # are flattened from imported modules
+            pass
         
         elif isinstance(node, IfNode):
             # Collect from condition (might have assignments)
@@ -277,11 +311,6 @@ class Resolver:
                 self._collect_node_declarations(n, module_name)
         
         elif isinstance(node, WhileNode):
-            for n in node.body or []:
-                self._collect_node_declarations(n, module_name)
-        
-        elif isinstance(node, FunctionDefNode):
-            self.registry.add_local_vars(module_name, node.params)
             for n in node.body or []:
                 self._collect_node_declarations(n, module_name)
     
@@ -394,6 +423,27 @@ class Resolver:
         else:
             return str(node)
     
+    def _collect_local_vars_from_body(self, module_name: str, body: list):
+        """Recursively collect local variable names from a function body."""
+        for stmt in body:
+            if isinstance(stmt, AssignNode):
+                # Only add simple assignments (not function definitions)
+                # Function params are already added in _copy_and_transform
+                if stmt.value is not None and not isinstance(stmt.value, FunctionDefNode):
+                    self.registry.add_local_vars(module_name, [stmt.name])
+            elif isinstance(stmt, WhileNode):
+                self._collect_local_vars_from_body(module_name, stmt.body or [])
+            elif isinstance(stmt, IfNode):
+                self._collect_local_vars_from_body(module_name, stmt.true_block or [])
+                if stmt.false_block:
+                    self._collect_local_vars_from_body(module_name, stmt.false_block)
+            elif isinstance(stmt, TryCatchNode):
+                self._collect_local_vars_from_body(module_name, stmt.try_block or [])
+                if stmt.catch_block:
+                    self._collect_local_vars_from_body(module_name, stmt.catch_block)
+                if stmt.finally_block:
+                    self._collect_local_vars_from_body(module_name, stmt.finally_block)
+    
     def _copy_and_transform(self, node: ASTNode, module_name: str) -> ASTNode:
         """Create a copy of node with transformed children."""
         cls = type(node)
@@ -413,6 +463,10 @@ class Resolver:
                     kwargs[key] = VarAccessNode(value.name, value.target)
                 else:
                     kwargs[key] = transformed
+            elif key == 'params' and isinstance(node, FunctionDefNode):
+                # FunctionDefNode: Register params as local vars so body references resolve correctly
+                self.registry.add_local_vars(module_name, value)
+                kwargs[key] = value  # params are strings, don't transform
             elif key in ['params', 'fields', 'alias', 'module_name', 'error_var', 'target_type', 'target_var', 'target_list', 'op', 'args']:
                 # These are simple values, not AST nodes - skip transformation
                 # BUT args should still be transformed to resolve VarAccessNode -> StringNode
@@ -420,6 +474,12 @@ class Resolver:
                     kwargs[key] = self._transform_nodes(value, module_name)
                 else:
                     kwargs[key] = value
+            elif key == 'body' and isinstance(node, FunctionDefNode):
+                # FunctionDefNode: Transform body with params already in scope
+                # First pass: collect local variables from AssignNodes so they're in scope
+                self._collect_local_vars_from_body(module_name, value)
+                # Second pass: transform the body
+                kwargs[key] = self._transform_nodes(value, module_name)
             elif isinstance(value, ASTNode):
                 kwargs[key] = self._transform_node(value, module_name)
             elif isinstance(value, list):
