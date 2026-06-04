@@ -540,11 +540,11 @@ putta från fruktantal med citron, 3
 
 rensa från fruktantal med banan
 
-sätt fruktpar till värden i fruktantal
+sätt fruktpar till värden från fruktantal
 
 sätt fruktfunk till grej med par
-    sätt fruktnamn till nyckel i par
-    sätt fruktantal till värde i par
+    sätt fruktnamn till nyckel från par
+    sätt fruktantal till värde från par
     skriv fruktnamn plus mellanrum plus fruktantal
 
 för varje med fruktpar, fruktfunk
