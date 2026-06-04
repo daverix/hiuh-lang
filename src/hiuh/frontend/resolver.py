@@ -1,53 +1,70 @@
 # -*- coding: utf-8 -*-
 """
 Resolver: Resolves imports and symbol references across modules.
-Two-pass: 
-  1. Collect all declarations into registry
+
+Uses ModuleRegistry to store each module's AST and symbol table together.
+This makes it easy to switch between AST and symbol-based representations
+for different backends (e.g., interpreter vs x86).
+
+Two-pass:
+  1. Collect all declarations into symbol table
   2. Resolve all symbol references and transform AST
 """
 
 import os
-import json
 from hiuh.frontend.ast import *
-from hiuh.frontend.registry import SymbolRegistry, SymbolInfo
-from hiuh.frontend.symbol_table import SymbolTable, FunctionSignature
+from hiuh.frontend.module_registry import ModuleRegistry, FunctionSignature
 
 
 class Resolver:
     def __init__(self, stdlib_path: str = None, target_dir: str = None):
-        self.registry = SymbolRegistry()
-        self.symbol_table = SymbolTable(target_dir=target_dir)
         self.stdlib_path = stdlib_path
         self.target_dir = target_dir
-        self.modules = {}
         self.errors = []
         self.main_module = None
+        
+        # Module registry: stores AST and symbol table for each module
+        self.module_registry = ModuleRegistry(target_dir=target_dir)
+        
+        # Internal module storage for raw AST parsing
+        self.modules = {}  # name -> ModuleInfo (parsed AST, not symbol table)
+        
+        # Local variables tracked per module (for scope resolution)
+        self.local_vars = {}  # module_name -> set of variable names
+        
         self._register_builtins()
     
     def _register_builtins(self):
         """Register built-in symbols."""
-        # Ensure modules exist for both 'main' and '__main__' module names
         for mod in ['__main__', 'main']:
-            self.registry.add_module(mod, "")
+            self.module_registry.add_module(mod, "")
+        
         # Built-in variables
         for mod in ['__main__', 'main']:
-            self.registry.add_var(mod, "SANT")
-            self.registry.add_var(mod, "FALSKT")
-            self.registry.add_var(mod, "mellanrum")
-            self.registry.add_var(mod, "ny")
-            self.registry.add_var(mod, "rad")
-            self.registry.add_var(mod, "lista")
-            self.registry.add_var(mod, "inmatning")
-            self.registry.add_var(mod, "heltal")
-            self.registry.add_var(mod, "text")
-            self.registry.add_var(mod, "flyttal")
+            self.module_registry.modules[mod].add_symbol("SANT", "var")
+            self.module_registry.modules[mod].add_symbol("FALSKT", "var")
+            self.module_registry.modules[mod].add_symbol("mellanrum", "var")
+            self.module_registry.modules[mod].add_symbol("ny", "var")
+            self.module_registry.modules[mod].add_symbol("rad", "var")
+            self.module_registry.modules[mod].add_symbol("lista", "var")
+            self.module_registry.modules[mod].add_symbol("inmatning", "var")
+            self.module_registry.modules[mod].add_symbol("heltal", "var")
+            self.module_registry.modules[mod].add_symbol("text", "var")
+            self.module_registry.modules[mod].add_symbol("flyttal", "var")
+        
         # Built-in functions
         for mod in ['__main__', 'main']:
-            self.registry.add_func(mod, "lista", [], None)
-            self.registry.add_func(mod, "inmatning", [], None)
-            self.registry.add_func(mod, "heltal", [], None)
-            self.registry.add_func(mod, "text", [], None)
-            self.registry.add_func(mod, "flyttal", [], None)
+            self.module_registry.modules[mod].add_symbol("lista", "func", FunctionSignature(params=[]))
+            self.module_registry.modules[mod].add_symbol("inmatning", "func", FunctionSignature(params=[]))
+            self.module_registry.modules[mod].add_symbol("heltal", "func", FunctionSignature(params=[]))
+            self.module_registry.modules[mod].add_symbol("text", "func", FunctionSignature(params=[]))
+            self.module_registry.modules[mod].add_symbol("flyttal", "func", FunctionSignature(params=[]))
+    
+    def _add_local_var(self, module_name: str, name: str):
+        """Add a local variable to the module's scope."""
+        if module_name not in self.local_vars:
+            self.local_vars[module_name] = set()
+        self.local_vars[module_name].add(name)
     
     def register_module_source(self, name: str, source: str):
         """Register a module by parsing source code string (for testing).
@@ -69,17 +86,21 @@ class Resolver:
         module.tokens = tokens
         module.ast = ast
         self.modules[name] = module
-        self.registry.add_module(name, "<in_memory>")
+        
+        # Register in module registry
+        self.module_registry.add_module(name, "<in_memory>", ast)
         
         # Register all top-level declarations from this module
         for node in ast:
             if isinstance(node, AssignNode):
                 if isinstance(node.value, FunctionDefNode):
-                    self.registry.add_func(name, node.name, node.value.params, None)
+                    self.module_registry.modules[name].add_symbol(
+                        node.name, "func", FunctionSignature(params=node.value.params)
+                    )
                 else:
-                    self.registry.add_var(name, node.name)
+                    self.module_registry.modules[name].add_symbol(node.name, "var")
             elif isinstance(node, TypeDefNode):
-                self.registry.add_type(name, node.name, node.fields)
+                self.module_registry.modules[name].add_symbol(node.name, "type")
     
     def discover_imports(self, module_name: str):
         """Discover and load imports for an already registered module."""
@@ -123,7 +144,10 @@ class Resolver:
         module.ast = ast
         self.modules[module_name] = module
         self.main_module = module_name
-        self.registry.add_module(module_name, script_dir or "")
+        
+        # Register in module registry
+        self.module_registry.add_module(module_name, script_dir or "", ast)
+        
         # If script_dir is provided, also use it as stdlib_path fallback
         if script_dir and not self.stdlib_path:
             self.stdlib_path = script_dir
@@ -155,7 +179,9 @@ class Resolver:
         module.tokens = tokens
         module.ast = ast
         self.modules[module_name] = module
-        self.registry.add_module(module_name, file_path)
+        
+        # Register in module registry
+        self.module_registry.add_module(module_name, file_path, ast)
         
         # Load and flatten all nested imports recursively
         self._load_all_imports(module_name, base_dir)
@@ -248,54 +274,27 @@ class Resolver:
         for module_name, module in list(self.modules.items()):
             module.ast = self._transform_ast(module.ast, module_name)
         
-        # Save symbol table to target directory
+        # Pass 4: Update ModuleRegistry with transformed ASTs
+        self._update_module_registry()
+        
+        # Save symbol tables to target directory
         if self.target_dir:
-            self._save_symbol_table()
+            self.module_registry.save()
         
         return len(self.errors) == 0
     
-    def _save_symbol_table(self):
-        """Save the symbol table to the target directory (one file per module)."""
-        if not self.target_dir:
-            return
-        
-        os.makedirs(self.target_dir, exist_ok=True)
-        
+    def _update_module_registry(self):
+        """Update ModuleRegistry with final ASTs and symbols."""
         for module_name, module_info in self.modules.items():
-            # Build symbols for this module
-            symbols = {}
-            imports = self.registry.deps.get(module_name, [])
-            
-            # Add symbols from registry
-            if module_name in self.registry.symbols:
-                for name, info in self.registry.symbols[module_name].items():
-                    sig = None
-                    if info.signature and hasattr(info.signature, 'params'):
-                        sig = {
-                            'params': info.signature.params or [],
-                            'return_type': None
-                        }
-                    symbols[name] = {
-                        'name': name,
-                        'type': info.type,
-                        'module': module_name,
-                        'signature': sig,
-                        'target': None
-                    }
-            
-            data = {
-                'name': module_name,
-                'path': module_info.path or '',
-                'imports': imports,
-                'exports': list(symbols.keys()),
-                'symbols': symbols
-            }
-            
-            # Create safe filename from module name
-            safe_name = module_name.replace('.', '_').replace('/', '_')
-            filepath = os.path.join(self.target_dir, f"{safe_name}.json")
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            # Update AST
+            if module_name in self.module_registry.modules:
+                self.module_registry.modules[module_name].ast = module_info.ast
+            else:
+                self.module_registry.add_module(module_name, module_info.path or "", module_info.ast)
+    
+    def get_module_registry(self) -> ModuleRegistry:
+        """Get the module registry (for use by backends)."""
+        return self.module_registry
     
     def _flatten_imports(self, ast: list, module_name: str) -> list:
         """Replace ImportNode with imports from modules."""
@@ -359,7 +358,7 @@ class Resolver:
             return
         
         if isinstance(node, ImportNode):
-            self.registry.add_import(module_name, node.module_name)
+            self.module_registry.add_import(module_name, node.module_name)
             # Skip disk loading if module is already registered (in-memory module)
             if node.module_name in self.modules:
                 return
@@ -384,7 +383,7 @@ class Resolver:
                     self._collect_declarations(node.module_name, imported_module.ast)
         
         elif isinstance(node, TypeDefNode):
-            self.registry.add_type(module_name, node.name, node.fields)
+            self.module_registry.modules[module_name].add_symbol(node.name, "type")
         
         elif isinstance(node, TryCatchNode):
             # error_var is in scope only for catch_block and finally_block
@@ -392,25 +391,23 @@ class Resolver:
         
         elif isinstance(node, AssignNode):
             if isinstance(node.value, FunctionDefNode):
-                self.registry.add_func(module_name, node.name, node.value.params, None)
+                self.module_registry.modules[module_name].add_symbol(
+                    node.name, "func", FunctionSignature(params=node.value.params)
+                )
                 # Collect params as local vars
-                self.registry.add_local_vars(module_name, node.value.params)
-                # NOTE: Do NOT iterate over function body here.
-                # Function bodies should be processed with their own module context,
-                # not the importing module's context. Skip to avoid polluting local_vars.
+                self._add_local_var(module_name, node.name)
+                for param in node.value.params:
+                    self._add_local_var(module_name, param)
             else:
-                self.registry.add_var(module_name, node.name)
-                self.registry.add_local_vars(module_name, [node.name])
+                self.module_registry.modules[module_name].add_symbol(node.name, "var")
+                self._add_local_var(module_name, node.name)
         
         elif isinstance(node, FunctionDefNode):
             # Params are registered by the parent AssignNode, skip processing body
-            # to avoid adding params to wrong module's local_vars when functions
-            # are flattened from imported modules
             pass
         
         elif isinstance(node, IfNode):
             # Collect from condition (might have assignments)
-            # Transform true_block and collect declarations
             for n in node.true_block or []:
                 self._collect_node_declarations(n, module_name)
             for n in node.false_block or []:
@@ -448,13 +445,12 @@ class Resolver:
             
             # Add error_var to scope for catch_block
             if node.error_var:
-                self.registry.add_local_vars(module_name, [node.error_var])
+                self._add_local_var(module_name, node.error_var)
             
             # Transform catch_block and finally_block
             transformed_catch = self._transform_nodes(node.catch_block, module_name) if node.catch_block else []
             transformed_finally = self._transform_nodes(node.finally_block, module_name) if node.finally_block else None
             
-            # Build the transformed TryCatchNode
             return TryCatchNode(
                 try_block=transformed_try,
                 error_var=node.error_var,
@@ -463,17 +459,13 @@ class Resolver:
                 token=node
             )
         
-        # Special handling for ComparisonNode - if any operand is an unresolved VarAccessNode,
-        # transform the entire comparison to a string EXCEPT for membership checks
+        # Special handling for ComparisonNode
         if isinstance(node, ComparisonNode):
             left = node.left
             right = node.right
-            
-            # Get the operator
             op = node.op if hasattr(node, 'op') and node.op else ''
             
-            # Membership check (i) should NOT be stringified - needs runtime evaluation
-            # Keep the comparison as-is, let interpreter handle variable resolution at runtime
+            # Membership check (i) should NOT be stringified
             if op.strip() == 'i':
                 return self._copy_and_transform(node, module_name)
             
@@ -482,7 +474,6 @@ class Resolver:
             right_unresolved = isinstance(right, VarAccessNode) and self._is_unresolved(right, module_name)
             
             if left_unresolved or right_unresolved:
-                # At least one side is unresolved - stringify entire comparison
                 left_str = self._get_string_value(left)
                 right_str = self._get_string_value(right)
                 return StringNode(f"{left_str} {op} {right_str}".strip(), token=node)
@@ -492,32 +483,22 @@ class Resolver:
             return self._resolve_var_access(node, module_name)
         
         # Special handling for FunctionCallNode with string name
-        # Convert string names to VarAccessNode if the name is in local_vars
-        # AND it's not a known function (i.e., it's a callback parameter)
-        # This handles function parameters used as callbacks
         if isinstance(node, FunctionCallNode) and isinstance(node.name, str):
             func_name = node.name
             if func_name:
                 # Check if it's a known function - if so, keep as string
-                sym = self.registry.resolve(func_name, module_name)
+                sym = self.module_registry.resolve_symbol(func_name, module_name)
                 if sym and sym.type == 'func':
-                    # It's a known function, keep as string
                     pass
-                elif func_name in self.registry.local_vars.get(module_name, set()):
-                    # It's a local variable (callback parameter) - convert to VarAccessNode
+                elif self._is_local_var(func_name, module_name):
                     return FunctionCallNode(name=VarAccessNode(func_name, target=None), args=node.args, token=node)
         
-        # Special handling for FunctionCallNode - convert stringified type names back to VarAccessNode
-        # This applies when name is a StringNode (was stringified during transformation)
-        # AND the call has arguments (indicating it might be a constructor call with args)
+        # Special handling for FunctionCallNode with StringNode name
         if isinstance(node, FunctionCallNode) and isinstance(node.name, StringNode):
             func_name = node.name.value
             if func_name:
-                # Check if function name is a known type - if so, convert to VarAccessNode
-                # Only convert if there are args (type constructors often have args)
-                sym = self.registry.resolve(func_name, module_name)
+                sym = self.module_registry.resolve_symbol(func_name, module_name)
                 if sym and sym.type == 'type' and node.args:
-                    # Name is a known type with args - convert to VarAccessNode
                     return FunctionCallNode(name=VarAccessNode(func_name, target=None), args=node.args, token=node)
         
         # Create a copy of the node with transformed children
@@ -527,8 +508,12 @@ class Resolver:
     def _is_unresolved(self, node: VarAccessNode, module_name: str) -> bool:
         """Check if a VarAccessNode cannot be resolved in the current scope."""
         if node.target:
-            return not self.registry.resolve(node.target, module_name)
-        return not self.registry.resolve(node.name, module_name) and node.name not in self.registry.local_vars.get(module_name, set())
+            return not self.module_registry.resolve_symbol(node.target, module_name)
+        return not self.module_registry.resolve_symbol(node.name, module_name) and not self._is_local_var(node.name, module_name)
+    
+    def _is_local_var(self, name: str, module_name: str) -> bool:
+        """Check if a name is a local variable in the module."""
+        return name in self.local_vars.get(module_name, set())
     
     def _get_string_value(self, node: ASTNode) -> str:
         """Get the string value of a node for stringification."""
@@ -549,10 +534,8 @@ class Resolver:
         """Recursively collect local variable names from a function body."""
         for stmt in body:
             if isinstance(stmt, AssignNode):
-                # Only add simple assignments (not function definitions)
-                # Function params are already added in _copy_and_transform
                 if stmt.value is not None and not isinstance(stmt.value, FunctionDefNode):
-                    self.registry.add_local_vars(module_name, [stmt.name])
+                    self._add_local_var(module_name, stmt.name)
             elif isinstance(stmt, WhileNode):
                 self._collect_local_vars_from_body(module_name, stmt.body or [])
             elif isinstance(stmt, IfNode):
@@ -573,41 +556,30 @@ class Resolver:
         
         for key, value in node.__dict__.items():
             if key in ['line', 'column']:
-                # Skip these - they come from token
                 continue
             elif key == 'name' and isinstance(value, VarAccessNode):
-                # FunctionCallNode.name can be a VarAccessNode - transform it
-                # But preserve VarAccessNode if it has a target (module call)
-                # to allow runtime resolution of function name
                 transformed = self._transform_node(value, module_name)
-                # Keep as VarAccessNode for interpreter to handle module.function pattern
                 if isinstance(transformed, StringNode) and value.target:
                     kwargs[key] = VarAccessNode(value.name, value.target)
                 else:
                     kwargs[key] = transformed
             elif key == 'params' and isinstance(node, FunctionDefNode):
-                # FunctionDefNode: Register params as local vars so body references resolve correctly
-                self.registry.add_local_vars(module_name, value)
-                kwargs[key] = value  # params are strings, don't transform
+                for p in value:
+                    self._add_local_var(module_name, p)
+                kwargs[key] = value
             elif key in ['params', 'fields', 'alias', 'module_name', 'error_var', 'target_type', 'target_var', 'target_list', 'op', 'args']:
-                # These are simple values, not AST nodes - skip transformation
-                # BUT args should still be transformed to resolve VarAccessNode -> StringNode
                 if key == 'args':
                     kwargs[key] = self._transform_nodes(value, module_name)
                 else:
                     kwargs[key] = value
             elif key == 'body' and isinstance(node, FunctionDefNode):
-                # FunctionDefNode: Transform body with params already in scope
-                # First pass: collect local variables from AssignNodes so they're in scope
                 self._collect_local_vars_from_body(module_name, value)
-                # Second pass: transform the body
                 kwargs[key] = self._transform_nodes(value, module_name)
             elif isinstance(value, ASTNode):
                 kwargs[key] = self._transform_node(value, module_name)
             elif isinstance(value, list):
-                # Check if this is a list of strings (params, fields) or ASTNodes
                 if value and isinstance(value[0], str):
-                    kwargs[key] = value  # Don't transform string lists
+                    kwargs[key] = value
                 else:
                     kwargs[key] = self._transform_nodes(value, module_name)
             else:
@@ -617,32 +589,26 @@ class Resolver:
     
     def _resolve_var_access(self, node: VarAccessNode, module_name: str) -> ASTNode:
         """Resolve a variable/field access - return StringNode if unknown."""
-        # Check if symbol exists
         if node.target:
-            # Target-based access (e.g., 'x from list')
-            symbol = self.registry.resolve(node.target, module_name)
-            # Also check local vars for the target
-            is_local = node.target in self.registry.local_vars.get(module_name, set())
+            symbol = self.module_registry.resolve_symbol(node.target, module_name)
+            is_local = self._is_local_var(node.target, module_name)
             if symbol or is_local:
                 return node
             return StringNode(f"{node.target}.{node.name}", token=node)
         
-        # Check full name
-        symbol = self.registry.resolve(node.name, module_name)
+        symbol = self.module_registry.resolve_symbol(node.name, module_name)
         if symbol:
             return node
         
-        # Check local vars with full name
-        is_local = node.name in self.registry.local_vars.get(module_name, set())
-        if is_local:
+        if self._is_local_var(node.name, module_name):
             return node
         
         # Try individual parts
         name_parts = node.name.split()
         for part in name_parts:
-            if part in self.registry.local_vars.get(module_name, set()):
+            if self._is_local_var(part, module_name):
                 return node
-            if self.registry.resolve(part, module_name):
+            if self.module_registry.resolve_symbol(part, module_name):
                 return node
         
         # Unknown symbol - transform to string literal
