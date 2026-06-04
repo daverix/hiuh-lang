@@ -114,14 +114,16 @@ class Interpreter:
                             continue  # Skip unresolved nested imports
                         self.visit(stmt)
                     
-                    # Copy module-level definitions to parent environment
-                    for name, value in module_env.vars.items():
-                        prev_env.define(name, value)
-                    
-                    # If there's an alias, also store the module environment for qualified access (h.hälsa)
-                    if node.alias:
-                        # Store a reference that can be used for qualified access
+                    # For wildcard imports (import_all=True): copy all to parent
+                    # For alias imports (import_all=False): symbols are scoped to alias only
+                    if node.import_all:
+                        # Wildcard import: copy all module-level definitions to parent
+                        for name, value in module_env.vars.items():
+                            prev_env.define(name, value)
+                    elif node.alias:
+                        # Alias import: store module env under alias for qualified access (h.hälsa)
                         prev_env.define(node.alias, module_env)
+                    # Non-wildcard, no alias: only execute for side effects, no symbol export
                 finally:
                     self.env = prev_env
         # If not in registry, the import resolved to nothing (module has no exports)
@@ -140,6 +142,11 @@ class Interpreter:
 
             if hasattr(obj, 'value'):
                 obj = obj.value
+
+            # Handle Environment objects (from aliased imports like `använd x som h`)
+            if hasattr(obj, 'vars'):
+                # It's an Environment - look up in its vars
+                return obj.vars.get(node.name, node.name)
 
             if isinstance(obj, str):
                 try:
@@ -317,8 +324,10 @@ class Interpreter:
                 # --- POP FUNCTION FRAME ---
                 # This try/finally strictly matches the execution life of the function call!
                 self.call_stack.pop()
-
-        raise Exception(f"'{func_name}' är inte en körbar grej.")
+        
+        # Function not found - stringify the call (e.g., "hälsa med David")
+        args_str = ' '.join(str(a) for a in args)
+        return f"{func_name} med {args_str}".strip()
 
     def execute_hiuh_function(self, func_node, args):
         """Executes a user-defined Hiuh-lang function in an isolated local environment."""
