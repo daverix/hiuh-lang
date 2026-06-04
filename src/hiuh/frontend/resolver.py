@@ -32,7 +32,6 @@ class Resolver:
         self.local_vars = {}  # module_name -> set of variable names
         
         self._current_module = None
-        self._pass = 1  # 1 = collect declarations, 2 = resolve references
         
         self._register_builtins()
     
@@ -288,20 +287,8 @@ class Resolver:
         return self._visit_nodes(ast)
     
     def resolve_all(self):
-        # Pass 1: Collect local variables
+        # Single pass: collect local vars AND transform AST (imports resolved via visitor)
         self._pass = 1
-        for module_name, module in list(self.modules.items()):
-            self._collect_local_vars(module.ast, module_name)
-        
-        # Pass 2: Update ModuleRegistry with ASTs
-        for module_name, module in list(self.modules.items()):
-            if module_name in self.module_registry.modules:
-                self.module_registry.modules[module_name].ast = module.ast
-            else:
-                self.module_registry.add_module(module_name, module.path or "", module.ast)
-        
-        # Pass 2: Transform AST for symbol resolution (includes import discovery via visitor)
-        self._pass = 2
         for module_name, module in list(self.modules.items()):
             self._current_module = module_name
             module.ast = self._visit_nodes(module.ast)
@@ -313,43 +300,6 @@ class Resolver:
         self.module_registry.save()
         
         return len(self.errors) == 0
-    
-    def _collect_local_vars(self, ast: list, module_name: str):
-        """Recursively collect all local variables from AST nodes."""
-        if not module_name:
-            return
-        
-        for node in ast:
-            if isinstance(node, AssignNode):
-                if isinstance(node.value, FunctionDefNode):
-                    # It's a function definition - collect the function name as a local var
-                    # (so it can be referenced within the same scope)
-                    self._add_local_var(module_name, node.name)
-                    # Collect function params
-                    for p in node.value.params:
-                        self._add_local_var(module_name, p)
-                    # Recursively collect from function body
-                    self._collect_local_vars(node.value.body or [], module_name)
-                else:
-                    # Non-function assignment - this is a local variable
-                    self._add_local_var(module_name, node.name)
-            elif isinstance(node, FunctionDefNode):
-                # Standalone function definition (not in an AssignNode)
-                for p in node.params:
-                    self._add_local_var(module_name, p)
-                self._collect_local_vars(node.body or [], module_name)
-            elif isinstance(node, IfNode):
-                self._collect_local_vars(node.true_block or [], module_name)
-                self._collect_local_vars(node.false_block or [], module_name)
-            elif isinstance(node, WhileNode):
-                self._collect_local_vars(node.body or [], module_name)
-            elif isinstance(node, TryCatchNode):
-                if node.error_var:
-                    self._add_local_var(module_name, node.error_var)
-                self._collect_local_vars(node.try_block or [], module_name)
-                self._collect_local_vars(node.catch_block or [], module_name)
-                if node.finally_block:
-                    self._collect_local_vars(node.finally_block, module_name)
     
     # === Visitor Pattern Implementation ===
     
@@ -371,11 +321,6 @@ class Resolver:
         return visitor(node)
     
     # === Literal nodes - return as-is ===
-    
-    def visit_IntNode(self, node): return node
-    def visit_FloatNode(self, node): return node
-    def visit_BoolNode(self, node): return node
-    def visit_StringNode(self, node): return node
     
     # === ImportNode - mark as resolved ===
     
@@ -567,10 +512,9 @@ class Resolver:
     # === Function nodes ===
     
     def visit_FunctionDefNode(self, node):
-        # Collect params as local vars (pass 1 only)
-        if self._pass == 1:
-            for p in node.params:
-                self._add_local_var(self._current_module, p)
+        # Collect params as local vars
+        for p in node.params:
+            self._add_local_var(self._current_module, p)
         
         body = self._visit_nodes(node.body)
         if body is node.body:
@@ -592,6 +536,9 @@ class Resolver:
     # === Statement nodes - transform children ===
     
     def visit_AssignNode(self, node):
+        # Collect the variable name as a local var
+        self._add_local_var(self._current_module, node.name)
+        
         value = self.visit(node.value)
         if value is node.value:
             return node
@@ -629,7 +576,7 @@ class Resolver:
         return WhileNode(condition=condition, body=body, line=node.line, column=node.column)
     
     def visit_TryCatchNode(self, node):
-        if self._pass == 1 and node.error_var:
+        if node.error_var:
             self._add_local_var(self._current_module, node.error_var)
         
         try_block = self._visit_nodes(node.try_block)
