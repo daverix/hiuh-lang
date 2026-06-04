@@ -540,7 +540,7 @@ sätt fruktpar till värden från fruktantal
 sätt fruktfunk till grej med par
     sätt fruktnamn till nyckel från par
     sätt fruktantal till värde från par
-    skriv fruktnamn plus mellanrum plus fruktantal
+    skriv fruktnamn plus mellanrum plus fruktantal plus . plus mellanrum
 
 för varje med fruktpar, fruktfunk
 
@@ -548,7 +548,7 @@ för varje med fruktpar, fruktfunk
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
 
-            self.assertEqual(fake_out.getvalue().strip(), "äpple 2\ncitron 3")
+            self.assertEqual(fake_out.getvalue().strip(), "äpple 2. citron 3.")
 
 if __name__ == '__main__':
     unittest.main()
