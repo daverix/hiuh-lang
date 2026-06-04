@@ -2,19 +2,33 @@ import os
 import unittest
 from io import StringIO
 from unittest.mock import patch
-from hiuh.frontend.tokenizer import Tokenizer
-from hiuh.frontend.parser import Parser
+
 from hiuh.backend.interpreter.interpreter import Interpreter
+from hiuh.frontend.parser import Parser
+from hiuh.frontend.resolver import Resolver
+from hiuh.frontend.tokenizer import Tokenizer
+
 
 class TestHiuhFullIntegration(unittest.TestCase):
     def setUp(self):
         self.tokenizer = Tokenizer()
         self.interpreter = Interpreter()
 
-    def run_source(self, source):
+    def run_source(self, source, script_dir=None):
         tokens = self.tokenizer.tokenize(source)
         parser = Parser(tokens)
         nodes = parser.parse()
+        
+        # Use Resolver to flatten imports so no ImportNode reaches the interpreter
+        resolver = Resolver()
+        resolver.discover_modules_from_ast("main", nodes, script_dir)
+        resolver.resolve_all()
+        nodes = resolver.get_ast("main")
+
+        # Pass script directory to interpreter
+        if script_dir:
+            self.interpreter.script_dir_stack = [script_dir]
+        
         return self.interpreter.execute(nodes)
 
     def test_arithmetic_precedence(self):
@@ -505,10 +519,7 @@ skriv hittat_index plus mellanrum plus hittat_namn
             repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             hiuh_folder = os.path.join(repo_root, "hiuh_i_hiuh")
 
-            # Seed the initial folder path context so 'använd listor' resolves there
-            self.interpreter.script_dir_stack = [hiuh_folder]
-
-            self.run_source(source)
+            self.run_source(source, script_dir=hiuh_folder)
 
             # Index of 'Hiuh' in [Java, Python, Hiuh, Kotlin] is 2
             # Expected exact console dump: "2 Hiuh"
@@ -520,7 +531,7 @@ skriv hittat_index plus mellanrum plus hittat_namn
 använd ordlista
 använd listor
 
-sätt fruktantal till ny ordlista
+sätt fruktantal till ny tom ordlista
 putta från fruktantal med äpple, 2
 putta från fruktantal med banan, 1
 putta från fruktantal med citron, 3
@@ -542,9 +553,7 @@ för varje med fruktpar, fruktfunk
             repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             hiuh_folder = os.path.join(repo_root, "hiuh_i_hiuh")
 
-            self.interpreter.script_dir_stack = [hiuh_folder]
-
-            self.run_source(source)
+            self.run_source(source, script_dir=hiuh_folder)
 
             self.assertEqual(fake_out.getvalue().strip(), "äpple 2\ncitron 3")
 
