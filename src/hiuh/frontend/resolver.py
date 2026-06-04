@@ -458,9 +458,6 @@ class Resolver:
                     op=op,
                     token=node
                 )
-            
-            # Otherwise, keep the comparison for evaluation
-            return self._copy_and_transform(node, module_name)
         
         # VarAccessNode: resolve or stringify
         if isinstance(node, VarAccessNode):
@@ -469,7 +466,7 @@ class Resolver:
         # Create a copy of the node with transformed children
         new_node = self._copy_and_transform(node, module_name)
         return new_node
-    
+
     def _is_unresolved(self, node: ASTNode, module_name: str) -> bool:
         """Check if a VarAccessNode cannot be resolved in the current scope."""
         # If it has a target (qualified access), check that target
