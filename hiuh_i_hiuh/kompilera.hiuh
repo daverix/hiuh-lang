@@ -4,4 +4,17 @@ använd tokeniserare
 sätt källkod till element 1 från argument
 sätt utdata till källkod plus .tokens
 
-tokenisera fil med källkod, utdata
+. Läs källkodsfilen
+öppna källkod för läsning som fil
+sätt rader till lista
+medan inte i slutet från fil
+    sätt rad till nästa rad från fil
+    lägg till rad i rader
+stäng fil
+
+. Tokenisera
+sätt tokens till tokenisera med rader
+
+. Skriv ut alla tokens
+för varje t från tokens
+    skriv rad från t plus ": " plus tokentyp från t plus " " plus värde från t
