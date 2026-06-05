@@ -511,73 +511,85 @@ class Resolver:
     def _transform_named_args_to_positional(self, args, field_names):
         """Transform named arguments to positional based on field order.
         
-        Handles patterns like: [prop1, value1, prop2, value2] -> [value1, value2]
-        Or mixed: [prop1, value1, value2] where value2 is positional
-        Also handles multi-word identifiers where first word is a field name.
+        Handles patterns:
+        1. [prop1, value1, prop2, value2] - property first, then value
+        2. Multi-word: [prop_value] - where prop_value is "prop value" (prop first, then value)
+        
+        Reorders values to match field_names order.
+        Example: args=[ålder, 37, namn David], field_names=[namn, ålder] -> [David, 37]
         """
-        if not args or len(args) < 2:
+        if not args:
             return None
         
-        # Check if first arg looks like a property name
-        first_arg = args[0]
-        if not isinstance(first_arg, VarAccessNode):
+        # Check if any arg looks like a property name (single word or multi-word)
+        has_named = False
+        for arg in args:
+            if isinstance(arg, VarAccessNode):
+                var_name = arg.name
+                if var_name in field_names:
+                    has_named = True
+                    break
+                words = var_name.split()
+                if words and words[0] in field_names:
+                    has_named = True
+                    break
+        
+        if not has_named:
             return None
         
-        prop_name = first_arg.name
-        
-        # Check if this is a known field name (either full name or first word of multi-word)
-        is_named = prop_name in field_names
-        if not is_named:
-            # Check if first word is a field name (for multi-word like "namn David")
-            first_word = prop_name.split()[0] if prop_name else None
-            if first_word and first_word in field_names:
-                is_named = True
-                prop_name = first_word  # Use the field name for matching
-        
-        if not is_named:
-            return None
-        
-        # It's a named argument pattern - transform
-        result = []
+        # Parse arguments to extract prop-value pairs
+        value_by_field = {}  # field_name -> value
         i = 0
         
         while i < len(args):
-            if isinstance(args[i], VarAccessNode):
-                var_name = args[i].name
+            arg = args[i]
+            
+            if isinstance(arg, VarAccessNode):
+                var_name = arg.name
+                words = var_name.split()
                 
-                # Check if this is a property name (full or first word)
-                is_prop = var_name in field_names
-                first_word = var_name.split()[0] if var_name else None
-                
-                if is_prop or (first_word and first_word in field_names):
-                    # Use the field name
-                    actual_prop = var_name if is_prop else first_word
-                    
-                    # If the VarAccessNode is multi-word ("prop value"), split it
-                    if var_name != actual_prop:
-                        # Multi-word: first part is prop, rest is value
-                        remaining = var_name[len(actual_prop):].strip()
-                        if remaining:
-                            # Use remaining as value (don't skip next arg)
-                            result.append(StringNode(remaining, token=args[i]))
-                            i += 1
-                            continue
-                    
-                    # Single-word property name - use next arg as value
+                # Check if this is a property (single word or first word of multi-word)
+                if var_name in field_names:
+                    # Single-word property - next arg is the value
                     if i + 1 < len(args):
-                        result.append(args[i + 1])
+                        value_by_field[var_name] = args[i + 1]
                         i += 2
                         continue
-                
-                # Not a property name - positional arg
-                result.append(args[i])
-                i += 1
-            else:
-                # Other node type - treat as positional
-                result.append(args[i])
-                i += 1
+                elif words and words[0] in field_names:
+                    # Multi-word: first word is property, rest is value
+                    prop_name = words[0]
+                    if len(words) > 1:
+                        value_str = ' '.join(words[1:])
+                        value_by_field[prop_name] = StringNode(value_str, token=arg)
+                    i += 1
+                    continue
+            
+            # Non-VarAccessNode or not a property - skip
+            i += 1
         
-        return result if result else None
+        # Reorder values to match field_names order
+        result = []
+        for field in field_names:
+            if field in value_by_field:
+                result.append(value_by_field[field])
+        
+        # Only return if we found all fields
+        if len(result) == len(field_names):
+            return result
+        
+        return None
+        
+        # Reorder values to match field_names order
+        result = []
+        for field in field_names:
+            if field in value_by_field:
+                result.append(value_by_field[field])
+        
+        # Only return if we found all fields
+        if len(result) == len(field_names):
+            return result
+        
+        return None
 
     def visit_ReturnNode(self, node):
         value = self.visit(node.value)

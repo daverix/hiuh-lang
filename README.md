@@ -190,11 +190,14 @@ All three constructs (`typ`, `grej`, and `kopia av`) support **named arguments**
 ```
 typ person med namn, ålder
 
-. Using named arguments
-sätt p till person med namn David, ålder 37
+. Using named arguments (any order)
+sätt p till person med ålder 37, namn David
+
+. Named arguments in field order also works
+sätt q till person med namn Eva, ålder 25
 
 . Positional arguments still work
-sätt q till person med Eva, 25
+sätt r till person med David, 37
 ```
 
 **Named arguments for `grej` functions:**
@@ -203,7 +206,11 @@ sätt q till person med Eva, 25
 sätt add till grej med a, b
     ge a plus b
 
-. Using named arguments
+. Using named arguments (any order)
+sätt resultat till add med b 3, a 5
+skriv resultat
+
+. Named arguments in param order also works
 sätt resultat till add med a 5, b 3
 skriv resultat
 
@@ -215,6 +222,7 @@ skriv resultat
 outputs:
 ```
 8
+8
 7
 ```
 
@@ -222,7 +230,7 @@ outputs:
 
 ```
 sätt p till person med David, 37
-sätt uppdaterad till kopia av p med namn Eva, ålder 40
+sätt uppdaterad till kopia av p med ålder 40, namn Eva
 skriv namn från uppdaterad
 skriv ny rad
 skriv ålder från uppdaterad

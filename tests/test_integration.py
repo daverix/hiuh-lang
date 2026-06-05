@@ -549,10 +549,10 @@ för varje med fruktpar, fruktfunk
             self.assertEqual(fake_out.getvalue().strip(), "äpple 2. citron 3.")
 
     def test_named_args_typ_constructor(self):
-        """Test that typ constructors support named arguments."""
+        """Test that typ constructors support named arguments in any order."""
         source = """
 typ person med namn, ålder
-sätt p till person med namn David, ålder 37
+sätt p till person med ålder 37, namn David
 skriv namn från p
 skriv ny rad
 skriv ålder från p
@@ -619,7 +619,7 @@ skriv resultat
         source = """
 typ person med namn, ålder
 sätt p till person med David, 37
-sätt uppdaterad till kopia av p med namn Eva, ålder 40
+sätt uppdaterad till kopia av p med ålder 40, namn Eva
 skriv namn från uppdaterad
 skriv ny rad
 skriv ålder från uppdaterad
@@ -632,7 +632,7 @@ skriv ålder från uppdaterad
         """Test named args with multi-word property names."""
         source = """
 typ bil med märke, modell
-sätt min bil till bil med märke Volvo, modell V60
+sätt min bil till bil med modell V60, märke Volvo
 skriv märke från min bil
 skriv ny rad
 skriv modell från min bil
