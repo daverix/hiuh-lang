@@ -53,6 +53,7 @@ class Resolver:
             self.module_registry.modules[mod].add_symbol("heltal", "var")
             self.module_registry.modules[mod].add_symbol("text", "var")
             self.module_registry.modules[mod].add_symbol("flyttal", "var")
+            self.module_registry.modules[mod].add_symbol("argument", "var")
 
         # Built-in functions
         for mod in ['__main__', 'main']:
@@ -760,6 +761,9 @@ class Resolver:
             symbol = self.module_registry.resolve_symbol(node.target, self._current_module)
             is_local = self._is_local_var(node.target)
             if symbol or is_local:
+                return node
+            # Check __main__ for built-in variables like 'argument'
+            if '__main__' in self.module_registry.modules and node.target in self.module_registry.modules['__main__'].symbols:
                 return node
             return StringNode(f"{node.target}.{node.name}", token=node)
 
