@@ -443,7 +443,7 @@ class Parser:
         if t.type == "T_IDENTIFIER" and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
             self.consume(); self.consume(); return StringNode("\n", line=t.line, column=t.column)
 
-        if t.type in ["T_IDENTIFIER", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_KEYWORD_IN"]:
+        if t.type in ["T_IDENTIFIER", "T_KEYWORD_PRINT", "T_KEYWORD_SET", "T_KEYWORD_TO", "T_KEYWORD_WITH", "T_KEYWORD_GIVE", "T_KEYWORD_FUNC", "T_KEYWORD_TYPE", "T_KEYWORD_FROM", "T_KEYWORD_IF", "T_KEYWORD_ELSE", "T_KEYWORD_WHILE", "T_KEYWORD_TRY", "T_KEYWORD_THROW", "T_KEYWORD_CATCH", "T_KEYWORD_OPEN", "T_KEYWORD_CLOSE", "T_KEYWORD_FOR", "T_KEYWORD_AS", "T_OP_IS", "T_KEYWORD_GREATER", "T_KEYWORD_LESS", "T_KEYWORD_EQUAL", "T_KEYWORD_THAN", "T_OP_MUL", "T_OP_ADD", "T_OP_SUB", "T_OP_DIV", "T_OP_OR", "T_OP_AND", "T_KEYWORD_IN", "T_KEYWORD_IMPORT"]:
             name = self.consume().value
 
             if name == ".":
@@ -674,6 +674,7 @@ class Parser:
         if t.type == "T_LITERAL_FLOAT": return FloatNode(self.consume().value, token=t)
         if t.type == "T_LITERAL_TRUE": self.consume(); return BoolNode(True, token=t)
         if t.type == "T_LITERAL_FALSE": self.consume(); return BoolNode(False, token=t)
+        if t.type == "T_STRING": return StringNode(self.consume().value, token=t)
         raise SyntaxError(f"Unexpected {t.type} ({t.value}) at line {t.line}")
 
     def parse_block(self, params=None):
