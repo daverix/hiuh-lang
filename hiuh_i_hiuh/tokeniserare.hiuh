@@ -156,7 +156,7 @@ sätt tokenisera till grej med rader
             sätt tecken till element i från innehåll
             
             . Whitespace
-            om tecken är lika med " "
+            om tecken är lika med mellanrum
                 sätt i till i plus 1
                 fortsätt
             
@@ -212,7 +212,7 @@ sätt tokenisera till grej med rader
             sätt start till i
             medan i är mindre än längd från innehåll
                 sätt id_tecken till element i från innehåll
-                om id_tecken är lika med " " eller id_tecken är lika med "," eller id_tecken är lika med CITAT
+                om id_tecken är lika med mellanrum eller id_tecken är lika med "," eller id_tecken är lika med CITAT
                     bryt
                 sätt i till i plus 1
             
