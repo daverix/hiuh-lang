@@ -365,6 +365,10 @@ class Interpreter:
             # 5. ALWAYS restore the parent execution environment pointer!
             self.env = old_env
 
+    def visit_ExpressionPartsNode(self, node):
+        """ExpressionPartsNode should always be transformed by resolver before interpreter runs."""
+        raise Exception(f"Interpreter: ExpressionPartsNode was not transformed by resolver. Parts: {node.parts}")
+
     def visit_ReturnNode(self, node):
         return_value = self.visit(node.value)
         # Raise the exception to instantly halt the current execution frame loop
@@ -374,6 +378,10 @@ class Interpreter:
         l = self.visit(node.left)
         r = self.visit(node.right)
         op = node.op.strip()
+        
+        # Strip leading "är " if present (är is syntactic sugar)
+        if op.startswith('är '):
+            op = op[3:]
 
         if op == "i":
             try:
@@ -393,6 +401,61 @@ class Interpreter:
     def visit_NotNode(self, node):
         val = self.visit(node.condition)
         return not bool(val)
+
+    def visit_InfixCallNode(self, node):
+        # Evaluate left and right operands
+        left_val = self.visit(node.left)
+        right_val = self.visit(node.right)
+        
+        # Look up the infix function by name
+        func = self.env.get(node.operator)
+        
+        # If func is a string, look it up
+        if isinstance(func, str):
+            func = self.env.get(func)
+        
+        if func is None:
+            raise Exception(f"Infix function '{node.operator}' is not defined")
+        
+        # Call the function with left as first arg, right as second arg
+        if hasattr(func, 'body'):
+            # It's a hiuh function (FunctionDefNode stored in env)
+            return self._call_hiuh_function(func, left_val, right_val)
+        elif callable(func):
+            # It's a Python function
+            return func(left_val, right_val)
+        else:
+            raise Exception(f"'{node.operator}' is not callable")
+    
+    def _call_hiuh_function(self, func_node, arg1, arg2):
+        """Call a hiuh function with two arguments."""
+        if not hasattr(func_node, 'body'):
+            raise Exception("Not a hiuh function")
+        
+        # Save current environment
+        old_env = self.env
+        
+        # Create local environment with function scope
+        local_env = Environment(old_env)
+        
+        # Bind parameters to arguments (first param = arg1, second param = arg2)
+        params = func_node.params
+        if len(params) >= 1:
+            local_env.define(params[0], arg1)
+        if len(params) >= 2:
+            local_env.define(params[1], arg2)
+        
+        # Swap environment
+        self.env = local_env
+        
+        try:
+            for statement_node in func_node.body:
+                self.visit(statement_node)
+            return None
+        except ReturnException as e:
+            return e.value
+        finally:
+            self.env = old_env
 
     # --- Error Handling ---
     def visit_TryCatchNode(self, node):

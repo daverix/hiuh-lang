@@ -208,10 +208,12 @@ skriv element 0 från frukter
     def test_list_membership_i(self):
         """Verify 'val i lista' as a boolean check."""
         source = """
+använd listor
+
 sätt färger till lista med röd, grön
-om röd i färger
+om färger innehåller röd
     skriv Japp
-om blå i färger
+om färger innehåller blå
     skriv Nej
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:

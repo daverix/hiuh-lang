@@ -114,16 +114,24 @@ class WhileNode(ASTNode):
 
 # --- Functions and Types ---
 class FunctionDefNode(ASTNode):
-    def __init__(self, params, body, line=None, column=None):
+    def __init__(self, params, body, line=None, column=None, is_infix=False):
         super().__init__(line, column)
         self.params = params
         self.body = body
+        self.is_infix = is_infix
 
 class FunctionCallNode(ASTNode):
     def __init__(self, name, args, token=None):
         super().__init__(token.line if token else None, token.column if token else None)
         self.name = name
         self.args = args
+
+class InfixCallNode(ASTNode):
+    def __init__(self, left, operator, right, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.left = left
+        self.operator = operator
+        self.right = right
 
 class TypeDefNode(ASTNode):
     def __init__(self, name, fields, token=None):
@@ -198,3 +206,13 @@ class CopyWithPropNode(ASTNode):
         self.name = name          # The new variable name (X)
         self.source = source     # The source object (Y)
         self.updates = updates    # List of (prop_name, value) tuples
+
+class ExpressionPartsNode(ASTNode):
+    """Generic expression node that stores a list of parts to be resolved later.
+    
+    Parser creates this for any sequence like 'frukt innehåller banan'.
+    Resolver transforms it to the correct node type based on context.
+    """
+    def __init__(self, parts, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.parts = parts  # List of strings like ['frukt', 'innehåller', 'banan']

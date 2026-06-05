@@ -17,6 +17,8 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
         self.in_structural_statement = False
+        self.infix_functions = set()  # Set of infix function names registered via 'infix grej'
+        self.in_call_args = False
 
     def peek(self, offset=0):
         if self.pos + offset >= len(self.tokens): return None
@@ -221,7 +223,7 @@ class Parser:
         kopia_checkpoint = self.pos
         if self.peek() and self.peek().type == TOKEN_IDENTIFIER:
             # Try to detect 'kopia av' pattern
-            # Collect variable name (could be multi-word)
+            # Collect variable name (could be multi-word, including operators like 'är')
             name_parts = [self.consume().value]
             while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value != "till":
                 name_parts.append(self.consume().value)
@@ -247,6 +249,21 @@ class Parser:
         
         # Reset to start of assignment if we didn't match kopia av pattern
         self.pos = kopia_checkpoint
+        
+        # Try to collect multi-word name that might include operators like 'är'
+        # This handles patterns like 'är del av' where 'är' is TOKEN_OP_IS
+        name_parts = []
+        while self.peek() and self.peek().type not in [TOKEN_TO, TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
+            # Stop if we hit 'till'
+            if self.peek().type == TOKEN_TO:
+                break
+            name_parts.append(self.consume().value)
+        
+        if name_parts:
+            name = " ".join(name_parts)
+            self.consume(TOKEN_TO)  # consume 'till'
+            val = self.parse_greedy_expression()
+            return AssignNode(name, val, target_type=None, token=assign_token)
         
         # Standard assignment
         parts = []
@@ -318,9 +335,16 @@ class Parser:
             is_at_boundary = not nt or nt.type in [
                 TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT,
                 TOKEN_FROM
-            ] or (nt.type == TOKEN_IDENTIFIER and nt.value in ["för", "som", "till", "i"])
+            ] or (nt.type == TOKEN_IDENTIFIER and nt.value in ["för", "till", "i"])
 
             if is_at_boundary:
+                return expr
+            
+            # Next token is not a boundary - check if expr is a VarAccessNode with multi-word name
+            # If so, this is likely an expression like "färger innehåller röd", not a string
+            print(f"DEBUG parse_greedy: checking expr, type={type(expr).__name__}")
+            if isinstance(expr, VarAccessNode) and ' ' in expr.name:
+                # The expression is already correct, return it
                 return expr
         except:
             if t.type == TOKEN_FUNC: raise
@@ -353,32 +377,74 @@ class Parser:
             cond_node = self.expression()
             return NotNode(cond_node, token=t)
 
+        # Parse first part of expression
         left = self.arithmetic()
         if isinstance(left, FunctionDefNode): return left
-
-        while True:
-            t = self.peek()
-            if not t or t.type in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]: break
-
-            if t.type == TOKEN_IDENTIFIER and t.value == "i":
+        
+        # Check if we should collect parts for compound expression
+        # Collect all tokens until we hit a boundary
+        t = self.peek()
+        
+        # Collect parts if next token is an identifier or operator
+        # This handles patterns like "frukt innehåller banan" or "x är mindre än 10"
+        if t and t.type in [TOKEN_IDENTIFIER, TOKEN_OP_IS, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV,
+                           TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OR, TOKEN_AND, TOKEN_WITH, TOKEN_AS]:
+            parts = []
+            
+            # Add left side as first part (convert node to string representation)
+            if isinstance(left, VarAccessNode):
+                # Split multi-word names into individual parts for proper expression parsing
+                # This handles cases like "färger innehåller" where the name includes what
+                # should be recognized as an infix operator
+                name_parts = left.name.split(' ')
+                parts.extend(name_parts)
+            elif isinstance(left, IntNode):
+                parts.append(str(left.value))
+            elif isinstance(left, StringNode):
+                parts.append(left.value)
+            elif isinstance(left, BoolNode):
+                parts.append(str(left.value).lower())
+            elif isinstance(left, FunctionCallNode):
+                # Can't easily represent function call in parts, return as-is
+                return left
+            else:
+                # Other complex types - return left as-is
+                return left
+            
+            # Collect tokens until we hit a boundary (newline, indent, etc.)
+            while t and t.type not in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
+                # Check if this is "längd från X" pattern - treat as function call
+                if t.type == TOKEN_IDENTIFIER and t.value == "längd":
+                    if self.peek(1) and self.peek(1).type == TOKEN_FROM:
+                        # This is "längd från X" - consume and create function call
+                        self.consume()  # consume 'längd'
+                        self.consume()  # consume 'från'
+                        # Collect target
+                        target_parts = []
+                        while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
+                            target_parts.append(self.consume().value)
+                        target = " ".join(target_parts)
+                        # Add the function call as a single part (will be resolved by resolver)
+                        parts.append(f"längd från {target}")
+                        t = self.peek()
+                        continue
+                
+                # Add token value to parts (identifiers, literals, and all operators)
+                if t.type in [TOKEN_IDENTIFIER, TOKEN_LITERAL_INT, TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE, TOKEN_STRING]:
+                    parts.append(t.value)
+                elif t.type in [TOKEN_OP_IS, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV,
+                               TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OR, TOKEN_AND, TOKEN_WITH, TOKEN_AS, TOKEN_OF]:
+                    parts.append(t.value)
+                elif t.type == TOKEN_COMMA:
+                    parts.append(',')
+                # Consume and continue
                 self.consume()
-                left = ComparisonNode(left, "i", self.arithmetic(), token=t)
-                continue
-
-            if t.value == "som":
-                self.consume() # consume 'som'
-                target = self.consume(TOKEN_IDENTIFIER).value
-                left = CastNode(left, target_type=target, token=t)
-                continue # look for more operators
-
-            if t.type == TOKEN_OP_IS: self.consume(); t = self.peek()
-            if not t: break
-            if t.type in [TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_OR, TOKEN_AND]:
-                op_parts = []
-                while self.peek() and (self.peek().type in [TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_WITH, TOKEN_OR, TOKEN_AND] or (self.peek().type == TOKEN_IDENTIFIER and self.peek().value in ["eller", "lika", "med", "än", "och"])):
-                    op_parts.append(self.consume().value)
-                left = ComparisonNode(left, " ".join(op_parts), self.arithmetic(), token=t)
-            else: break
+                t = self.peek()
+            
+            # If we collected more than one part, it's a compound expression
+            if len(parts) > 1:
+                return ExpressionPartsNode(parts, token=t)
+        
         return left
 
     def arithmetic(self):
@@ -445,11 +511,32 @@ class Parser:
                     if self.peek() and self.peek().type == TOKEN_COMMA: self.consume()
                     else: break
             return FunctionDefNode(p, self.parse_block(params=p), line=t.line, column=t.column)
+        
+        # Handle 'infix grej' - both tokens must be consumed together
+        if t.type == TOKEN_INFIX and self.peek(1) and self.peek(1).type == TOKEN_FUNC:
+            infix_token = self.consume()  # consume 'infix'
+            self.consume()  # consume 'grej'
+            p = []
+            if self.peek() and self.peek().type == TOKEN_WITH:
+                self.consume()
+                while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
+                    p.append(self.consume().value)
+                    if self.peek() and self.peek().type == TOKEN_COMMA: self.consume()
+                    else: break
+            # Check if there's an indented block (function body) or just end of statement
+            body = []
+            # Skip any newlines before checking for INDENT
+            while self.peek() and self.peek().type == TOKEN_NEWLINE:
+                self.consume()
+            if self.peek() and self.peek().type == TOKEN_INDENT:
+                body = self.parse_block(params=p)
+            # Mark this function as infix by returning a special node
+            return FunctionDefNode(p, body, line=infix_token.line, column=infix_token.column, is_infix=True)
 
         if t.type == TOKEN_IDENTIFIER and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
             self.consume(); self.consume(); return StringNode("\n", token=t)
 
-        if t.type in [TOKEN_IDENTIFIER, TOKEN_PRINT, TOKEN_SET, TOKEN_TO, TOKEN_WITH, TOKEN_GIVE, TOKEN_FUNC, TOKEN_TYPE, TOKEN_FROM, TOKEN_IF, TOKEN_ELSE, TOKEN_WHILE, TOKEN_TRY, TOKEN_THROW, TOKEN_CATCH, TOKEN_OPEN, TOKEN_CLOSE, TOKEN_AS, TOKEN_OP_IS, TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OP_MUL, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_DIV, TOKEN_OR, TOKEN_AND, TOKEN_IMPORT]:
+        if t.type in [TOKEN_IDENTIFIER, TOKEN_PRINT, TOKEN_SET, TOKEN_TO, TOKEN_WITH, TOKEN_GIVE, TOKEN_FUNC, TOKEN_TYPE, TOKEN_FROM, TOKEN_IF, TOKEN_ELSE, TOKEN_WHILE, TOKEN_TRY, TOKEN_THROW, TOKEN_CATCH, TOKEN_OPEN, TOKEN_CLOSE, TOKEN_AS, TOKEN_OP_IS, TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OP_MUL, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_DIV, TOKEN_OR, TOKEN_AND, TOKEN_IMPORT, TOKEN_INFIX]:
             name = self.consume().value
 
             if name == ".":
@@ -470,6 +557,7 @@ class Parser:
 
             if not self.in_structural_statement:
                 lookahead = 0
+                has_extended = False
                 while self.peek(lookahead) and self.peek(lookahead).type == TOKEN_IDENTIFIER:
                     # Check if this is "i" followed by "från" - then it's part of identifier, not membership check
                     if self.peek(lookahead).value == "i":
@@ -480,12 +568,26 @@ class Parser:
                             # "i" NOT followed by "från" - this is membership check, stop extending
                             break
                     
+                    # Stop extending if current lookahead token is a known operator that signals an expression
+                    # This allows "frukt innehåller banan" to be parsed as expression, not identifier
+                    # Also stop for built-in functions like "längd" that need special handling
+                    stop_words = ["är", "som", "plus", "minus", "från", "längd", "element", "index"]
+                    if self.peek(lookahead) and self.peek(lookahead).type == TOKEN_IDENTIFIER:
+                        if self.peek(lookahead).value in stop_words:
+                            break
+                        # Stop extending if we've already extended once and see another identifier
+                        # This handles cases like "färger innehåller röd" where "innehåller" should
+                        # be treated as an operator, not part of the name
+                        if has_extended:
+                            break
+                    
                     next_tok = self.peek(lookahead)
                     next_combined = name + " " + next_tok.value
                     
                     # Always extend the name by consuming identifiers
                     name = next_combined
                     self.consume()
+                    has_extended = True
                     lookahead = 0  # Reset to check from current position
                     continue
                 
@@ -556,7 +658,8 @@ class Parser:
 
                 return prop_node
 
-            # Multi-word Var
+            # Multi-word Var - track if we've extended (name has spaces)
+            name_has_spaces = ' ' in name
             while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
                 # Stop on "i" unless followed by "från" (property access pattern)
                 if self.peek().value == "i":
@@ -564,6 +667,18 @@ class Parser:
                         pass  # Continue - is property access
                     else:
                         break  # Stop - is membership check
+                
+                # Stop extending if we see a known operator that signals an expression
+                stop_words = ["är", "som", "plus", "minus", "från", "längd", "element", "index"]
+                if self.peek().value in stop_words:
+                    break
+                
+                # Stop extending if we've already extended once and see another identifier
+                # This handles cases like "färger innehåller röd" where "innehåller" should
+                # be treated as an operator, not part of the name
+                if name_has_spaces:
+                    break
+                
                 combined = name + " " + self.peek().value
                 if combined: name = combined; self.consume()
                 else: break
@@ -854,18 +969,26 @@ class Parser:
         (newline, dedent, etc.) or an unconsumed token that doesn't look like an arg.
         """
         args = []
-        
-        while self.peek() and self.peek().type not in [TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT]:
-            if self.peek().type == TOKEN_COMMA:
-                self.consume()
-                continue
-            
-            arg_expr = self.expression()
-            if arg_expr:
-                args.append(arg_expr)
-            else:
-                # No expression parsed - probably at boundary
-                break
+        old_in_call_args = self.in_call_args
+        self.in_call_args = True
+        try:
+            while self.peek() and self.peek().type not in [TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT]:
+                if self.peek().type == TOKEN_COMMA:
+                    self.consume()
+                    continue
+                
+                # Stop if we see 'i' - it's the preposition for lägg till ... i list
+                if self.peek().type == TOKEN_IDENTIFIER and self.peek().value == "i":
+                    break
+                
+                arg_expr = self.expression()
+                if arg_expr:
+                    args.append(arg_expr)
+                else:
+                    # No expression parsed - probably at boundary
+                    break
+        finally:
+            self.in_call_args = old_in_call_args
         
         return args
 

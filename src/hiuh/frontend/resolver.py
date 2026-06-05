@@ -242,6 +242,10 @@ class Resolver:
         for module_name, module in list(self.modules.items()):
             self._current_module = module_name
             module.ast = self._visit_nodes(module.ast)
+            
+            # Also update the module_registry's AST so the interpreter sees resolved code
+            if module_name in self.module_registry.modules:
+                self.module_registry.modules[module_name].ast = module.ast
 
         # Check for wildcard import conflicts after all imports are resolved
         self._check_wildcard_import_conflicts()
@@ -416,6 +420,317 @@ class Resolver:
             return node
         return UnaryOpNode(op=node.op, operand=operand, token=node)
 
+    def visit_ExpressionPartsNode(self, node):
+        """Transform ExpressionPartsNode to the correct node type based on parts."""
+        parts = node.parts
+        
+        if len(parts) == 0:
+            return node  # Can't transform empty parts
+        
+        if len(parts) == 1:
+            # Single part - it's a variable name or literal
+            part = parts[0]
+            # Check if it's a known literal
+            if part.lower() == 'sant':
+                return BoolNode(True, token=node)
+            elif part.lower() == 'falskt':
+                return BoolNode(False, token=node)
+            elif part.isdigit():
+                return IntNode(part, token=node)
+            elif self._is_float(part):
+                return FloatNode(part, token=node)
+            elif part.startswith('"') or part.startswith("'"):
+                return StringNode(part[1:-1], token=node)
+            else:
+                return VarAccessNode(part, target=None, token=node)
+        
+        # Check for infix function call FIRST
+        # This ensures "är del av" is recognized as an infix function, not a comparison
+        # Handle both "a innehåller b" and "a är del av b" (är is syntactic sugar)
+        if len(parts) >= 3:
+            # Try all possible splits to find an infix function
+            for i in range(1, len(parts)):
+                left_parts = parts[:i]
+                right_parts = parts[i:]
+                
+                # Try all possible prefixes of right_parts as the function name
+                for j in range(1, len(right_parts)):
+                    fn_name = ' '.join(right_parts[:j])
+                    if self._is_infix_function(fn_name, self._current_module):
+                        left = self._part_to_node(' '.join(left_parts), node)
+                        right = self._part_to_node(' '.join(right_parts[j:]), node)
+                        return FunctionCallNode(fn_name, [left, right], token=node)
+        
+        # Case: Simple 3-part infix function call "a op b"
+        if len(parts) == 3:
+            left = self._part_to_node(parts[0], node)
+            op = parts[1]
+            right = self._part_to_node(parts[2], node)
+            
+            if self._is_infix_function(op, self._current_module):
+                return FunctionCallNode(op, [left, right], token=node)
+        
+        # Check for built-in function call pattern "längd från X"
+        # This pattern should be treated as a function call, not a comparison
+        for i, part in enumerate(parts):
+            # Handle both "längd från X" (separate parts) and "längd från X" (single part)
+            if part == 'längd' and i + 2 < len(parts) and parts[i + 1] == 'från':
+                # Found "längd från X" pattern (separate parts)
+                left_parts = parts[:i]
+                target = ' '.join(parts[i + 2:])
+                
+                # Build left side
+                if len(left_parts) == 1:
+                    left = self._part_to_node(left_parts[0], node)
+                else:
+                    left = VarAccessNode(' '.join(left_parts), target=None, token=node)
+                
+                # Create function call node
+                return FunctionCallNode('längd', [VarAccessNode(target, target=None, token=node)], token=node)
+            elif part.startswith('längd från '):
+                # Found "längd från X" pattern (single part)
+                left_parts = parts[:i]
+                target = part[10:].strip()  # Remove 'längd från ' prefix and strip
+                
+                # Build left side
+                if len(left_parts) == 1:
+                    left = self._part_to_node(left_parts[0], node)
+                else:
+                    left = VarAccessNode(' '.join(left_parts), target=None, token=node)
+                
+                # Create function call node
+                return FunctionCallNode('längd', [VarAccessNode(target, target=None, token=node)], token=node)
+        
+        # Multi-part expression - check for comparison operators
+        comparison_ops = ['är', 'större', 'mindre', 'lika', 'än', 'inte', 'eller', 'med', 'och', 'i']
+        has_comparison = any(op in parts for op in comparison_ops)
+        
+        if has_comparison:
+            # First, check if the first part is a defined function name followed by "med"
+            # This handles cases like "index på första matchande med namn_lista, matchar_hiuh"
+            if parts[0] in comparison_ops or (len(parts) > 1 and ' '.join(parts[:2]) in comparison_ops):
+                pass  # Continue to comparison detection
+            else:
+                # Check if first part or first two parts form a defined function name
+                fn_name = parts[0]
+                if len(parts) > 1 and parts[1] in comparison_ops:
+                    pass  # First part is not a function name
+                else:
+                    # Try to find a function name at the start
+                    found_fn = None
+                    for i in range(1, len(parts)):
+                        test_name = ' '.join(parts[:i])
+                        if self._is_defined(test_name, self._current_module):
+                            found_fn = test_name
+                            # Continue to try longer names
+                        elif found_fn:
+                            # We found a function name before, but this longer name isn't defined
+                            # Use the found function name
+                            if parts[i - 1] == 'med':
+                                # This is a function call with "med" separator
+                                # args_parts starts after "med" (parts[i-1])
+                                args_parts = parts[i:]
+                                args = []
+                                current_arg = []
+                                for part in args_parts:
+                                    if part == ',':
+                                        if current_arg:
+                                            arg_str = ' '.join(current_arg)
+                                            args.append(self._part_to_node(arg_str, node))
+                                            current_arg = []
+                                    else:
+                                        current_arg.append(part)
+                                if current_arg:
+                                    arg_str = ' '.join(current_arg)
+                                    args.append(self._part_to_node(arg_str, node))
+                                return FunctionCallNode(found_fn, args, token=node)
+                            break
+                        elif parts[i] in comparison_ops:
+                            # Hit a comparison operator without finding a function name
+                            break
+                    
+                    # If we found a function name and the next token is 'med', create the function call
+                    if found_fn and i < len(parts) and parts[i] == 'med':
+                        # This is a function call with "med" separator
+                        args_parts = parts[i + 1:]
+                        args = []
+                        current_arg = []
+                        for part in args_parts:
+                            if part == ',':
+                                if current_arg:
+                                    arg_str = ' '.join(current_arg)
+                                    args.append(self._part_to_node(arg_str, node))
+                                    current_arg = []
+                            else:
+                                current_arg.append(part)
+                        if current_arg:
+                            arg_str = ' '.join(current_arg)
+                            args.append(self._part_to_node(arg_str, node))
+                        return FunctionCallNode(found_fn, args, token=node)
+            
+            # Transform to ComparisonNode
+            left_parts = []
+            op_parts = []
+            right_parts = []
+            in_op = False
+            in_right = False
+            
+            for part in parts:
+                if part in comparison_ops and not in_right:
+                    in_op = True
+                    in_right = False
+                    op_parts.append(part)
+                elif in_op and part not in comparison_ops:
+                    in_right = True
+                    right_parts.append(part)
+                elif not in_op and not in_right:
+                    left_parts.append(part)
+            
+            # Build left side
+            if len(left_parts) == 1:
+                left = self._part_to_node(left_parts[0], node)
+            else:
+                left = VarAccessNode(' '.join(left_parts), target=None, token=node)
+            
+            # Build operator
+            op = ' '.join(op_parts)
+            
+            # Build right side
+            if len(right_parts) == 1:
+                right = self._part_to_node(right_parts[0], node)
+            else:
+                right = VarAccessNode(' '.join(right_parts), target=None, token=node)
+            
+            # Check if left side is an undefined variable - if so, treat as string
+            # This handles cases like "sätt x till detta är en hemlighet"
+            if isinstance(left, VarAccessNode) and not left.target:
+                if not self._is_defined(left.name, self._current_module):
+                    return StringNode(' '.join(parts), token=node)
+            
+            # If right side is an undefined variable, treat it as a string literal
+            # This handles cases like "text_stycke lika med Hiuhi do" where Hiuhi do is not defined
+            if isinstance(right, VarAccessNode) and not right.target:
+                if not self._is_defined(right.name, self._current_module):
+                    right = StringNode(right.name, token=right)
+            
+            # Strip leading "är " from operator (är is syntactic sugar)
+            if op.startswith('är '):
+                op = op[3:]
+            
+            return ComparisonNode(left, op, right, token=node)
+        
+        # Check for 'som' cast operator (e.g., "10 som tal" or "x som text")
+        if len(parts) == 3 and parts[1] == 'som':
+            left = self._part_to_node(parts[0], node)
+            target_type = parts[2]  # 'tal' or 'text'
+            return CastNode(left, target_type=target_type, token=node)
+        
+        # Check for function call with multiple arguments using "med" separator
+        # Pattern: "fn_name med arg1, arg2" or "fn_name med arg1 med arg2"
+        # This handles cases like "index på första matchande med namn_lista, matchar_hiuh"
+        if 'med' in parts:
+            med_index = parts.index('med')
+            fn_name = ' '.join(parts[:med_index])
+            args_parts = parts[med_index + 1:]
+            
+            # Split args by comma
+            args = []
+            current_arg = []
+            for part in args_parts:
+                if part == ',':
+                    if current_arg:
+                        arg_str = ' '.join(current_arg)
+                        args.append(self._part_to_node(arg_str, node))
+                        current_arg = []
+                else:
+                    current_arg.append(part)
+            if current_arg:
+                arg_str = ' '.join(current_arg)
+                args.append(self._part_to_node(arg_str, node))
+            
+            # Check if function name is defined
+            if self._is_defined(fn_name, self._current_module):
+                return FunctionCallNode(fn_name, args, token=node)
+        
+        # Default: treat as multi-word variable name
+        return VarAccessNode(' '.join(parts), target=None, token=node)
+    
+    def _part_to_node(self, part, token):
+        """Convert a single part to the appropriate node."""
+        if part.lower() == 'sant':
+            return BoolNode(True, token=token)
+        elif part.lower() == 'falskt':
+            return BoolNode(False, token=token)
+        elif part.isdigit():
+            return IntNode(part, token=token)
+        elif self._is_float(part):
+            return FloatNode(part, token=token)
+        elif part.startswith('"') or part.startswith("'"):
+            return StringNode(part[1:-1], token=token)
+        else:
+            return VarAccessNode(part, target=None, token=token)
+    
+    def _is_float(self, s):
+        """Check if string is a float."""
+        try:
+            float(s.replace(',', '.'))
+            return '.' in s
+        except:
+            return False
+    
+    def _is_infix_function(self, name, module_name):
+        """Check if a function is declared as infix."""
+        if module_name and module_name in self.module_registry.modules:
+            mod_info = self.module_registry.modules[module_name]
+            if hasattr(mod_info, 'symbols') and name in mod_info.symbols:
+                symbol = mod_info.symbols[name]
+                # Check SymbolEntry.is_infix
+                if hasattr(symbol, 'is_infix') and symbol.is_infix:
+                    return True
+                # Legacy: check if signature has is_infix
+                if hasattr(symbol, 'signature') and symbol.signature:
+                    if hasattr(symbol.signature, 'is_infix') and symbol.signature.is_infix:
+                        return True
+        
+        # Also check imported modules (for wildcard imports like "använd listor")
+        if module_name and module_name in self.module_registry.modules:
+            mod_info = self.module_registry.modules[module_name]
+            if hasattr(mod_info, 'imports'):
+                for imported_module in mod_info.imports:
+                    if imported_module in self.module_registry.modules:
+                        imported_mod = self.module_registry.modules[imported_module]
+                        if hasattr(imported_mod, 'symbols') and name in imported_mod.symbols:
+                            symbol = imported_mod.symbols[name]
+                            if hasattr(symbol, 'is_infix') and symbol.is_infix:
+                                return True
+                            if hasattr(symbol, 'signature') and symbol.signature:
+                                if hasattr(symbol.signature, 'is_infix') and symbol.signature.is_infix:
+                                    return True
+        
+        return False
+    
+    def _is_defined(self, name, module_name):
+        """Check if a variable is defined in any scope."""
+        # Check built-in variables
+        if name in ['SANT', 'FALSKT', 'mellanrum', 'ny', 'rad']:
+            return True
+        # Check module symbols
+        if module_name and module_name in self.module_registry.modules:
+            mod_info = self.module_registry.modules[module_name]
+            if hasattr(mod_info, 'symbols') and name in mod_info.symbols:
+                return True
+            # Also check imported modules (for wildcard imports like "använd listor")
+            if hasattr(mod_info, 'imports'):
+                for imported_module in mod_info.imports:
+                    if imported_module in self.module_registry.modules:
+                        imported_mod = self.module_registry.modules[imported_module]
+                        if hasattr(imported_mod, 'symbols') and name in imported_mod.symbols:
+                            return True
+        # Check local vars tracked by resolver
+        if module_name in self.local_vars and name in self.local_vars[module_name]:
+            return True
+        return False
+    
     # === ComparisonNode - special handling for stringification ===
 
     def visit_ComparisonNode(self, node):
@@ -473,7 +788,7 @@ class Resolver:
         body = self._visit_nodes(node.body)
         if body is node.body:
             return node
-        return FunctionDefNode(params=node.params, body=body, line=node.line, column=node.column)
+        return FunctionDefNode(params=node.params, body=body, line=node.line, column=node.column, is_infix=getattr(node, 'is_infix', False))
 
     def visit_FunctionCallNode(self, node):
         callee_name = node.name if isinstance(node.name, str) else getattr(node.name, 'name', None)
@@ -604,8 +919,9 @@ class Resolver:
         if self._registering:
             # Registration pass: register symbol in module registry
             if isinstance(node.value, FunctionDefNode):
+                is_infix = getattr(node.value, 'is_infix', False)
                 self.module_registry.modules[self._current_module].add_symbol(
-                    node.name, "func", FunctionSignature(params=node.value.params)
+                    node.name, "func", FunctionSignature(params=node.value.params), is_infix=is_infix
                 )
             else:
                 self.module_registry.modules[self._current_module].add_symbol(node.name, "var")

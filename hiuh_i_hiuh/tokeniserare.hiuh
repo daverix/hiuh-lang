@@ -108,11 +108,11 @@ sätt CITAT till 34 som tecken
 . Helper function to get substring
 sätt delsträng till grej med text, start, längd
     sätt resultat till ""
-    sätt i till start
+    sätt pos till start
     sätt slut till start plus längd
-    medan i är mindre än slut och i är mindre än längd från text
-        sätt resultat till resultat plus element i från text
-        sätt i till i plus 1
+    medan pos är mindre än slut och pos är mindre än längd från text
+        sätt resultat till resultat plus element pos från text
+        sätt pos till pos plus 1
     ge resultat
 
 . =============================================================
@@ -143,64 +143,67 @@ sätt tokenisera till grej med rader
         . Compare with previous indentation level
         sätt sista_indent till sista från indent_stack
         om indent är större än sista_indent
-            lägg till skapa_token med TOKEN INDENT, " ", rad_nummer, 1 i tokens
+            sätt ny_token till skapa_token med TOKEN INDENT, " ", rad_nummer, 1
+            lägg till ny_token i tokens
             lägg till indent i indent_stack
         annars om indent är mindre än sista_indent
             medan indent är mindre än sista från indent_stack
                 ta bort sista från indent_stack
-                lägg till skapa_token med TOKEN DEDENT, "", rad_nummer, 1 i tokens
+                sätt ny_token till skapa_token med TOKEN DEDENT, "", rad_nummer, 1
+                lägg till ny_token i tokens
         
         . --- Step 3: Tokenize the line content ---
-        sätt i till 0
-        medan i är mindre än längd från innehåll
-            sätt tecken till element i från innehåll
+        sätt pos till 0
+        medan pos är mindre än längd från innehåll
+            sätt tecken till element pos från innehåll
             
             . Whitespace
             om tecken är lika med mellanrum
-                sätt i till i plus 1
+                sätt pos till pos plus 1
                 fortsätt
             
             . Comma
             om tecken är lika med ","
-                lägg till skapa_token med TOKEN COMMA, ",", rad_nummer, indent plus i plus 1 i tokens
-                sätt i till i plus 1
+                sätt ny_token till skapa_token med TOKEN COMMA, ",", rad_nummer, indent plus pos plus 1
+                lägg till ny_token i tokens
+                sätt pos till pos plus 1
                 fortsätt
 
             . String literals
             om tecken är lika med CITAT
-                sätt start till i
-                sätt i till i plus 1
-                medan i är mindre än längd från innehåll och element i från innehåll är inte lika med CITAT
-                    sätt i till i plus 1
+                sätt start till pos
+                sätt pos till pos plus 1
+                medan pos är mindre än längd från innehåll och element pos från innehåll är inte lika med CITAT
+                    sätt pos till pos plus 1
                 
-                om i är lika med längd från innehåll
+                om pos är lika med längd från innehåll
                     kasta "Oavslutad textsträng på rad " plus rad_nummer
                 
-                sätt värde till delsträng från innehåll med start plus 1, i minus start minus 1
-                sätt i till i plus 1 . skip closing quote
+                sätt värde till delsträng från innehåll med start plus 1, pos minus start minus 1
+                sätt pos till pos plus 1 . skip closing quote
                 lägg till skapa_token med TOKEN STRING, värde, rad_nummer, indent plus start plus 1 i tokens
                 fortsätt
 
             . Numbers (integer or float)
             sätt nästa_tecken till ""
-            om i plus 1 är mindre än längd från innehåll
-                sätt nästa_tecken till element i plus 1 från innehåll
+            om pos plus 1 är mindre än längd från innehåll
+                sätt nästa_tecken till element pos plus 1 från innehåll
             
             om är_siffra med tecken eller (tecken är lika med "-" och är_siffra med nästa_tecken)
-                sätt start till i
+                sätt start till pos
                 sätt har_komma till falskt
-                sätt i till i plus 1
-                medan i är mindre än längd från innehåll
-                    sätt siffra_tecken till element i från innehåll
+                sätt pos till pos plus 1
+                medan pos är mindre än längd från innehåll
+                    sätt siffra_tecken till element pos från innehåll
                     om siffra_tecken är lika med ","
                         sätt har_komma till sant
-                        sätt i till i plus 1
+                        sätt pos till pos plus 1
                     annars om är_siffra med siffra_tecken
-                        sätt i till i plus 1
+                        sätt pos till pos plus 1
                     annars
                         bryt . break the loop
                 
-                sätt värde till delsträng från innehåll med start, i minus start
+                sätt värde till delsträng från innehåll med start, pos minus start
                 sätt tokentyp till TOKEN LITERAL INT
                 om har_komma
                     sätt tokentyp till TOKEN LITERAL FLOAT
@@ -209,14 +212,14 @@ sätt tokenisera till grej med rader
                 fortsätt
                 
             . Identifiers and Keywords
-            sätt start till i
-            medan i är mindre än längd från innehåll
-                sätt id_tecken till element i från innehåll
+            sätt start till pos
+            medan pos är mindre än längd från innehåll
+                sätt id_tecken till element pos från innehåll
                 om id_tecken är lika med mellanrum eller id_tecken är lika med "," eller id_tecken är lika med CITAT
                     bryt
-                sätt i till i plus 1
+                sätt pos till pos plus 1
             
-            sätt värde till delsträng från innehåll med start, i minus start
+            sätt värde till delsträng från innehåll med start, pos minus start
             
             . Check for boolean literals first
             om värde är lika med "SANT"
