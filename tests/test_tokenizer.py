@@ -10,7 +10,7 @@ from hiuh.frontend.tokenizer import (
     TOKEN_OP_MUL, TOKEN_OP_DIV, TOKEN_OP_IS, TOKEN_LITERAL_INT,
     TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
-    TOKEN_DEDENT, TOKEN_COMMA
+    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_INFIX
 )
 
 class TestHiuhReadmeSpecification(unittest.TestCase):
@@ -317,6 +317,22 @@ stäng fil"""
             Token(TOKEN_IDENTIFIER, "fil", 13, 7)
         ]
 
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
+
+    def test_infix_grej_tokens(self):
+        """Verify tokenization of 'infix grej' syntax for infix function definition."""
+        source = "sätt innehåller till infix grej med lista, värde"
+        expected = [
+            Token(TOKEN_SET, "sätt", 1, 1),
+            Token(TOKEN_IDENTIFIER, "innehåller", 1, 6),
+            Token(TOKEN_TO, "till", 1, 17),
+            Token(TOKEN_INFIX, "infix", 1, 22),
+            Token(TOKEN_FUNC, "grej", 1, 28),
+            Token(TOKEN_WITH, "med", 1, 33),
+            Token(TOKEN_IDENTIFIER, "lista", 1, 37),
+            Token(TOKEN_COMMA, ",", 1, 42),
+            Token(TOKEN_IDENTIFIER, "värde", 1, 44)
+        ]
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 
 if __name__ == '__main__':
