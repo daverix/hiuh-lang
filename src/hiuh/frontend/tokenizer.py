@@ -1,5 +1,49 @@
 # -*- coding: utf-8 -*-
 
+# Token type constants
+TOKEN_PRINT = 1
+TOKEN_SET = 2
+TOKEN_TO = 3
+TOKEN_FUNC = 4
+TOKEN_WITH = 5
+TOKEN_GIVE = 6
+TOKEN_TYPE = 7
+TOKEN_IN = 8
+TOKEN_FROM = 9
+TOKEN_IF = 10
+TOKEN_ELSE = 11
+TOKEN_TRY = 12
+TOKEN_THROW = 13
+TOKEN_CATCH = 14
+TOKEN_WHILE = 15
+TOKEN_IMPORT = 16
+TOKEN_OPEN = 17
+TOKEN_CLOSE = 18
+TOKEN_AS = 19
+TOKEN_GREATER = 20
+TOKEN_LESS = 21
+TOKEN_EQUAL = 22
+TOKEN_THAN = 23
+TOKEN_OR = 24
+TOKEN_AND = 25
+TOKEN_OP_ADD = 26
+TOKEN_OP_SUB = 27
+TOKEN_OP_MUL = 28
+TOKEN_OP_DIV = 29
+TOKEN_OP_IS = 30
+TOKEN_LITERAL_INT = 31
+TOKEN_LITERAL_FLOAT = 32
+TOKEN_LITERAL_TRUE = 33
+TOKEN_LITERAL_FALSE = 34
+TOKEN_STRING = 35
+TOKEN_IDENTIFIER = 36
+TOKEN_NEWLINE = 37
+TOKEN_INDENT = 38
+TOKEN_DEDENT = 39
+TOKEN_COMMA = 40
+TOKEN_COMMENT = 41
+TOKEN_EOF = 42
+
 class Token:
     def __init__(self, type, value, line, column):
         self.type = type
@@ -19,36 +63,36 @@ class Token:
 class Tokenizer:
     def __init__(self):
         self.keywords = {
-            "skriv": "T_KEYWORD_PRINT",
-            "sätt": "T_KEYWORD_SET",
-            "till": "T_KEYWORD_TO",
-            "grej": "T_KEYWORD_FUNC",
-            "med": "T_KEYWORD_WITH",
-            "ge": "T_KEYWORD_GIVE",
-            "typ": "T_KEYWORD_TYPE",
-            "i": "T_KEYWORD_IN",
-            "från": "T_KEYWORD_FROM",
-            "om": "T_KEYWORD_IF",
-            "är": "T_OP_IS",
-            "större": "T_KEYWORD_GREATER",
-            "mindre": "T_KEYWORD_LESS",
-            "än": "T_KEYWORD_THAN",
-            "lika": "T_KEYWORD_EQUAL",
-            "annars": "T_KEYWORD_ELSE",
-            "försök": "T_KEYWORD_TRY",
-            "kasta": "T_KEYWORD_THROW",
-            "fånga": "T_KEYWORD_CATCH",
-            "gånger": "T_OP_MUL",
-            "plus": "T_OP_ADD",
-            "minus": "T_OP_SUB",
-            "delat": "T_OP_DIV",
-            "eller": "T_OP_OR",
-            "och": "T_OP_AND",
-            "medan": "T_KEYWORD_WHILE",
-            "använd": "T_KEYWORD_IMPORT",
-            "öppna": "T_KEYWORD_OPEN",
-            "stäng": "T_KEYWORD_CLOSE",
-            "som": "T_KEYWORD_AS"
+            "skriv": TOKEN_PRINT,
+            "sätt": TOKEN_SET,
+            "till": TOKEN_TO,
+            "grej": TOKEN_FUNC,
+            "med": TOKEN_WITH,
+            "ge": TOKEN_GIVE,
+            "typ": TOKEN_TYPE,
+            "i": TOKEN_IN,
+            "från": TOKEN_FROM,
+            "om": TOKEN_IF,
+            "är": TOKEN_OP_IS,
+            "större": TOKEN_GREATER,
+            "mindre": TOKEN_LESS,
+            "än": TOKEN_THAN,
+            "lika": TOKEN_EQUAL,
+            "annars": TOKEN_ELSE,
+            "försök": TOKEN_TRY,
+            "kasta": TOKEN_THROW,
+            "fånga": TOKEN_CATCH,
+            "gånger": TOKEN_OP_MUL,
+            "plus": TOKEN_OP_ADD,
+            "minus": TOKEN_OP_SUB,
+            "delat": TOKEN_OP_DIV,
+            "eller": TOKEN_OR,
+            "och": TOKEN_AND,
+            "medan": TOKEN_WHILE,
+            "använd": TOKEN_IMPORT,
+            "öppna": TOKEN_OPEN,
+            "stäng": TOKEN_CLOSE,
+            "som": TOKEN_AS
         }
 
     def is_digit(self, char):
@@ -70,17 +114,17 @@ class Tokenizer:
             content = line[indent:]
 
             if indent > indent_stack[-1]:
-                tokens.append(Token("T_INDENT", " " * indent, line_idx, 1))
+                tokens.append(Token(TOKEN_INDENT, " " * indent, line_idx, 1))
                 indent_stack.append(indent)
             elif indent < indent_stack[-1]:
                 while indent < indent_stack[-1]:
                     indent_stack.pop()
-                    tokens.append(Token("T_DEDENT", "", line_idx, 1))
+                    tokens.append(Token(TOKEN_DEDENT, "", line_idx, 1))
 
             if content.startswith('.'):
-                tokens.append(Token("T_COMMENT", content, line_idx, indent + 1))
+                tokens.append(Token(TOKEN_COMMENT, content, line_idx, indent + 1))
                 if line_idx < len(lines):
-                    tokens.append(Token("T_NEWLINE", "\n", line_idx, len(line) + 1))
+                    tokens.append(Token(TOKEN_NEWLINE, "\n", line_idx, len(line) + 1))
                 continue
 
             i = 0
@@ -91,7 +135,7 @@ class Tokenizer:
                     continue
 
                 if char == ',':
-                    tokens.append(Token("T_COMMA", ",", line_idx, indent + i + 1))
+                    tokens.append(Token(TOKEN_COMMA, ",", line_idx, indent + i + 1))
                     i += 1
                     continue
 
@@ -110,7 +154,7 @@ class Tokenizer:
                     val = content[start + 1 : i]
                     i += 1  # Skip the closing quote
 
-                    tokens.append(Token("T_STRING", val, line_idx, indent + start + 1))
+                    tokens.append(Token(TOKEN_STRING, val, line_idx, indent + start + 1))
                     continue
 
                 if self.is_digit(char) or (char == '-' and i + 1 < len(content) and self.is_digit(content[i + 1])):
@@ -131,7 +175,7 @@ class Tokenizer:
                         else:
                             break
                     val = content[start:i]
-                    t_type = "T_LITERAL_FLOAT" if has_comma else "T_LITERAL_INT"
+                    t_type = TOKEN_LITERAL_FLOAT if has_comma else TOKEN_LITERAL_INT
                     tokens.append(Token(t_type, val, line_idx, indent + start + 1))
                     continue
 
@@ -142,19 +186,19 @@ class Tokenizer:
                 val = content[start:i]
 
                 if val.upper() == "SANT":
-                    t_type = "T_LITERAL_TRUE"
+                    t_type = TOKEN_LITERAL_TRUE
                 elif val.upper() == "FALSKT":
-                    t_type = "T_LITERAL_FALSE"
+                    t_type = TOKEN_LITERAL_FALSE
                 else:
-                    t_type = self.keywords.get(val.lower(), "T_IDENTIFIER")
+                    t_type = self.keywords.get(val.lower(), TOKEN_IDENTIFIER)
 
                 tokens.append(Token(t_type, val, line_idx, indent + start + 1))
 
             if line_idx < len(lines):
-                tokens.append(Token("T_NEWLINE", "\n", line_idx, len(line) + 1))
+                tokens.append(Token(TOKEN_NEWLINE, "\n", line_idx, len(line) + 1))
 
         while len(indent_stack) > 1:
             indent_stack.pop()
-            tokens.append(Token("T_DEDENT", "", len(lines) + 1, 1))
+            tokens.append(Token(TOKEN_DEDENT, "", len(lines) + 1, 1))
 
         return tokens
