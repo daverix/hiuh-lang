@@ -43,6 +43,8 @@ TOKEN_DEDENT = 39
 TOKEN_COMMA = 40
 TOKEN_COMMENT = 41
 TOKEN_EOF = 42
+TOKEN_COPY = 43
+TOKEN_OF = 44
 
 class Token:
     def __init__(self, type, value, line, column):
@@ -92,7 +94,9 @@ class Tokenizer:
             "använd": TOKEN_IMPORT,
             "öppna": TOKEN_OPEN,
             "stäng": TOKEN_CLOSE,
-            "som": TOKEN_AS
+            "som": TOKEN_AS,
+            "kopia": TOKEN_COPY,
+            "av": TOKEN_OF
         }
 
     def is_digit(self, char):

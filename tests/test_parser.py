@@ -5,7 +5,7 @@ from hiuh.frontend.ast import *
 from hiuh.frontend.module_registry import ModuleRegistry
 from hiuh.frontend.parser import Parser
 from hiuh.frontend.resolver import Resolver
-from hiuh.frontend.tokenizer import Tokenizer
+from hiuh.frontend.tokenizer import Tokenizer, Token
 
 
 class TestHiuhParserAST(unittest.TestCase):
@@ -216,10 +216,10 @@ class TestHiuhParserAST(unittest.TestCase):
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_typ_section(self):
-        source = "typ person med namn, ålder\nsätt ålder i person till 38"
+        source = "typ person med namn, ålder\nsätt p till kopia av person med ålder 38"
         expected = [
             TypeDefNode("person", ["namn", "ålder"]),
-            AssignNode("ålder", IntNode(38), target_type="person")
+            CopyWithPropNode("p", "person", [("ålder", IntNode(38, token=Token(31, '38', 2, 39)))])
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 

@@ -9,7 +9,7 @@ from hiuh.frontend.tokenizer import (
     TOKEN_OP_MUL, TOKEN_OP_DIV, TOKEN_OP_IS, TOKEN_LITERAL_INT,
     TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
-    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COMMENT
+    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COMMENT, TOKEN_COPY, TOKEN_OF
 )
 
 class Parser:
@@ -34,7 +34,7 @@ class Parser:
         nodes = []
         while self.peek():
             t = self.peek()
-            if t.type in [TOKEN_NEWLINE, TOKEN_COMMENT, TOKEN_DEDENT]:
+            if t.type in [TOKEN_NEWLINE, TOKEN_COMMENT, TOKEN_DEDENT, TOKEN_INDENT]:
                 self.consume(); continue
             nodes.append(self.statement())
         return nodes
@@ -211,29 +211,57 @@ class Parser:
             val = self.parse_greedy_expression()
             return AssignNode(str(idx), val, target_type=target, token=assign_token)
 
+        # Check for 'kopia av' pattern: sätt X till kopia av Y med P V, P V, P V
+        kopia_checkpoint = self.pos
+        if self.peek() and self.peek().type == TOKEN_IDENTIFIER:
+            # Try to detect 'kopia av' pattern
+            # Collect variable name (could be multi-word)
+            name_parts = [self.consume().value]
+            while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value != "till":
+                name_parts.append(self.consume().value)
+            name = " ".join(name_parts)
+            
+            if self.peek() and self.peek().type == TOKEN_TO:  # till
+                self.consume()  # consume 'till'
+                if self.peek() and self.peek().type == TOKEN_COPY:  # kopia
+                    self.consume()  # consume 'kopia'
+                    if self.peek() and self.peek().type == TOKEN_OF:  # av
+                        self.consume()  # consume 'av'
+                        # Parse source object name (could be multi-word)
+                        source_parts = []
+                        while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in ["med"]:
+                            source_parts.append(self.consume().value)
+                        source = " ".join(source_parts)
+                        if self.peek() and self.peek().type == TOKEN_WITH:  # med
+                            self.consume()  # consume 'med'
+                            # Parse multiple prop-value pairs separated by commas
+                            updates = []
+                            while True:
+                                # Parse property name - single identifier
+                                if not self.peek() or self.peek().type != TOKEN_IDENTIFIER:
+                                    break
+                                prop = self.consume().value
+                                
+                                # Parse the value expression (stops at comma)
+                                val = self._parse_kopia_value()
+                                updates.append((prop, val))
+                                
+                                # Check for comma (more pairs)
+                                if self.peek() and self.peek().type == TOKEN_COMMA:
+                                    self.consume()  # consume comma
+                                    continue
+                                break
+                            if updates:
+                                return CopyWithPropNode(name, source, updates, token=assign_token)
+        
+        # Reset to start of assignment if we didn't match kopia av pattern
+        self.pos = kopia_checkpoint
+        
         # Standard assignment
         checkpoint = self.pos
         parts = []
-        last_consumed = None
         while self.peek() and self.peek().type in [TOKEN_IDENTIFIER, TOKEN_PRINT, TOKEN_SET, TOKEN_TO, TOKEN_WITH, TOKEN_GIVE, TOKEN_FUNC, TOKEN_TYPE, TOKEN_FROM, TOKEN_IF, TOKEN_ELSE, TOKEN_WHILE, TOKEN_TRY, TOKEN_THROW, TOKEN_CATCH, TOKEN_OPEN, TOKEN_CLOSE, TOKEN_AS, TOKEN_OP_IS, TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OP_MUL, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_DIV, TOKEN_OR, TOKEN_AND, TOKEN_IN]:
             current_token = self.peek()
-            
-            # Special handling for 'i' followed by identifier: it's the target type marker
-            if current_token.type == TOKEN_IN and current_token.value == "i":
-                # If next token is an identifier and we have name parts, 'i' is the target type marker
-                if self.peek(1) and self.peek(1).type == TOKEN_IDENTIFIER and parts:
-                    # 'i' is target type marker, stop collecting name
-                    break
-                # If name ends with 'till' and next is 'i', this is the 'till i' pattern
-                if self.peek(1) and self.peek(1).type == TOKEN_IN:
-                    # Pattern: 'till i' - this 'i' becomes part of name, we'll handle it later
-                    parts.append(self.consume().value)
-                    last_consumed = 'i'
-                    continue
-                # Otherwise 'i' is part of name (e.g., 'sätt i till x')
-                parts.append(self.consume().value)
-                last_consumed = 'i'
-                continue
             
             # Special handling: if 'till' is followed by 'i', it's the assignment keyword
             if current_token.type == TOKEN_TO and self.peek(1) and self.peek(1).type == TOKEN_IN:
@@ -241,40 +269,20 @@ class Parser:
                 break
             
             parts.append(self.consume().value)
-            last_consumed = parts[-1]
             
             # Check if last consumed was 'till' - if next is not 'i', it's assignment keyword
             if parts[-1] == "till" and self.peek() and self.peek().type != TOKEN_IN:
                 # 'till' is the assignment keyword, put it back
                 self.pos = checkpoint + len(parts) - 1
                 parts = parts[:-1]
-                last_consumed = parts[-1] if parts else None
                 break
         
         name = " ".join(parts)
-        
-        target = None
-        # Check if we ended with 'till i' pattern (name ends with 'till i' and next is also 'i')
-        # Only treat as special pattern if name is more than just 'till i'
-        if name.endswith("till i") and name != "till i" and self.peek() and self.peek().type == TOKEN_IN:
-            name = name[:-7].strip()  # Remove 'till i'
-            self.consume()  # consume 'i'
-            t_parts = []
-            while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                t_parts.append(self.consume().value)
-            target = " ".join(t_parts)
-        # Standard target type pattern: 'sätt x i typ till value'
-        elif self.peek() and self.peek().type == TOKEN_IN:
-            self.consume()
-            t_parts = []
-            while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                t_parts.append(self.consume().value)
-            target = " ".join(t_parts)
 
         self.consume(TOKEN_TO)
         val = self.parse_greedy_expression()
 
-        return AssignNode(name, val, target_type=target, token=assign_token)
+        return AssignNode(name, val, target_type=None, token=assign_token)
 
     def parse_print(self):
         print_token = self.consume(TOKEN_PRINT)
@@ -697,6 +705,67 @@ class Parser:
             stmts.append(self.statement())
         self.consume(TOKEN_DEDENT)
         return stmts
+
+    def _parse_kopia_value(self):
+        """Parse a value in kopia av pattern - stops at comma or end of expression.
+        
+        This is a simplified expression parser that handles single values like
+        identifiers, numbers, strings, and simple function calls.
+        """
+        t = self.peek()
+        if not t:
+            return StringNode("", token=t)
+        
+        # Number literal
+        if t.type == TOKEN_LITERAL_INT:
+            self.consume()
+            return IntNode(t.value, token=t)
+        if t.type == TOKEN_LITERAL_FLOAT:
+            self.consume()
+            return FloatNode(t.value, token=t)
+        
+        # Boolean literals
+        if t.type == TOKEN_LITERAL_TRUE:
+            self.consume()
+            return BoolNode(True, token=t)
+        if t.type == TOKEN_LITERAL_FALSE:
+            self.consume()
+            return BoolNode(False, token=t)
+        
+        # String literal
+        if t.type == TOKEN_STRING:
+            self.consume()
+            return StringNode(t.value, token=t)
+        
+        # Identifier - could be variable or function call
+        if t.type == TOKEN_IDENTIFIER:
+            # Try to build the identifier name (multi-word)
+            name_parts = [self.consume().value]
+            while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in [","]:
+                # Check if next would be a comma - stop before it
+                if self.peek(1) and self.peek(1).type == TOKEN_COMMA:
+                    break
+                name_parts.append(self.consume().value)
+            name = " ".join(name_parts)
+            
+            # Check for function call: 'name med args'
+            if self.peek() and self.peek().type == TOKEN_WITH:
+                self.consume()  # consume 'med'
+                args = []
+                while True:
+                    arg = self._parse_kopia_value()
+                    args.append(arg)
+                    if self.peek() and self.peek().type == TOKEN_COMMA:
+                        self.consume()
+                        continue
+                    break
+                return FunctionCallNode(name, args, token=t)
+            
+            return VarAccessNode(name, token=t)
+        
+        # Fallback: consume as string
+        val = self.consume().value
+        return StringNode(val, token=t)
 
     def parse_if(self):
         if_token = self.consume(TOKEN_IF)

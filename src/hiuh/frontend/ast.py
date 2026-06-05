@@ -182,3 +182,14 @@ class CloseFileNode(ASTNode):
     def __init__(self, target_var, token=None):
         super().__init__(token.line if token else None, token.column if token else None)
         self.target_var = target_var
+
+class CopyWithPropNode(ASTNode):
+    """Node for 'sätt X till kopia av Y med P V, P V, P V' pattern.
+    
+    Creates a copy of an object with multiple properties updated.
+    """
+    def __init__(self, name, source, updates, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.name = name          # The new variable name (X)
+        self.source = source     # The source object (Y)
+        self.updates = updates    # List of (prop_name, value) tuples

@@ -33,7 +33,7 @@ hoppsan
 
 ## Variables
 
-Variabels can be any of the following types:
+Variables can be any of the following types:
 
 * boolean
 * int
@@ -43,7 +43,7 @@ Variabels can be any of the following types:
 * typ
 * string literal
 
-They are always public and mutable.
+They are always public. Most types are mutable, but **typ objects are immutable** - use `kopia av` to create modified copies.
 
 Every variable is created and updated using "sätt":
 
@@ -156,13 +156,30 @@ David
 
 To access the variables in a `typ`, use the `från` keyword followed by the variable name.
 
-To set a variable to a new value in a `typ`, use the following syntax:
+**Types are immutable** - use `kopia av` to create a modified copy:
 
 ```
-sätt ålder i person till 38
+sätt p till person med David, 37
+sätt äldre person till kopia av p med ålder 38
+skriv ålder från p
+skriv ny rad
+skriv ålder från äldre person
 ```
 
-`i` here means that the variable `ålder` is accessed from `person` instead of variables available in the current scope.
+outputs:
+```
+37
+38
+```
+
+The original `p` remains unchanged - `kopia av` creates a new instance with the specified properties updated.
+
+You can update multiple properties at once:
+
+```
+sätt p till person med David, 37
+sätt uppdaterad person till kopia av p med namn Eva, ålder 38
+```
 
 ### set string literal
 

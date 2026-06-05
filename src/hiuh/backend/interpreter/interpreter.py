@@ -187,19 +187,17 @@ class Interpreter:
     def visit_AssignNode(self, node):
         value = self.visit(node.value)
 
+        # List index assignment: sätt element 0 i lista till x
         if node.target_type:
             obj = self.env.get(node.target_type)
-            # List Set: sätt element 0 i lista till x
             if isinstance(obj, list):
                 try:
                     obj[int(node.name)] = value
                     return value
                 except (ValueError, IndexError):
                     raise Exception(f"Index {node.name} saknas i listan {node.target_type}")
-            # Object Set: sätt fält i objekt till x
-            if isinstance(obj, dict):
-                obj[node.name] = value
-                return value
+            # Typ objects are now immutable - use 'kopia av' instead
+            raise Exception(f"Typ {node.target_type} är oföränderlig. Använd 'kopia av' för att skapa en ny instans.")
 
         # Instantiate types (e.g. sätt p till person)
         try:
@@ -430,6 +428,33 @@ class Interpreter:
                 result[field_name] = args[i] if i < len(args) else None
             return result
         self.env.define(node.name, make_constructor)
+
+    def visit_CopyWithPropNode(self, node):
+        """Handle 'sätt X till kopia av Y med P V, P V, P V' pattern.
+        
+        Creates a copy of source object Y with multiple properties updated.
+        """
+        source = self.env.get(node.source)
+        
+        # Make a shallow copy of the source
+        if isinstance(source, dict):
+            result = dict(source)
+            for prop, val in node.updates:
+                result[prop] = self.visit(val)
+        elif isinstance(source, list):
+            result = list(source)
+            for prop, val in node.updates:
+                # For lists, prop should be an index
+                try:
+                    idx = int(prop)
+                    result[idx] = self.visit(val)
+                except (ValueError, IndexError):
+                    raise Exception(f"Kan inte uppdatera index {prop} i lista")
+        else:
+            raise Exception(f"Kan inte skapa kopia av '{node.source}' - okänt typ")
+        
+        self.env.define(node.name, result)
+        return result
 
     def visit_CastNode(self, node):
         val = self.visit(node.value)

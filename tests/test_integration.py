@@ -101,14 +101,12 @@ fånga meddelande
         """Tests dynamic type definition and field access for a 'bil' type."""
         source = """
 typ bil med märke, modell, år
-sätt min bil till bil
-sätt märke i min bil till Volvo
-sätt modell i min bil till V60
-sätt år i min bil till 2024
+sätt min bil till bil med Volvo, V60, 2020
+sätt uppdaterad bil till kopia av min bil med år 2024
 
 skriv märke från min bil
 skriv ny rad
-skriv år från min bil
+skriv år från uppdaterad bil
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
