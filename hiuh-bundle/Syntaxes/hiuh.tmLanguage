@@ -103,6 +103,12 @@
         </dict>
         <dict>
             <key>match</key>
+            <string>\bkopia\s+av\b</string>
+            <key>name</key>
+            <string>keyword.function.hiuh</string>
+        </dict>
+        <dict>
+            <key>match</key>
             <string>\bge\b</string>
             <key>name</key>
             <string>keyword.return.hiuh</string>
