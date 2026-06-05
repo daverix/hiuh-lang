@@ -641,5 +641,58 @@ skriv modell från min bil
             self.run_source(source)
             self.assertEqual(fake_out.getvalue(), "Volvo\nV60")
 
+    def test_tokeniserare_tokenisera(self):
+        """Verify that tokeniserare.hiuh can be imported and tokenisera returns correct tokens."""
+        source = """
+använd tokeniserare
+
+sätt rader till lista med "sätt x till 42", "skriv x"
+
+sätt tokens till tokenisera med rader
+
+sätt funk till grej med t
+    skriv rad från t plus ":" plus tokentyp från t plus ":" plus värde från t
+
+för varje med tokens, funk
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            output = fake_out.getvalue().strip()
+            
+            # Token types (from tokeniserare.hiuh):
+            # TOKEN SET = 2, TOKEN TO = 3, TOKEN PRINT = 1
+            # TOKEN IDENTIFIER = 36, TOKEN LITERAL INT = 31, TOKEN NEWLINE = 37
+            # Verify we have tokens from both lines
+            self.assertIn("1:skriv", output)  # PRINT token for "skriv"
+            self.assertIn("2:skriv", output)  # PRINT token on line 2
+            self.assertIn("2:x", output)     # IDENTIFIER "x" on line 2
+            self.assertIn("31:42", output)    # LITERAL INT for "42"
+
+    def test_tokeniserare_tokenisera_with_indentation(self):
+        """Verify that tokenisera correctly handles indentation tokens."""
+        source = """
+använd tokeniserare
+
+sätt rader till lista med "sätt x till 1", "  skriv x", "skriv x"
+
+sätt tokens till tokenisera med rader
+
+sätt indent_count till 0
+
+sätt funk till grej med t
+    om tokentyp från t är lika med 38
+        sätt indent_count till indent_count plus 1
+    om tokentyp från t är lika med 39
+        sätt indent_count till indent_count minus 1
+
+för varje med tokens, funk
+
+skriv indent_count
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # After processing, indent_count should be 0 (balanced)
+            self.assertEqual(fake_out.getvalue().strip(), "0")
+
 if __name__ == '__main__':
     unittest.main()
