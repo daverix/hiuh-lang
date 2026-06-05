@@ -1,6 +1,6 @@
 använd listor
 
-typ ordlista med värden, putta, hämta, rensa
+typ ordlista med värden, putta, hämta, rensa, finns
 
 typ par med nyckel, värde
 
@@ -15,6 +15,13 @@ sätt ny ordlista till grej med värden
             ge parnyckel lika med nyckel
         ge första matchande med värden, m
 
+    sätt finns till grej med nyckel
+        sätt m till grej med p
+            sätt parnyckel till nyckel från p
+            ge parnyckel lika med nyckel
+        sätt index till index på första matchande med värden, m
+        ge index är inte lika med -1
+
     sätt rensa till grej med nyckel
         sätt x till längd från värden minus 1
         medan x är större än 0
@@ -25,7 +32,7 @@ sätt ny ordlista till grej med värden
 
             sätt x till x minus 1
 
-    ge ordlista med värden, putta, hämta, rensa
+    ge ordlista med värden, putta, hämta, rensa, finns
 
 sätt ny tom ordlista till grej
     sätt värden till lista
