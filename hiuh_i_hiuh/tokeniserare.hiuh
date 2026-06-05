@@ -1,60 +1,63 @@
 . tokeniserare - tokenizer for hiuh language
 . outputs tokens in a format Python can read later
 
-typ token med typ, värde, rad, kolumn
+typ token med tokentyp, värde, rad, kolumn
 
 . Token type constants
-sätt TOKEN PRINT till 1
-sätt TOKEN SET till 2
-sätt TOKEN TO till 3
-sätt TOKEN FUNC till 4
-sätt TOKEN WITH till 5
-sätt TOKEN GIVE till 6
-sätt TOKEN TYPE till 7
-sätt TOKEN IN till 8
-sätt TOKEN FROM till 9
-sätt TOKEN IF till 10
-sätt TOKEN ELSE till 11
-sätt TOKEN TRY till 12
-sätt TOKEN THROW till 13
-sätt TOKEN CATCH till 14
-sätt TOKEN WHILE till 15
-sätt TOKEN IMPORT till 16
-sätt TOKEN OPEN till 17
-sätt TOKEN CLOSE till 18
-sätt TOKEN AS till 19
-sätt TOKEN GREATER till 20
-sätt TOKEN LESS till 21
-sätt TOKEN EQUAL till 22
-sätt TOKEN THAN till 23
-sätt TOKEN OR till 24
-sätt TOKEN AND till 25
-sätt TOKEN OP ADD till 26
-sätt TOKEN OP SUB till 27
-sätt TOKEN OP MUL till 28
-sätt TOKEN OP DIV till 29
-sätt TOKEN OP IS till 30
-sätt TOKEN LITERAL INT till 31
-sätt TOKEN LITERAL FLOAT till 32
-sätt TOKEN LITERAL TRUE till 33
-sätt TOKEN LITERAL FALSE till 34
-sätt TOKEN STRING till 35
-sätt TOKEN IDENTIFIER till 36
-sätt TOKEN NEWLINE till 37
-sätt TOKEN INDENT till 38
-sätt TOKEN DEDENT till 39
-sätt TOKEN COMMA till 40
-sätt TOKEN COMMENT till 41
-sätt TOKEN EOF till 42
-sätt TOKEN COPY till 43
-sätt TOKEN OF till 44
+sätt TOKENPRINT till 1
+sätt TOKENSET till 2
+sätt TOKENTO till 3
+sätt TOKENFUNC till 4
+sätt TOKENWITH till 5
+sätt TOKENGIVE till 6
+sätt TOKENTYPE till 7
+sätt TOKENIN till 8
+sätt TOKENFROM till 9
+sätt TOKENIF till 10
+sätt TOKENELSE till 11
+sätt TOKENTRY till 12
+sätt TOKENTHROW till 13
+sätt TOKENCATCH till 14
+sätt TOKENWHILE till 15
+sätt TOKENIMPORT till 16
+sätt TOKENOPEN till 17
+sätt TOKENCLOSE till 18
+sätt TOKENAS till 19
+sätt TOKENGREATER till 20
+sätt TOKENLESS till 21
+sätt TOKENEQUAL till 22
+sätt TOKENTHAN till 23
+sätt TOKENOR till 24
+sätt TOKENAND till 25
+sätt TOKENOPADD till 26
+sätt TOKENOPSUB till 27
+sätt TOKENOPMUL till 28
+sätt TOKENOPDIV till 29
+sätt TOKENOPIS till 30
+sätt TOKENLITERALINT till 31
+sätt TOKENLITERALFLOAT till 32
+sätt TOKENLITERALTRUE till 33
+sätt TOKENLITERALFALSE till 34
+sätt TOKENSTRING till 35
+sätt TOKENIDENTIFIER till 36
+sätt TOKENNEWLINE till 37
+sätt TOKENINDENT till 38
+sätt TOKENDEDENT till 39
+sätt TOKENCOMMA till 40
+sätt TOKENCOMMENT till 41
+sätt TOKENEOF till 42
+sätt TOKENCOPY till 43
+sätt TOKENOF till 44
 
 . Helper function to check if a character is a digit
-sätt är siffra till grej med tecken
+sätt ärsiffra till grej med tecken
     ge tecken är större än eller lika med "0" och tecken är mindre än eller lika med "9"
 
+. String constants
+sätt citat till 34 som tecken
+
 . Helper function to get character at index
-sätt tecken vid till grej med text, index
+sätt teckenvid till grej med text, index
     sätt tecken till ""
     sätt i till 0
     medan i är mindre än längd från text
@@ -79,112 +82,111 @@ sätt delsträng till grej med text, start, längd
     ge resultat
 
 . Create a new token
-sätt ny token till grej med typ, värde, rad, kolumn
-    ge token med typ, värde, rad, kolumn
+sätt nyttoken till grej med tokentyp, värde, rad, kolumn
+    ge token med tokentyp, värde, rad, kolumn
 
 . Function to serialize token to Python-readable format
-sätt token till text till grej med tok
+sätt tokentilltext till grej med tok
     . Format: Python tuple representation
-    sätt del1 till "(" plus tecken(TYPE från tok)
+    sätt del1 till "(" plus tokentyp från tok som tecken
     sätt del2 till ", "
-    sätt del3 till """" plus VALUE från tok plus """"
+    sätt del3 till """" plus värde från tok plus """"
     sätt del4 till ", "
-    sätt del5 till tecken(LINE från tok)
+    sätt del5 till rad från tok som tecken
     sätt del6 till ", "
-    sätt del7 till tecken(COLUMN från tok)
+    sätt del7 till kolumn från tok som tecken
     sätt del8 till ")"
     ge del1 plus del2 plus del3 plus del4 plus del5 plus del6 plus del7 plus del8
 
 . Serialize token to format Python can read
-sätt serialisera token till grej med tok
-    sätt typ text till tecken(TYPE från tok)
-    sätt värde text till VALUE från tok
-    sätt rad text till tecken(LINE från tok)
-    sätt kolumn text till tecken(COLUMN från tok)
+sätt serialiseratoken till grej med tok
+    sätt typtext till tokentyp från tok som tecken
+    sätt vårdetext till värde från tok
+    sätt radtext till rad från tok som tecken
+    sätt kolumntext till kolumn från tok som tecken
     
     . Python dict format that can be parsed
     sätt resultat till "{"
     sätt resultat till resultat plus """type"": "
-    sätt resultat till resultat plus typ text
+    sätt resultat till resultat plus typtext
     sätt resultat till resultat plus ", "
     sätt resultat till resultat plus """value"": """
-    sätt resultat till resultat plus värde text
+    sätt resultat till resultat plus vårdetext
     sätt resultat till resultat plus """, "
     sätt resultat till resultat plus """line"": "
-    sätt resultat till resultat plus rad text
+    sätt resultat till resultat plus radtext
     sätt resultat till resultat plus ", "
     sätt resultat till resultat plus """column"": "
-    sätt resultat till resultat plus kolumn text
+    sätt resultat till resultat plus kolumntext
     sätt resultat till resultat plus "}"
     
     ge resultat
 
 . Write tokens to file
-sätt skriv tokens till fil till grej med tokens, filnamn
+sätt skrivtokens till fil till grej med tokens, filnamn
     sätt index till 0
     medan index är mindre än längd från tokens
         sätt tok till element index från tokens
-        sätt text till serialisera token med tok
+        sätt text till serialiseratoken med tok
         . In real implementation, would write to file here
         skriv text
         sätt index till index plus 1
 
 . The main tokenizer function
-sätt tokenisera till grej med kod
+sätt tokenisera till grej med rader
     sätt tokens till lista
-    sätt rader till dela upp kod med "
-"
-    sätt indent stack till lista med 0
-    sätt rad antal till längd från rader
+    sätt indentstack till lista med 0
+    sätt radantal till längd från rader
 
-    sätt rad index till 0
-    medan rad index är mindre än rad antal
-        sätt rad till element rad index från rader
-        sätt rad nummer till rad index plus 1
+    sätt radindex till 0
+    medan radindex är mindre än radantal
+        sätt rad till element radindex från rader
+        sätt radnummer till radindex plus 1
 
         . Skip empty lines
-        sätt rad är tom till sant
+        sätt äratom till sant
         sätt i till 0
         medan i är mindre än längd från rad
             sätt tecken till element i från rad
-            om tecken är inte lika med " "
-                sätt rad är tom till falskt
-                i till rad antal
+            om inte tecken lika med mellanrum
+                sätt äratom till falskt
+                i till radantal
             
             sätt i till i plus 1
 
-        om rad är tom
-            sätt rad index till rad index plus 1
+        om äratom
+            sätt radindex till radindex plus 1
             fortsätt
 
         . Calculate indent
         sätt indent till 0
         sätt i till 0
-        sätt kolumn index till 1
-        medan kolumn index är mindre än eller lika med längd från rad
-            sätt tecken till element kolumn index minus 1 från rad
-            om tecken är lika med " "
+        sätt kolumnindex till 1
+        medan kolumnindex är mindre än eller lika med längd från rad
+            sätt tecken till element kolumnindex minus 1 från rad
+            om tecken är lika med mellanrum
                 sätt indent till indent plus 1
-                sätt kolumn index till kolumn index plus 1
+                sätt kolumnindex till kolumnindex plus 1
             annars
-                kolumn index till rad antal plus 1
+                kolumnindex till radantal plus 1
 
         . Handle indent/dedent
-        sätt sista indent till element 0 från indent stack
-        om indent är större än sista indent
-            sätt indent token till ny token med TOKEN INDENT, " ", rad nummer, 1
-            lägg till indent token i tokens
-            lägg till indent i indent stack
-        annars om indent är mindre än sista indent
-            sätt fortsätt indent till sant
-            medan fortsätt indent
-                sätt nuvarande indent till element längd från indent stack minus 1 från indent stack
-                om nuvarande indent är större än indent
-                    ta bort sista element från indent stack
-                    sätt dedent token till ny token med TOKEN DEDENT, "", rad nummer, 1
-                    lägg till dedent token i tokens
-                annars
-                    fortsätt indent till falskt
+        sätt sistaindent till element 0 från indentstack
+        om indent är större än sistaindent
+            sätt indenttoken till nyttoken med TOKENINDENT, mellanrum, radnummer, 1
+            lägg till indenttoken i tokens
+            lägg till indent i indentstack
+        annars
+            om indent är mindre än sistaindent
+                sätt fortsättindent till sant
+                medan fortsättindent
+                    sätt nuvarandeindent till element längd från indentstack minus 1 från indentstack
+                    om nuvarandeindent är större än indent
+                        ta bort sista element från indentstack
+                        sätt dedenttoken till nyttoken med TOKENDEDENT, "", radnummer, 1
+                        lägg till dedenttoken i tokens
+                    annars
+                        fortsättindent till falskt
 
         . Get content after indent
         sätt start till indent
@@ -196,150 +198,154 @@ sätt tokenisera till grej med kod
             sätt i till i plus 1
 
         . Check for comment
-        sätt är kommentar till falskt
+        sätt ärkommentar till falskt
         om längd från innehåll är större än 0
-            sätt första tecken till element 0 från innehåll
-            om första tecken är lika med "."
-                sätt är kommentar till sant
+            sätt förstatecken till element 0 från innehåll
+            om förstatecken är lika med "."
+                sätt ärkommentar till sant
 
-        om är kommentar
-            sätt kommentar token till ny token med TOKEN COMMENT, innehåll, rad nummer, indent plus 1
-            lägg till kommentar token i tokens
-            sätt ny rad token till ny token med TOKEN NEWLINE, "\n", rad nummer, längd från rad plus 1
-            lägg till ny rad token i tokens
-            sätt rad index till rad index plus 1
+        om ärkommentar
+            sätt kommentartoken till nyttoken med TOKENCOMMENT, innehåll, radnummer, indent plus 1
+            lägg till kommentartoken i tokens
+            sätt nyradtoken till nyttoken med TOKENNEWLINE, "\n", radnummer, längd från rad plus 1
+            lägg till nyradtoken i tokens
+            sätt radindex till radindex plus 1
             fortsätt
 
         . Tokenize content
         sätt i till 0
-        sätt innehåll längd till längd från innehåll
+        sätt innehålllängd till längd från innehåll
 
-        medan i är mindre än innehåll längd
+        medan i är mindre än innehålllängd
             sätt tecken till element i från innehåll
 
             . Skip whitespace
-            om tecken är lika med " "
+            om tecken är lika med mellanrum
                 sätt i till i plus 1
                 fortsätt
 
             . Handle comma
             om tecken är lika med ","
-                sätt komma token till ny token med TOKEN COMMA, ",", rad nummer, indent plus i plus 1
-                lägg till komma token i tokens
+                sätt kommatoken till nyttoken med TOKENCOMMA, ",", radnummer, indent plus i plus 1
+                lägg till kommatoken i tokens
                 sätt i till i plus 1
                 fortsätt
 
             . Handle string
-            om tecken är lika med """"
+            om tecken är lika med citat
                 sätt i till i plus 1
-                sätt sträng start till i
-                sätt sträng hittad till falskt
+                sätt strängstart till i
+                sätt stränghittad till falskt
                 
-                medan i är mindre än innehåll längd och inte sträng hittad
+                medan i är mindre än innehålllängd och inte stränghittad
                     sätt tecken2 till element i från innehåll
-                    om tecken2 är lika med """
-                        sätt sträng hittad till sant
+                    om tecken2 är lika med citat
+                        sätt stränghittad till sant
                     annars
                         sätt i till i plus 1
                 
-                om inte sträng hittad
-                    kasta "Oavslutad sträng på rad " plus tecken(rad nummer)
+                om inte stränghittad
+                    kasta "Oavslutad sträng på rad " plus radnummer som tecken
                 
-                sätt sträng värde till delsträng med innehåll, sträng start, i minus sträng start
+                sätt strängvärde till delsträng med innehåll, strängstart, i minus strängstart
                 sätt i till i plus 1
-                sätt sträng token till ny token med TOKEN STRING, sträng värde, rad nummer, indent plus sträng start plus 1
-                lägg till sträng token i tokens
+                sätt strängtoken till nyttoken med TOKENSTRING, strängvärde, radnummer, indent plus strängstart plus 1
+                lägg till strängtoken i tokens
                 fortsätt
 
             . Handle number (including negative)
-            om är siffra med tecken eller (tecken är lika med "-" och i plus 1 är mindre än innehåll längd)
-                sätt start pos till i
-                sätt har komma till falskt
+            om ärsiffra med tecken eller (tecken är lika med "-" och i plus 1 är mindre än innehålllängd)
+                sätt startpos till i
+                sätt ärkomma till falskt
                 
                 . Handle negative sign
                 om tecken är lika med "-"
                     sätt i till i plus 1
                 
-                medan i är mindre än innehåll längd
+                medan i är mindre än innehålllängd
                     sätt tecken2 till element i från innehåll
                     om tecken2 är lika med ","
-                        om i plus 1 är mindre än innehåll längd och är siffra med element i plus 1 från innehåll
-                            sätt har komma till sant
+                        om i plus 1 är mindre än innehålllängd och ärsiffra med element i plus 1 från innehåll
+                            sätt ärkomma till sant
                             sätt i till i plus 1
                         annars
-                            i till innehåll längd
-                    annars om är siffra med tecken2
-                        sätt i till i plus 1
+                            i till innehålllängd
                     annars
-                        i till innehåll längd
+                        om ärsiffra med tecken2
+                            sätt i till i plus 1
+                        annars
+                            i till innehålllängd
                 
-                sätt nummer värde till delsträng med innehåll, start pos, i minus start pos
-                sätt nummer typ till TOKEN LITERAL FLOAT
-                om inte har komma
-                    sätt nummer typ till TOKEN LITERAL INT
+                sätt nummervärde till delsträng med innehåll, startpos, i minus startpos
+                sätt nummertyp till TOKENLITERALFLOAT
+                om inte ärkomma
+                    sätt nummertyp till TOKENLITERALINT
                 
-                sätt nummer token till ny token med nummer typ, nummer värde, rad nummer, indent plus start pos plus 1
-                lägg till nummer token i tokens
+                sätt nummertoken till nyttoken med nummertyp, nummervärde, radnummer, indent plus startpos plus 1
+                lägg till nummertoken i tokens
                 fortsätt
 
             . Handle identifier/keyword
-            sätt id start till i
-            sätt id längd till 0
+            sätt idstart till i
+            sätt idlängd till 0
             
-            medan i är mindre än innehåll längd
+            medan i är mindre än innehålllängd
                 sätt tecken2 till element i från innehåll
-                sätt är giltigt till sant
+                sätt ärgiltigt till sant
                 
                 sätt r till 0
                 medan r är mindre än längd från tecken2
                     sätt t till element r från tecken2
-                    om t är lika med " " eller t är lika med ","
-                        sätt är giltigt till falskt
+                    om t är lika med mellanrum eller t är lika med ","
+                        sätt ärgiltigt till falskt
                         r till längd från tecken2
                     
                     sätt r till r plus 1
                 
-                om är giltigt och tecken2 är inte lika med """"
-                    sätt id längd till id längd plus 1
-                    sätt i till i plus 1
+                om ärgiltigt
+                    om inte tecken2 lika med citat
+                        sätt idlängd till idlängd plus 1
+                        sätt i till i plus 1
+                    annars
+                        i till innehålllängd
                 annars
-                    i till innehåll längd
+                    i till innehålllängd
 
-            om id längd är större än 0
-                sätt id värde till delsträng med innehåll, id start, id längd
-                sätt id typ till TOKEN IDENTIFIER
+            om idlängd är större än 0
+                sätt idvärde till delsträng med innehåll, idstart, idlängd
+                sätt idtyp till TOKENIDENTIFIER
                 
                 . Check for true/false
-                sätt versaler till id värde
+                sätt versaler till idvärde
                 om versaler är lika med "SANT"
-                    sätt id typ till TOKEN LITERAL TRUE
+                    sätt idtyp till TOKENLITERALTRUE
                 annars om versaler är lika med "FALSKT"
-                    sätt id typ till TOKEN LITERAL FALSE
+                    sätt idtyp till TOKENLITERALFALSE
                 
-                sätt id token till ny token med id typ, id värde, rad nummer, indent plus id start plus 1
-                lägg till id token i tokens
+                sätt idtoken till nyttoken med idtyp, idvärde, radnummer, indent plus idstart plus 1
+                lägg till idtoken i tokens
             annars
                 sätt i till i plus 1
 
         . Add newline token
-        sätt ny rad token till ny token med TOKEN NEWLINE, "\n", rad nummer, längd från rad plus 1
-        lägg till ny rad token i tokens
+        sätt nyradtoken till nyttoken med TOKENNEWLINE, "\n", radnummer, längd från rad plus 1
+        lägg till nyradtoken i tokens
 
-        sätt rad index till rad index plus 1
+        sätt radindex till radindex plus 1
 
     . Add remaining dedent tokens
-    sätt fortsätt dedent till sant
-    medan fortsätt dedent och längd från indent stack är större än 1
-        ta bort sista element från indent stack
-        sätt dedent token till ny token med TOKEN DEDENT, "", rad antal plus 1, 1
-        lägg till dedent token i tokens
-        om längd från indent stack är lika med 1
-            fortsätt dedent till falskt
+    sätt fortsättdedent till sant
+    medan fortsättdedent och längd från indentstack är större än 1
+        ta bort sista element från indentstack
+        sätt dedenttoken till nyttoken med TOKENDEDENT, "", radantal plus 1, 1
+        lägg till dedenttoken i tokens
+        om längd från indentstack är lika med 1
+            fortsättdedent till falskt
 
     ge tokens
 
 . Function to tokenize file and write output
-sätt tokenisera fil till grej med filnamn, utdata fil
+sätt tokeniserafil till grej med filnamn, utdatafil
     . Read file content (in real implementation)
     sätt kod till "placeholder"
     
