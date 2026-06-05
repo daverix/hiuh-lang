@@ -136,6 +136,18 @@ class Interpreter:
     def visit_BoolNode(self, node): return node.value
     def visit_StringNode(self, node): return node.value
 
+    def _resolve_index(self, name):
+        try:
+            return int(name)
+        except ValueError:
+            index_value = self.env.get(name)
+            if index_value is None:
+                raise Exception(f"Variabeln '{name}' finns inte i aktuell kontext")
+            try:
+                return int(index_value)
+            except (ValueError, TypeError):
+                raise Exception(f"Variabeln '{name}' är inte ett giltigt index: {index_value}")
+
     # --- Variables & List/Dict Access ---
     def visit_VarAccessNode(self, node):
         if node.target:
@@ -150,26 +162,14 @@ class Interpreter:
                 return obj.vars.get(node.name, node.name)
 
             if isinstance(obj, str):
+                index = self._resolve_index(node.name)
                 try:
-                    return Char(obj[int(node.name)])
-                except ValueError, IndexError:
-                    raise Exception(f"Index {node.name} saknas i texten {node.target}")
+                    return Char(obj[index])
+                except IndexError:
+                    raise Exception(f"Index {index} finns inte i texten {node.target}")
 
             if isinstance(obj, list):
-                # node.name is the index - could be a number or a variable name
-                # Try to resolve it as a number first
-                try:
-                    index = int(node.name)
-                except ValueError:
-                    # It's a variable name - look it up
-                    index_value = self.env.get(node.name)
-                    if index_value is None:
-                        raise Exception(f"Variabeln '{node.name}' finns inte i aktuell kontext")
-                    try:
-                        index = int(index_value)
-                    except (ValueError, TypeError):
-                        raise Exception(f"Variabeln '{node.name}' är inte ett giltigt index: {index_value}")
-                
+                index = self._resolve_index(node.name)
                 try:
                     return obj[index]
                 except IndexError:
