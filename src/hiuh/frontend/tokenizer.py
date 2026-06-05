@@ -72,7 +72,6 @@ class Tokenizer:
             "med": TOKEN_WITH,
             "ge": TOKEN_GIVE,
             "typ": TOKEN_TYPE,
-            "i": TOKEN_IN,
             "från": TOKEN_FROM,
             "om": TOKEN_IF,
             "är": TOKEN_OP_IS,

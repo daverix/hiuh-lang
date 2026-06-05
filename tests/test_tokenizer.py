@@ -120,7 +120,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_NEWLINE, "\n", 1, 27),
             Token(TOKEN_SET, "sätt", 2, 1),
             Token(TOKEN_IDENTIFIER, "ålder", 2, 6),
-            Token(TOKEN_IN, "i", 2, 12),
+            Token(TOKEN_IDENTIFIER, "i", 2, 12),
             Token(TOKEN_IDENTIFIER, "person", 2, 14),
             Token(TOKEN_TO, "till", 2, 21),
             Token(TOKEN_LITERAL_INT, "38", 2, 26)
@@ -230,9 +230,9 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
         tokens = self.tokenizer.tokenize(source)
 
         # Expected types for the first line:
-        # sätt (SET), element (ID), 0 (INT), i (IN), minlista (ID), till (TO), röd (ID)
+        # sätt (SET), element (ID), 0 (INT), i (ID), minlista (ID), till (TO), röd (ID)
         expected_types = [
-            TOKEN_SET, TOKEN_IDENTIFIER, TOKEN_LITERAL_INT, TOKEN_IN,
+            TOKEN_SET, TOKEN_IDENTIFIER, TOKEN_LITERAL_INT, TOKEN_IDENTIFIER,
             TOKEN_IDENTIFIER, TOKEN_TO, TOKEN_IDENTIFIER, TOKEN_NEWLINE,
             TOKEN_PRINT, TOKEN_IDENTIFIER, TOKEN_LITERAL_INT, TOKEN_FROM,
             TOKEN_IDENTIFIER
@@ -276,7 +276,7 @@ stäng fil"""
             Token(TOKEN_NEWLINE, "\n", 2, 23),
             Token(TOKEN_WHILE, "medan", 4, 1),
             Token(TOKEN_IDENTIFIER, "inte", 4, 7),
-            Token(TOKEN_IN, "i", 4, 12),
+            Token(TOKEN_IDENTIFIER, "i", 4, 12),
             Token(TOKEN_IDENTIFIER, "slutet", 4, 14),
             Token(TOKEN_FROM, "från", 4, 21),
             Token(TOKEN_IDENTIFIER, "fil", 4, 26),
