@@ -40,6 +40,8 @@ class Interpreter:
         # Built-in: inmatning reads from stdin
         self.globals.define("inmatning", lambda: sys.stdin.readline().strip())
         self.globals.define("längd", lambda x: len(x) if hasattr(x, '__len__') else 0)
+        # Built-in: element gets element at index from list
+        self.globals.define("element", lambda idx, lst: lst[idx] if isinstance(lst, list) and 0 <= idx < len(lst) else None)
         self.globals.define("mellanrum", " ")
         self.globals.define("öppna", self.builtin_open)
 

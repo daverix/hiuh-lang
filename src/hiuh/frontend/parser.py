@@ -17,7 +17,7 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
         self.in_structural_statement = False
-        self.infix_functions = set()  # Set of infix function names registered via 'infix grej'
+        self.infix_functions = set()
         self.in_call_args = False
 
     def peek(self, offset=0):
@@ -79,7 +79,6 @@ class Parser:
 
     def parse_import(self):
         import_token = self.consume(TOKEN_IMPORT)
-        # Parse module name - simple identifier or string
         t = self.peek()
         if t.type == TOKEN_STRING:
             module_name = self.consume().value
@@ -104,26 +103,19 @@ class Parser:
     def parse_append(self):
         append_token = self.consume()  # lägg
         self.consume()  # till
-
-        # Parse the value - use term() which stops before an 'i' identifier
-        val = self.term()
-
-        # Expect 'i'
+        # Collect value parts until 'i'
+        val = self._collect_until("i")
         self._consume_keyword("i")
-
-        # Parse the list name (multi-word support)
+        # Parse list name
         parts = []
         while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
             parts.append(self.consume().value)
         target = "".join(parts)
-
         return AppendNode(val, target, token=append_token)
 
     def parse_remove(self):
         remove_token = self.consume() # ta
         self.consume() # bort
-
-        # Check if the user specified 'element' or 'index'
         is_index_based = False
         if self.peek() and self.peek().value in ["element", "index"]:
             self.consume()
@@ -135,9 +127,8 @@ class Parser:
         finally:
             self.in_structural_statement = False
 
-        self.consume(TOKEN_FROM) # från
+        self.consume(TOKEN_FROM)
 
-        # Parse the 'where' (the list name)
         parts = []
         while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
             parts.append(self.consume().value)
@@ -145,14 +136,12 @@ class Parser:
 
         if is_index_based:
             return RemoveIndexNode(target_expr, list_name, token=remove_token)
-
         return RemoveValueNode(target_expr, list_name, token=remove_token)
 
     def parse_open_file(self):
         open_token = self.consume(TOKEN_OPEN)
         self.in_structural_statement = True
         try:
-            # Parse path - string literal or identifier (let resolver handle conversion)
             t = self.peek()
             if t.type == TOKEN_STRING:
                 path_expr = StringNode(self.consume().value, token=t)
@@ -163,17 +152,15 @@ class Parser:
 
             mode = "läsning"
             mode_token = open_token
-            # Check for 'för mode' after path
             if self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value == "för":
-                self.consume()  # för
-                # Consume mode identifier (could be multi-word)
+                self.consume()
                 mode_parts = []
                 while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in ["som"]:
                     mode_parts.append(self.consume().value)
                 mode = " ".join(mode_parts) if mode_parts else "läsning"
 
             if self.peek() and self.peek().type == TOKEN_AS:
-                assign_token = self.consume()  # som
+                assign_token = self.consume()
             else:
                 raise SyntaxError("Förväntade 'som' efter filnamnet")
         finally:
@@ -184,22 +171,17 @@ class Parser:
             parts.append(self.consume().value)
         var_name = " ".join(parts)
 
-
         function_call_args = [path_expr, StringNode(mode, token=mode_token)]
         function_call_node = FunctionCallNode("öppna", function_call_args, token=open_token)
         return AssignNode(var_name, function_call_node, target_type=None, token=assign_token)
 
     def parse_close_file(self):
-        close_file_token = self.consume(TOKEN_CLOSE) # Consumes 'stäng'
-
-        # Greedy identifier consumption to match multi-word file names
+        close_file_token = self.consume(TOKEN_CLOSE)
         parts = []
         while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
             parts.append(self.consume().value)
-
         if not parts:
-            raise SyntaxError(f"Förväntade en filvariabel efter 'stäng' på rad {self.peek().line if self.peek() else 'EOF'}")
-
+            raise SyntaxError(f"Förväntade en filvariabel efter 'stäng'")
         target = " ".join(parts)
         return CloseFileNode(target, token=close_file_token)
 
@@ -208,9 +190,9 @@ class Parser:
 
         # Check for list indexing: sätt element 0 i minlista till ...
         if self.peek() and self.peek().value in ["element", "index"] and self.peek(1).type == TOKEN_LITERAL_INT:
-            self.consume() # 'element'
+            self.consume()
             idx = self.consume().value
-            self._consume_keyword("i") # 'i'
+            self._consume_keyword("i")
             target_parts = []
             while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
                 target_parts.append(self.consume().value)
@@ -219,81 +201,66 @@ class Parser:
             val = self.parse_greedy_expression()
             return AssignNode(str(idx), val, target_type=target, token=assign_token)
 
-        # Check for 'kopia av' pattern: sätt X till kopia av Y med P V, P V, P V
+        # Check for 'kopia av' pattern
         kopia_checkpoint = self.pos
         if self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-            # Try to detect 'kopia av' pattern
-            # Collect variable name (could be multi-word, including operators like 'är')
             name_parts = [self.consume().value]
             while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value != "till":
                 name_parts.append(self.consume().value)
             name = " ".join(name_parts)
             
-            if self.peek() and self.peek().type == TOKEN_TO:  # till
-                self.consume()  # consume 'till'
-                if self.peek() and self.peek().type == TOKEN_COPY:  # kopia
-                    self.consume()  # consume 'kopia'
-                    if self.peek() and self.peek().type == TOKEN_OF:  # av
-                        self.consume()  # consume 'av'
-                        # Parse source object name (could be multi-word)
+            if self.peek() and self.peek().type == TOKEN_TO:
+                self.consume()
+                if self.peek() and self.peek().type == TOKEN_COPY:
+                    self.consume()
+                    if self.peek() and self.peek().type == TOKEN_OF:
+                        self.consume()
                         source_parts = []
                         while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in ["med"]:
                             source_parts.append(self.consume().value)
                         source = " ".join(source_parts)
-                        if self.peek() and self.peek().type == TOKEN_WITH:  # med
-                            self.consume()  # consume 'med'
-                            # Parse named prop-value pairs (kopia av always uses named args)
+                        if self.peek() and self.peek().type == TOKEN_WITH:
+                            self.consume()
                             updates = self._parse_constructor_args(named_only=True)
                             if updates:
                                 return CopyWithPropNode(name, source, updates, token=assign_token)
         
-        # Reset to start of assignment if we didn't match kopia av pattern
         self.pos = kopia_checkpoint
         
-        # Try to collect multi-word name that might include operators like 'är'
-        # This handles patterns like 'är del av' where 'är' is TOKEN_OP_IS
+        # Standard assignment - collect name then value
         name_parts = []
         while self.peek() and self.peek().type not in [TOKEN_TO, TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
-            # Stop if we hit 'till'
             if self.peek().type == TOKEN_TO:
                 break
             name_parts.append(self.consume().value)
         
         if name_parts:
             name = " ".join(name_parts)
-            self.consume(TOKEN_TO)  # consume 'till'
+            self.consume(TOKEN_TO)
             val = self.parse_greedy_expression()
             return AssignNode(name, val, target_type=None, token=assign_token)
         
-        # Standard assignment
+        # Fallback
         parts = []
         while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value != "till":
             parts.append(self.consume().value)
-        
         name = " ".join(parts)
-
         self.consume(TOKEN_TO)
         val = self.parse_greedy_expression()
-
         return AssignNode(name, val, target_type=None, token=assign_token)
 
     def parse_print(self):
         print_token = self.consume(TOKEN_PRINT)
-
-        # Check for file writing syntax first, as it's more specific
         checkpoint = self.pos
         try:
             val = self.expression()
             if self.peek() and self.peek().type == TOKEN_TO:
-                self.consume() # till
-                # The next token must be a plain identifier
+                self.consume()
                 if self.peek() and self.peek().type == TOKEN_IDENTIFIER:
                     target_var = self.consume().value
                     return FileWriteNode(val, target_var, token=print_token)
-        except Exception:
-            pass # Fallback to greedy expression
-
-        # If it wasn't a file write, reset and parse greedily
+        except:
+            pass
         self.pos = checkpoint
         val = self.parse_greedy_expression()
         return PrintNode(val, token=print_token)
@@ -310,193 +277,81 @@ class Parser:
             self.consume(); self.consume()
             return StringNode("\n", token=t)
 
-        checkpoint = self.pos
+        return self.expression()
 
-        try:
-            expr = self.expression()
-            if isinstance(expr, (FunctionDefNode, FunctionCallNode)): return expr
-
-            nt = self.peek()
-            # Check if this is a function call: expression followed by "med args"
-            if nt and nt.type == TOKEN_WITH:
-                # It's a function call! Consume 'med' and parse arguments
-                self.consume()  # consume 'med'
-                args = []
-                while True:
-                    arg_expr = self.expression()
-                    # Keep VarAccessNode
-                    args.append(arg_expr)
-                    if self.peek() and self.peek().type == TOKEN_COMMA:
-                        self.consume()
-                    else:
-                        break
-                return FunctionCallNode(expr.name if hasattr(expr, 'name') else str(expr), args, token=t)
-
-            is_at_boundary = not nt or nt.type in [
-                TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT,
-                TOKEN_FROM
-            ] or (nt.type == TOKEN_IDENTIFIER and nt.value in ["för", "till", "i"])
-
-            if is_at_boundary:
-                return expr
-            
-            # Next token is not a boundary - check if expr is a VarAccessNode with multi-word name
-            # If so, this is likely an expression like "färger innehåller röd", not a string
-            print(f"DEBUG parse_greedy: checking expr, type={type(expr).__name__}")
-            if isinstance(expr, VarAccessNode) and ' ' in expr.name:
-                # The expression is already correct, return it
-                return expr
-        except:
-            if t.type == TOKEN_FUNC: raise
-
-        self.pos = checkpoint
-        txt = []
-        while self.peek():
-            nt = self.peek()
-            if nt.type in [TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT, TOKEN_FROM]:
-                break
-            if nt.type == TOKEN_IDENTIFIER and nt.value in ["som", "för", "till", "i"]:
-                break
-
-            txt.append(str(self.consume().value))
-
-        raw_value = " ".join(txt)
-        if raw_value.isdigit():
-            return IntNode(int(raw_value))
-
-        if ',' in raw_value and raw_value.replace(',', '').isdigit():
-            return FloatNode(raw_value, token=t)
-
-        return StringNode(raw_value, token=t)
-
-    def expression(self):
-        t = self.peek()
-        if t and t.type == TOKEN_IDENTIFIER and t.value == "inte":
-            self.consume() # consume 'inte'
-            # Recursively parse the condition that follows, then wrap it in a NotNode
-            cond_node = self.expression()
-            return NotNode(cond_node, token=t)
-
-        # Parse first part of expression
-        left = self.arithmetic()
-        if isinstance(left, FunctionDefNode): return left
+    def _collect_until_keyword(self, keyword):
+        """Collect tokens until we hit a specific keyword."""
+        parts = []
+        while self.peek() and not (self.peek().type == TOKEN_IDENTIFIER and self.peek().value == keyword):
+            t = self.peek()
+            if t.type in [TOKEN_IDENTIFIER, TOKEN_LITERAL_INT, TOKEN_LITERAL_FLOAT, 
+                         TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE, TOKEN_STRING]:
+                parts.append(t.value)
+            elif t.type in [TOKEN_OP_IS, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV,
+                           TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OR, TOKEN_AND, 
+                           TOKEN_WITH, TOKEN_AS, TOKEN_OF, TOKEN_FROM]:
+                parts.append(t.value)
+            elif t.type == TOKEN_COMMA:
+                parts.append(',')
+            self.consume()
         
-        # Check if we should collect parts for compound expression
-        # Collect all tokens until we hit a boundary
-        t = self.peek()
-        
-        # Collect parts if next token is an identifier or operator
-        # This handles patterns like "frukt innehåller banan" or "x är mindre än 10"
-        if t and t.type in [TOKEN_IDENTIFIER, TOKEN_OP_IS, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV,
-                           TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OR, TOKEN_AND, TOKEN_WITH, TOKEN_AS]:
-            parts = []
-            
-            # Add left side as first part (convert node to string representation)
-            if isinstance(left, VarAccessNode):
-                # Split multi-word names into individual parts for proper expression parsing
-                # This handles cases like "färger innehåller" where the name includes what
-                # should be recognized as an infix operator
-                name_parts = left.name.split(' ')
-                parts.extend(name_parts)
-            elif isinstance(left, IntNode):
-                parts.append(str(left.value))
-            elif isinstance(left, StringNode):
-                parts.append(left.value)
-            elif isinstance(left, BoolNode):
-                parts.append(str(left.value).lower())
-            elif isinstance(left, FunctionCallNode):
-                # Can't easily represent function call in parts, return as-is
-                return left
-            else:
-                # Other complex types - return left as-is
-                return left
-            
-            # Collect tokens until we hit a boundary (newline, indent, etc.)
-            while t and t.type not in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
-                # Check if this is "längd från X" pattern - treat as function call
-                if t.type == TOKEN_IDENTIFIER and t.value == "längd":
-                    if self.peek(1) and self.peek(1).type == TOKEN_FROM:
-                        # This is "längd från X" - consume and create function call
-                        self.consume()  # consume 'längd'
-                        self.consume()  # consume 'från'
-                        # Collect target
-                        target_parts = []
-                        while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                            target_parts.append(self.consume().value)
-                        target = " ".join(target_parts)
-                        # Add the function call as a single part (will be resolved by resolver)
-                        parts.append(f"längd från {target}")
-                        t = self.peek()
-                        continue
-                
-                # Add token value to parts (identifiers, literals, and all operators)
-                if t.type in [TOKEN_IDENTIFIER, TOKEN_LITERAL_INT, TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE, TOKEN_STRING]:
-                    parts.append(t.value)
-                elif t.type in [TOKEN_OP_IS, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV,
-                               TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OR, TOKEN_AND, TOKEN_WITH, TOKEN_AS, TOKEN_OF]:
-                    parts.append(t.value)
-                elif t.type == TOKEN_COMMA:
-                    parts.append(',')
-                # Consume and continue
-                self.consume()
-                t = self.peek()
-            
-            # If we collected more than one part, it's a compound expression
-            if len(parts) > 1:
-                return ExpressionPartsNode(parts, token=t)
-        
-        return left
+        if parts:
+            return ExpressionPartsNode(parts, token=self.peek())
+        return self.primary()
 
-    def arithmetic(self):
-        left = self.term()
-        if isinstance(left, FunctionDefNode): return left
-
+    def _collect_until(self, *keywords):
+        """Collect tokens until we hit one of the keywords."""
+        parts = []
         while self.peek():
             t = self.peek()
-            if t.type in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT, TOKEN_FROM] or \
-               (t.type == TOKEN_IDENTIFIER and t.value == "i"): 
+            if t.type == TOKEN_IDENTIFIER and t.value in keywords:
                 break
+            if t.type in [TOKEN_IDENTIFIER, TOKEN_LITERAL_INT, TOKEN_LITERAL_FLOAT, 
+                         TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE, TOKEN_STRING]:
+                parts.append(t.value)
+            elif t.type in [TOKEN_OP_IS, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV,
+                           TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OR, TOKEN_AND, 
+                           TOKEN_WITH, TOKEN_AS, TOKEN_OF, TOKEN_FROM]:
+                parts.append(t.value)
+            elif t.type == TOKEN_COMMA:
+                parts.append(',')
+            self.consume()
+        
+        if parts:
+            return ExpressionPartsNode(parts, token=self.peek())
+        return self.primary()
 
-            if t.type == TOKEN_OP_ADD: # 'plus'
-                self.consume() # consume 'plus'
-
-                # Check if the right side is a standard term (number/var)
-                # or if we should just grab the rest of the line as a string
-                checkpoint = self.pos
-                try:
-                    right = self.term()
-                    # If the next token isn't another plus or EOL, this might be a string
-                    if self.peek() and self.peek().type not in [TOKEN_OP_ADD, TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT]:
-                        raise Exception("Not a clean term")
-                except:
-                    self.pos = checkpoint
-                    txt = []
-                    # Gobble everything until the next plus or end of line
-                    while self.peek() and self.peek().type not in [TOKEN_OP_ADD, TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT]:
-                        txt.append(str(self.consume().value))
-                    right = StringNode(" ".join(txt), token=t)
-
-                left = AddNode(left, right, token=t)
-            elif t.type == TOKEN_OP_SUB:
-                self.consume()
-                left = SubNode(left, self.term(), token=t)
-            else:
-                break
-        return left
-
-    def term(self):
-        left = self.primary()
-        if isinstance(left, FunctionDefNode): return left
-        while self.peek() and self.peek().type in [TOKEN_OP_MUL, TOKEN_OP_DIV]:
-            if self.peek().type in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_FROM] or \
-               (self.peek().type == TOKEN_IDENTIFIER and self.peek().value == "i"):
-                break
-            op_token = self.consume()
-            op = op_token.type
-            if op == TOKEN_OP_DIV and self.peek() and self.peek().value == "med": self.consume()
-            right = self.primary()
-            left = MulNode(left, right, token=op_token) if op == TOKEN_OP_MUL else DivNode(left, right, token=op_token)
-        return left
+    def expression(self):
+        """Parse expression - just collect all tokens as parts for resolver to handle."""
+        t = self.peek()
+        
+        # Handle 'inte' prefix
+        if t and t.type == TOKEN_IDENTIFIER and t.value == "inte":
+            self.consume()
+            inner = self.expression()
+            return NotNode(inner, token=t)
+        
+        # Collect all tokens until boundary
+        parts = []
+        t = self.peek()
+        
+        while t and t.type not in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
+            if t.type in [TOKEN_IDENTIFIER, TOKEN_LITERAL_INT, TOKEN_LITERAL_FLOAT, 
+                         TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE, TOKEN_STRING]:
+                parts.append(t.value)
+            elif t.type in [TOKEN_OP_IS, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV,
+                           TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OR, TOKEN_AND, 
+                           TOKEN_WITH, TOKEN_AS, TOKEN_OF, TOKEN_FROM]:
+                parts.append(t.value)
+            elif t.type == TOKEN_COMMA:
+                parts.append(',')
+            self.consume()
+            t = self.peek()
+        
+        if parts:
+            return ExpressionPartsNode(parts, token=t)
+        
+        return self.primary()
 
     def primary(self):
         t = self.peek()
@@ -512,10 +367,10 @@ class Parser:
                     else: break
             return FunctionDefNode(p, self.parse_block(params=p), line=t.line, column=t.column)
         
-        # Handle 'infix grej' - both tokens must be consumed together
+        # Handle 'infix grej'
         if t.type == TOKEN_INFIX and self.peek(1) and self.peek(1).type == TOKEN_FUNC:
-            infix_token = self.consume()  # consume 'infix'
-            self.consume()  # consume 'grej'
+            infix_token = self.consume()
+            self.consume()
             p = []
             if self.peek() and self.peek().type == TOKEN_WITH:
                 self.consume()
@@ -523,242 +378,15 @@ class Parser:
                     p.append(self.consume().value)
                     if self.peek() and self.peek().type == TOKEN_COMMA: self.consume()
                     else: break
-            # Check if there's an indented block (function body) or just end of statement
             body = []
-            # Skip any newlines before checking for INDENT
             while self.peek() and self.peek().type == TOKEN_NEWLINE:
                 self.consume()
             if self.peek() and self.peek().type == TOKEN_INDENT:
                 body = self.parse_block(params=p)
-            # Mark this function as infix by returning a special node
             return FunctionDefNode(p, body, line=infix_token.line, column=infix_token.column, is_infix=True)
 
         if t.type == TOKEN_IDENTIFIER and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
             self.consume(); self.consume(); return StringNode("\n", token=t)
-
-        if t.type in [TOKEN_IDENTIFIER, TOKEN_PRINT, TOKEN_SET, TOKEN_TO, TOKEN_WITH, TOKEN_GIVE, TOKEN_FUNC, TOKEN_TYPE, TOKEN_FROM, TOKEN_IF, TOKEN_ELSE, TOKEN_WHILE, TOKEN_TRY, TOKEN_THROW, TOKEN_CATCH, TOKEN_OPEN, TOKEN_CLOSE, TOKEN_AS, TOKEN_OP_IS, TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OP_MUL, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_DIV, TOKEN_OR, TOKEN_AND, TOKEN_IMPORT, TOKEN_INFIX]:
-            name = self.consume().value
-
-            if name == ".":
-                return StringNode(".", token=t)
-
-            # Special handling for 'element x från list' pattern (index with variable name)
-            # This must come BEFORE the lookahead loop which would consume 'x'
-            if name in ["element", "index"] and self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                # Tokens are: element (TOKEN_IDENTIFIER), x (TOKEN_IDENTIFIER), från (TOKEN_FROM)
-                if self.peek(1) and self.peek(1).type == TOKEN_FROM:
-                    idx_name = self.consume().value  # consume 'x'
-                    self.consume()  # consume 'från'
-                    parts = []
-                    while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                        parts.append(self.consume().value)
-                    target = " ".join(parts)
-                    return VarAccessNode(idx_name, target=target, token=t)
-
-            if not self.in_structural_statement:
-                lookahead = 0
-                has_extended = False
-                while self.peek(lookahead) and self.peek(lookahead).type == TOKEN_IDENTIFIER:
-                    # Check if this is "i" followed by "från" - then it's part of identifier, not membership check
-                    if self.peek(lookahead).value == "i":
-                        if self.peek(lookahead + 1) and self.peek(lookahead + 1).type == TOKEN_FROM:
-                            # "i" followed by "från" - continue extending
-                            pass
-                        else:
-                            # "i" NOT followed by "från" - this is membership check, stop extending
-                            break
-                    
-                    # Stop extending if current lookahead token is a known operator that signals an expression
-                    # This allows "frukt innehåller banan" to be parsed as expression, not identifier
-                    # Also stop for built-in functions like "längd" that need special handling
-                    stop_words = ["är", "som", "plus", "minus", "från", "längd", "element", "index"]
-                    if self.peek(lookahead) and self.peek(lookahead).type == TOKEN_IDENTIFIER:
-                        if self.peek(lookahead).value in stop_words:
-                            break
-                        # Stop extending if we've already extended once and see another identifier
-                        # This handles cases like "färger innehåller röd" where "innehåller" should
-                        # be treated as an operator, not part of the name
-                        if has_extended:
-                            break
-                    
-                    next_tok = self.peek(lookahead)
-                    next_combined = name + " " + next_tok.value
-                    
-                    # Always extend the name by consuming identifiers
-                    name = next_combined
-                    self.consume()
-                    has_extended = True
-                    lookahead = 0  # Reset to check from current position
-                    continue
-                
-                # After the loop, check if the current name followed by "med" is a function call
-                if self.peek() and self.peek().type == TOKEN_WITH:
-                    # It's a function call! Check if we need to extend the name first
-                    # Look ahead to see if we can build up more of the name
-                    temp_pos = self.pos
-                    temp_name = name
-                    while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                        temp_name += " " + self.consume().value
-                    
-                    # Now check if next token is "med"
-                    if self.peek() and self.peek().type == TOKEN_WITH:
-                        name = temp_name
-                        self.consume()  # consume 'med'
-                        args = self._parse_call_args()
-                        return FunctionCallNode(name, args, token=t)
-                    else:
-                        # Not a function call, restore position
-                        self.pos = temp_pos
-
-            if name == "längd":
-                if self.peek() and self.peek().type == TOKEN_FROM:
-                    self.consume() # från
-                    t_parts = []
-                    first_var_token=self.peek() if self.peek() and self.peek().type == TOKEN_IDENTIFIER else None
-                    while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                        t_parts.append(self.consume().value)
-
-                    target = " ".join(t_parts)
-                    # Maps 'längd från x' to a function call for the built-in
-                    return FunctionCallNode("längd", [VarAccessNode(target, token=first_var_token)], token=t)
-
-            # Index Get (integer index: element 0 from x, or variable index: element i from x)
-            if name in ["element", "index"] and self.peek() and self.peek().type == TOKEN_LITERAL_INT:
-                idx_token = self.consume()
-                idx = idx_token.value
-                if self.peek() and self.peek().type == TOKEN_FROM:
-                    self.consume()
-                    parts = []
-                    while self.peek() and self.peek().type == TOKEN_IDENTIFIER: parts.append(self.consume().value)
-                    return VarAccessNode(str(idx), target=" ".join(parts), token=t)
-
-            # Property Get
-            if not self.in_structural_statement and self.peek() and self.peek().type == TOKEN_FROM:
-                self.consume()
-
-                parts = []
-                while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                    parts.append(self.consume().value)
-
-                target_namespace = " ".join(parts)
-                prop_node = VarAccessNode(name, target=target_namespace, token=t)
-
-                if self.peek() and self.peek().type == TOKEN_WITH:
-                    self.consume() # med
-                    args = []
-                    while True:
-                        arg_expr = self.expression()
-                        args.append(arg_expr)
-                        if self.peek() and self.peek().type == TOKEN_COMMA:
-                            self.consume()
-                        else:
-                            break
-
-                    return FunctionCallNode(prop_node, args, token=t)
-
-                return prop_node
-
-            # Multi-word Var - track if we've extended (name has spaces)
-            name_has_spaces = ' ' in name
-            while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                # Stop on "i" unless followed by "från" (property access pattern)
-                if self.peek().value == "i":
-                    if self.peek(1) and self.peek(1).type == TOKEN_FROM:
-                        pass  # Continue - is property access
-                    else:
-                        break  # Stop - is membership check
-                
-                # Stop extending if we see a known operator that signals an expression
-                stop_words = ["är", "som", "plus", "minus", "från", "längd", "element", "index"]
-                if self.peek().value in stop_words:
-                    break
-                
-                # Stop extending if we've already extended once and see another identifier
-                # This handles cases like "färger innehåller röd" where "innehåller" should
-                # be treated as an operator, not part of the name
-                if name_has_spaces:
-                    break
-                
-                combined = name + " " + self.peek().value
-                if combined: name = combined; self.consume()
-                else: break
-
-            # Check for property access after multi-word var (e.g., 'element i från värden')
-            if not self.in_structural_statement and self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value == "i":
-                self.consume()  # consume 'i'
-                # Check if next is 'från'
-                if self.peek() and self.peek().type == TOKEN_FROM:
-                    self.consume()
-                    parts = []
-                    while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                        parts.append(self.consume().value)
-                    target_namespace = " ".join(parts)
-                    prop_node = VarAccessNode(name, target=target_namespace, token=t)
-
-                    if self.peek() and self.peek().type == TOKEN_WITH:
-                        self.consume()
-                        args = []
-                        while True:
-                            arg_expr = self.expression()
-                            if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
-                                arg_expr = StringNode(arg_expr.name, token=t)
-                            args.append(arg_expr)
-                            if self.peek() and self.peek().type == TOKEN_COMMA:
-                                self.consume()
-                            else:
-                                break
-                        return FunctionCallNode(prop_node, args, token=t)
-
-                    return prop_node
-                else:
-                    # 'i' is not followed by 'från', put it back
-                    self.pos -= 1
-            elif not self.in_structural_statement and self.peek() and self.peek().type == TOKEN_FROM:
-                # Direct 'från' property access
-                self.consume()
-                parts = []
-                while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                    parts.append(self.consume().value)
-                target_namespace = " ".join(parts)
-                prop_node = VarAccessNode(name, target=target_namespace, token=t)
-
-                if self.peek() and self.peek().type == TOKEN_WITH:
-                    self.consume()
-                    args = []
-                    while True:
-                        arg_expr = self.expression()
-                        if isinstance(arg_expr, VarAccessNode) and not arg_expr.target:
-                            arg_expr = StringNode(arg_expr.name, token=t)
-                        args.append(arg_expr)
-                        if self.peek() and self.peek().type == TOKEN_COMMA:
-                            self.consume()
-                        else:
-                            break
-                        return FunctionCallNode(prop_node, args, token=t)
-
-                return prop_node
-
-            # Call
-            if self.peek() and self.peek().type == TOKEN_WITH:
-                self.consume()  # consume 'med'
-                args = self._parse_call_args()
-                return FunctionCallNode(name, args, token=t)
-
-            if name == "lista":
-                args = []
-                if self.peek() and self.peek().type == TOKEN_WITH:
-                    self.consume()
-                    args = self._parse_call_args()
-                return FunctionCallNode(name, args, token=t)
-            
-            # Multi-word function call: check if we just parsed a known function name
-            # followed by "med args"
-            if self.peek() and self.peek().type == TOKEN_WITH:
-                self.consume()  # consume 'med'
-                args = self._parse_call_args()
-                return FunctionCallNode(name, args, token=t)
-            
-            return VarAccessNode(name, token=t)
 
         if t.type == TOKEN_LITERAL_INT: return IntNode(self.consume().value, token=t)
         if t.type == TOKEN_LITERAL_FLOAT: return FloatNode(self.consume().value, token=t)
@@ -778,61 +406,43 @@ class Parser:
         return stmts
 
     def _parse_kopia_value(self):
-        """Parse a value - stops at comma or end of expression.
-        
-        This is a simplified expression parser that handles single values like
-        identifiers, numbers, strings, and simple function calls.
-        """
+        """Parse a value for kopia av."""
         t = self.peek()
         if not t:
             return StringNode("", token=t)
         
-        # Number literal
         if t.type == TOKEN_LITERAL_INT:
             self.consume()
             return IntNode(t.value, token=t)
         if t.type == TOKEN_LITERAL_FLOAT:
             self.consume()
             return FloatNode(t.value, token=t)
-        
-        # Boolean literals
         if t.type == TOKEN_LITERAL_TRUE:
             self.consume()
             return BoolNode(True, token=t)
         if t.type == TOKEN_LITERAL_FALSE:
             self.consume()
             return BoolNode(False, token=t)
-        
-        # String literal
         if t.type == TOKEN_STRING:
             self.consume()
             return StringNode(t.value, token=t)
-        
-        # Identifier - could be variable or function call
         if t.type == TOKEN_IDENTIFIER:
-            # Try to build the identifier name (multi-word)
             name_parts = [self.consume().value]
             while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in [","]:
-                # Check if next would be a comma - stop before it
                 if self.peek(1) and self.peek(1).type == TOKEN_COMMA:
                     break
                 name_parts.append(self.consume().value)
             name = " ".join(name_parts)
-            
-            # Check for function call: 'name med args'
             if self.peek() and self.peek().type == TOKEN_WITH:
-                self.consume()  # consume 'med'
+                self.consume()
                 args = self._parse_function_call_args()
                 return FunctionCallNode(name, args, token=t)
-            
             return VarAccessNode(name, token=t)
         
-        # Fallback: consume as string
         val = self.consume().value
         return StringNode(val, token=t)
 
     def _is_value_token(self, token):
-        """Check if a token could be a value (not a property name)."""
         if token is None:
             return False
         return token.type in [
@@ -842,16 +452,6 @@ class Parser:
         ] or (token.type == TOKEN_IDENTIFIER and token.value in ["SANT", "FALSKT"])
 
     def _parse_constructor_args(self, named_only=False):
-        """Parse constructor arguments supporting both named and positional args.
-        
-        Args:
-            named_only: If True, always parse as named 'prop value' pairs (for kopia av)
-                       If False, auto-detect based on first argument
-        
-        Returns:
-            List of tuples for named args: [(prop, value), ...]
-            List of values for positional args: [value, ...]
-        """
         args = []
         
         while self.peek() and self.peek().type != TOKEN_NEWLINE:
@@ -862,32 +462,18 @@ class Parser:
             first_tok = self.peek()
             
             if named_only:
-                # kopia av: always named prop value pairs
                 if first_tok.type != TOKEN_IDENTIFIER:
                     break
                 prop = self.consume().value
                 value = self._parse_kopia_value()
                 args.append((prop, value))
             else:
-                # typ/grej: auto-detect named vs positional
-                # Check if this looks like a named argument (prop followed by value)
                 if first_tok.type == TOKEN_IDENTIFIER:
-                    # Look at next token to determine if this is a property name
                     next_tok = self.peek(1)
-                    
-                    # If next is a value token (number, string, bool) or identifier 
-                    # that could be a variable, check if we should treat as named
                     is_named = False
                     if next_tok and next_tok.type != TOKEN_COMMA:
-                        # Check if pattern is: identifier (prop) followed by value-like token
-                        # or identifier (prop) followed by another identifier that looks like a value
                         if self._is_value_token(next_tok):
                             is_named = True
-                        elif (next_tok.type == TOKEN_IDENTIFIER and 
-                              next_tok.value not in ["med", "till", "från", "som", "för", "om", "annars", "medan", "ge", "i", "eller", "och"]):
-                            # Next is an identifier that could be a value - might be named
-                            # But we need to look ahead more to be sure
-                            pass
                     
                     if is_named:
                         prop = self.consume().value
@@ -895,18 +481,15 @@ class Parser:
                         args.append((prop, value))
                         continue
                 
-                # Positional argument
                 value = self._parse_kopia_value()
                 args.append(value)
             
-            # Check for comma or end
             if self.peek() and self.peek().type != TOKEN_COMMA:
                 break
         
         return args
 
     def _parse_function_call_args(self):
-        """Parse function call arguments (positional only, for compatibility)."""
         args = []
         while True:
             if self.peek() and self.peek().type in [TOKEN_NEWLINE, TOKEN_DEDENT]:
@@ -921,77 +504,6 @@ class Parser:
                 break
         return args
 
-    def _parse_constructor_or_function_args(self):
-        """Parse arguments for typ constructors or function calls.
-        
-        Supports both named (prop value) and positional arguments.
-        Detects format based on first token pattern.
-        """
-        args = []
-        
-        while self.peek() and self.peek().type not in [TOKEN_NEWLINE, TOKEN_DEDENT]:
-            if self.peek().type == TOKEN_COMMA:
-                self.consume()
-                continue
-            
-            first_tok = self.peek()
-            
-            # Check if this looks like a named argument (prop followed by value)
-            if first_tok.type == TOKEN_IDENTIFIER:
-                next_tok = self.peek(1)
-                
-                # If next token is a value (number, string, bool) or an identifier
-                # that could be a variable value, this might be a named argument
-                if next_tok and next_tok.type != TOKEN_COMMA:
-                    is_named = self._is_value_token(next_tok)
-                    
-                    if is_named:
-                        prop = self.consume().value
-                        value = self.expression()
-                        args.append((prop, value))
-                        continue
-            
-            # Positional argument - use expression parsing for full support
-            arg_expr = self.expression()
-            if arg_expr:
-                args.append(arg_expr)
-            
-            # Check for comma or end
-            if self.peek() and self.peek().type != TOKEN_COMMA:
-                break
-        
-        return args
-
-    def _parse_call_args(self):
-        """Parse function call arguments, consuming all args until boundary.
-        
-        Unlike the previous loop, this keeps consuming until we hit a boundary
-        (newline, dedent, etc.) or an unconsumed token that doesn't look like an arg.
-        """
-        args = []
-        old_in_call_args = self.in_call_args
-        self.in_call_args = True
-        try:
-            while self.peek() and self.peek().type not in [TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT]:
-                if self.peek().type == TOKEN_COMMA:
-                    self.consume()
-                    continue
-                
-                # Stop if we see 'i' - it's the preposition for lägg till ... i list
-                if self.peek().type == TOKEN_IDENTIFIER and self.peek().value == "i":
-                    break
-                
-                arg_expr = self.expression()
-                if arg_expr:
-                    args.append(arg_expr)
-                else:
-                    # No expression parsed - probably at boundary
-                    break
-        finally:
-            self.in_call_args = old_in_call_args
-        
-        return args
-
     def parse_if(self):
         if_token = self.consume(TOKEN_IF)
         first_cond = self.expression()
@@ -1000,17 +512,15 @@ class Parser:
         
         conditions = [first_condition]
         
-        # Handle annars om (elif) blocks
         while self.peek() and self.peek().type == TOKEN_ELSE:
-            self.consume()  # consume 'annars'
+            self.consume()
             if self.peek() and self.peek().type == TOKEN_IF:
-                self.consume()  # consume 'om'
+                self.consume()
                 elif_cond = self.expression()
                 elif_block = self.parse_block()
                 elif_condition = IfCondition(elif_cond, elif_block)
                 conditions.append(elif_condition)
             else:
-                # Plain 'annars' (no 'om'), handle else block
                 else_block = self.parse_block()
                 return IfNode(conditions, else_block, line=if_token.line, column=if_token.column)
         
@@ -1027,13 +537,13 @@ class Parser:
         err_var = None
         catch_b = None
         if self.peek() and self.peek().value == "fånga":
-            self.consume() # fånga
+            self.consume()
             err_var = self.consume(TOKEN_IDENTIFIER).value
             catch_b = self.parse_block(params=[err_var])
 
         finally_b = None
         if self.peek() and self.peek().value == "slutligen":
-            self.consume() # slutligen
+            self.consume()
             finally_b = self.parse_block()
 
         if not catch_b and not finally_b:
