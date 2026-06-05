@@ -25,6 +25,16 @@ frontend with tokenizer and parser, backends for different platforms.
 * Each token should include row and column so that error reporting will be easier.
 * The parser should output an intermediate representation so that different backends can output executables.
 
+## Hiuh Language Constraints
+
+When writing hiuh code (`.hiuh` files), use only characters available on a Swedish mobile keyboard:
+* Swedish letters: a-ö (including å, ä, ö)
+* Space
+* Comma
+* Dot
+
+This ensures hiuh code can be written easily on mobile devices without switching keyboard layouts.
+
 ## Agent Protocol Updates
 
 To ensure reliable development and prevent silent failures:
