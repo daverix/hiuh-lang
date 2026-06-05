@@ -94,12 +94,17 @@ class PrintNode(ASTNode):
         super().__init__(token.line if token else None, token.column if token else None)
         self.value = value
 
-class IfNode(ASTNode):
-    def __init__(self, condition, true_block, false_block=None, line=None, column=None):
+class IfCondition(ASTNode):
+    def __init__(self, test, block, line=None, column=None):
         super().__init__(line, column)
-        self.condition = condition
-        self.true_block = true_block
-        self.false_block = false_block
+        self.test = test
+        self.block = block
+
+class IfNode(ASTNode):
+    def __init__(self, conditions, else_block=None, line=None, column=None):
+        super().__init__(line, column)
+        self.conditions = conditions  # List of IfCondition nodes
+        self.else_block = else_block
 
 class WhileNode(ASTNode):
     def __init__(self, condition, body, line=None, column=None):

@@ -624,20 +624,17 @@ class Resolver:
         return PrintNode(value=value, token=node)
 
     def visit_IfNode(self, node):
-        condition = self.visit(node.condition)
-        true_block = self._visit_nodes(node.true_block or [])
-        false_block = self._visit_nodes(node.false_block) if node.false_block else None
+        # Resolve each condition-block pair
+        resolved_conditions = []
+        for cond_block in node.conditions:
+            resolved_test = self.visit(cond_block.test)
+            resolved_block = self._visit_nodes(cond_block.block)
+            resolved_conditions.append(IfCondition(resolved_test, resolved_block, line=cond_block.line, column=cond_block.column))
+        
+        # Resolve else block
+        resolved_else = self._visit_nodes(node.else_block) if node.else_block else None
 
-        if condition is node.condition and true_block is node.true_block and false_block is node.false_block:
-            return node
-
-        return IfNode(
-            condition=condition,
-            true_block=true_block,
-            false_block=false_block,
-            line=node.line,
-            column=node.column
-        )
+        return IfNode(resolved_conditions, resolved_else, line=node.line, column=node.column)
 
     def visit_WhileNode(self, node):
         condition = self.visit(node.condition)

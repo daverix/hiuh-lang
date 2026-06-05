@@ -878,12 +878,27 @@ class Parser:
 
     def parse_if(self):
         if_token = self.consume(TOKEN_IF)
-        cond = self.expression()
-        true_b = self.parse_block()
-        false_b = None
-        if self.peek() and self.peek().type == TOKEN_ELSE:
-            self.consume(); false_b = self.parse_block()
-        return IfNode(cond, true_b, false_b, line=if_token.line, column=if_token.column)
+        first_cond = self.expression()
+        first_block = self.parse_block()
+        first_condition = IfCondition(first_cond, first_block, line=if_token.line, column=if_token.column)
+        
+        conditions = [first_condition]
+        
+        # Handle annars om (elif) blocks
+        while self.peek() and self.peek().type == TOKEN_ELSE:
+            self.consume()  # consume 'annars'
+            if self.peek() and self.peek().type == TOKEN_IF:
+                self.consume()  # consume 'om'
+                elif_cond = self.expression()
+                elif_block = self.parse_block()
+                elif_condition = IfCondition(elif_cond, elif_block)
+                conditions.append(elif_condition)
+            else:
+                # Plain 'annars' (no 'om'), handle else block
+                else_block = self.parse_block()
+                return IfNode(conditions, else_block, line=if_token.line, column=if_token.column)
+        
+        return IfNode(conditions, line=if_token.line, column=if_token.column)
 
     def parse_while(self):
         while_token = self.consume(TOKEN_WHILE)

@@ -228,9 +228,10 @@ class TestHiuhParserAST(unittest.TestCase):
         expected = [
             AssignNode("x", IntNode(3)),
             IfNode(
-                condition=ComparisonNode(VarAccessNode("x"), "större än", IntNode(2)),
-                true_block=[PrintNode(StringNode("större"))],
-                false_block=[PrintNode(StringNode("mindre"))]
+                conditions=[
+                    IfCondition(ComparisonNode(VarAccessNode("x"), "större än", IntNode(2)), [PrintNode(StringNode("större"))])
+                ],
+                else_block=[PrintNode(StringNode("mindre"))]
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
@@ -265,16 +266,16 @@ class TestHiuhParserAST(unittest.TestCase):
         source = "om SANT\n    skriv nivå 1\n    om SANT\n        skriv nivå 2"
         expected = [
             IfNode(
-                condition=BoolNode(True),
-                true_block=[
-                    PrintNode(StringNode("nivå 1")),
-                    IfNode(
-                        condition=BoolNode(True),
-                        true_block=[PrintNode(StringNode("nivå 2"))],
-                        false_block=None
-                    )
-                ],
-                false_block=None
+                conditions=[
+                    IfCondition(BoolNode(True), [
+                        PrintNode(StringNode("nivå 1")),
+                        IfNode(
+                            conditions=[
+                                IfCondition(BoolNode(True), [PrintNode(StringNode("nivå 2"))])
+                            ]
+                        )
+                    ])
+                ]
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)

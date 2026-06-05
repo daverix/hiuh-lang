@@ -238,12 +238,12 @@ class Interpreter:
 
     # --- Control Flow ---
     def visit_IfNode(self, node):
-        if self.visit(node.condition):
-            for s in node.true_block: self.visit(s)
-        elif node.false_block:
-            # Handle if false_block is a list of nodes or a single statement
-            stmts = node.false_block if isinstance(node.false_block, list) else [node.false_block]
-            for s in stmts: self.visit(s)
+        for cond_block in node.conditions:
+            if self.visit(cond_block.test):
+                for s in cond_block.block: self.visit(s)
+                return
+        if node.else_block:
+            for s in node.else_block: self.visit(s)
 
     def visit_WhileNode(self, node):
         while self.visit(node.condition):
