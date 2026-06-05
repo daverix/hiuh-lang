@@ -4,4 +4,4 @@ använd tokeniserare
 sätt källkod till element 1 från argument
 sätt utdata till källkod plus .tokens
 
-tokenisera fil från tokeniserare med källkod, utdata
+tokenisera fil med källkod, utdata
