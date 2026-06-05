@@ -694,5 +694,60 @@ skriv indent_count
             # After processing, indent_count should be 0 (balanced)
             self.assertEqual(fake_out.getvalue().strip(), "0")
 
+    def test_infix_funktion_innehåller(self):
+        """Verify that infix functions work correctly with the 'innehåller' function from listor."""
+        source = """
+använd listor
+
+sätt frukter till lista med äpple, banan, citron
+
+. Test infix function syntax: lista innehåller värde
+om frukter innehåller banan
+    skriv Ja
+
+om frukter innehåller druva
+    skriv Nej
+
+. Test that the function returns correct boolean values
+sätt finns banan till frukter innehåller banan
+sätt finns druva till frukter innehåller druva
+
+skriv finns banan
+skriv finns druva
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # Output should be: Ja, FALSKT, SANT, FALSKT
+            self.assertEqual(fake_out.getvalue().strip(), "Ja\nFALSKT\nSANT\nFALSKT")
+
+    def test_infix_funktion_custom_definition(self):
+        """Verify that custom infix functions can be defined and used."""
+        source = """
+. Define a custom infix function 'är del av'
+sätt är del av till infix grej med del, helhet
+    sätt x till 0
+    medan x är mindre än längd från helhet
+        om element x från helhet är lika med del
+            ge SANT
+        sätt x till x plus 1
+    ge FALSKT
+
+sätt färger till lista med röd, grön, blå
+
+. Use the infix function syntax
+om grön är del av färger
+    skriv Hittat
+
+om gul är del av färger
+    skriv Saknas
+
+sätt resultat till blå är del av färger 
+skriv resultat
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            # Output: Hittade det, FALSKT, SANT
+            self.assertEqual(fake_out.getvalue().strip(), "Hittat\nFALSKT\nSANT")
+
 if __name__ == '__main__':
     unittest.main()
