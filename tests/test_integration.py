@@ -548,5 +548,98 @@ för varje med fruktpar, fruktfunk
 
             self.assertEqual(fake_out.getvalue().strip(), "äpple 2. citron 3.")
 
+    def test_named_args_typ_constructor(self):
+        """Test that typ constructors support named arguments."""
+        source = """
+typ person med namn, ålder
+sätt p till person med namn David, ålder 37
+skriv namn från p
+skriv ny rad
+skriv ålder från p
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue(), "David\n37")
+
+    def test_named_args_typ_positional_still_works(self):
+        """Test that typ constructors still support positional arguments."""
+        source = """
+typ person med namn, ålder
+sätt p till person med Eva, 25
+skriv namn från p
+skriv ny rad
+skriv ålder från p
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue(), "Eva\n25")
+
+    def test_named_args_kopia_av(self):
+        """Test that kopia av supports named arguments."""
+        source = """
+typ person med namn, ålder
+sätt p till person med David, 37
+sätt äldre till kopia av p med ålder 38
+skriv ålder från p
+skriv ny rad
+skriv ålder från äldre
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue(), "37\n38")
+
+    def test_named_args_grej_function(self):
+        """Test that grej functions support named arguments."""
+        source = """
+sätt add till grej med a, b
+    ge a plus b
+
+sätt resultat till add med a 5, b 3
+skriv resultat
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "8")
+
+    def test_named_args_grej_positional_still_works(self):
+        """Test that grej functions still support positional arguments."""
+        source = """
+sätt add till grej med x, y
+    ge x minus y
+
+sätt resultat till add med 10, 3
+skriv resultat
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "7")
+
+    def test_named_args_multiple_updates_kopia_av(self):
+        """Test that kopia av supports multiple named argument updates."""
+        source = """
+typ person med namn, ålder
+sätt p till person med David, 37
+sätt uppdaterad till kopia av p med namn Eva, ålder 40
+skriv namn från uppdaterad
+skriv ny rad
+skriv ålder från uppdaterad
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue(), "Eva\n40")
+
+    def test_named_args_multiword_property_value(self):
+        """Test named args with multi-word property names."""
+        source = """
+typ bil med märke, modell
+sätt min bil till bil med märke Volvo, modell V60
+skriv märke från min bil
+skriv ny rad
+skriv modell från min bil
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue(), "Volvo\nV60")
+
 if __name__ == '__main__':
     unittest.main()

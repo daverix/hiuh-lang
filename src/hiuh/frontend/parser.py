@@ -234,23 +234,8 @@ class Parser:
                         source = " ".join(source_parts)
                         if self.peek() and self.peek().type == TOKEN_WITH:  # med
                             self.consume()  # consume 'med'
-                            # Parse multiple prop-value pairs separated by commas
-                            updates = []
-                            while True:
-                                # Parse property name - single identifier
-                                if not self.peek() or self.peek().type != TOKEN_IDENTIFIER:
-                                    break
-                                prop = self.consume().value
-                                
-                                # Parse the value expression (stops at comma)
-                                val = self._parse_kopia_value()
-                                updates.append((prop, val))
-                                
-                                # Check for comma (more pairs)
-                                if self.peek() and self.peek().type == TOKEN_COMMA:
-                                    self.consume()  # consume comma
-                                    continue
-                                break
+                            # Parse named prop-value pairs (kopia av always uses named args)
+                            updates = self._parse_constructor_args(named_only=True)
                             if updates:
                                 return CopyWithPropNode(name, source, updates, token=assign_token)
         
@@ -515,14 +500,7 @@ class Parser:
                     if self.peek() and self.peek().type == TOKEN_WITH:
                         name = temp_name
                         self.consume()  # consume 'med'
-                        args = []
-                        while True:
-                            arg_expr = self.expression()
-                            args.append(arg_expr)
-                            if self.peek() and self.peek().type == TOKEN_COMMA:
-                                self.consume()
-                            else:
-                                break
+                        args = self._parse_call_args()
                         return FunctionCallNode(name, args, token=t)
                     else:
                         # Not a function call, restore position
@@ -654,37 +632,22 @@ class Parser:
 
             # Call
             if self.peek() and self.peek().type == TOKEN_WITH:
-                self.consume(); args = []
-                while True:
-                    arg_expr = self.expression()
-                    args.append(arg_expr)
-                    if self.peek() and self.peek().type == TOKEN_COMMA: self.consume()
-                    else: break
+                self.consume()  # consume 'med'
+                args = self._parse_call_args()
                 return FunctionCallNode(name, args, token=t)
 
             if name == "lista":
                 args = []
                 if self.peek() and self.peek().type == TOKEN_WITH:
                     self.consume()
-                    while True:
-                        args.append(self.expression())
-                        if self.peek() and self.peek().type == TOKEN_COMMA: self.consume()
-                        else: break
+                    args = self._parse_call_args()
                 return FunctionCallNode(name, args, token=t)
             
             # Multi-word function call: check if we just parsed a known function name
             # followed by "med args"
             if self.peek() and self.peek().type == TOKEN_WITH:
                 self.consume()  # consume 'med'
-                args = []
-                while True:
-                    arg_expr = self.expression()
-                    # Keep VarAccessNode
-                    args.append(arg_expr)
-                    if self.peek() and self.peek().type == TOKEN_COMMA:
-                        self.consume()
-                    else:
-                        break
+                args = self._parse_call_args()
                 return FunctionCallNode(name, args, token=t)
             
             return VarAccessNode(name, token=t)
@@ -707,7 +670,7 @@ class Parser:
         return stmts
 
     def _parse_kopia_value(self):
-        """Parse a value in kopia av pattern - stops at comma or end of expression.
+        """Parse a value - stops at comma or end of expression.
         
         This is a simplified expression parser that handles single values like
         identifiers, numbers, strings, and simple function calls.
@@ -751,14 +714,7 @@ class Parser:
             # Check for function call: 'name med args'
             if self.peek() and self.peek().type == TOKEN_WITH:
                 self.consume()  # consume 'med'
-                args = []
-                while True:
-                    arg = self._parse_kopia_value()
-                    args.append(arg)
-                    if self.peek() and self.peek().type == TOKEN_COMMA:
-                        self.consume()
-                        continue
-                    break
+                args = self._parse_function_call_args()
                 return FunctionCallNode(name, args, token=t)
             
             return VarAccessNode(name, token=t)
@@ -766,6 +722,159 @@ class Parser:
         # Fallback: consume as string
         val = self.consume().value
         return StringNode(val, token=t)
+
+    def _is_value_token(self, token):
+        """Check if a token could be a value (not a property name)."""
+        if token is None:
+            return False
+        return token.type in [
+            TOKEN_LITERAL_INT, TOKEN_LITERAL_FLOAT, 
+            TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
+            TOKEN_STRING
+        ] or (token.type == TOKEN_IDENTIFIER and token.value in ["SANT", "FALSKT"])
+
+    def _parse_constructor_args(self, named_only=False):
+        """Parse constructor arguments supporting both named and positional args.
+        
+        Args:
+            named_only: If True, always parse as named 'prop value' pairs (for kopia av)
+                       If False, auto-detect based on first argument
+        
+        Returns:
+            List of tuples for named args: [(prop, value), ...]
+            List of values for positional args: [value, ...]
+        """
+        args = []
+        
+        while self.peek() and self.peek().type != TOKEN_NEWLINE:
+            if self.peek().type == TOKEN_COMMA:
+                self.consume()
+                continue
+            
+            first_tok = self.peek()
+            
+            if named_only:
+                # kopia av: always named prop value pairs
+                if first_tok.type != TOKEN_IDENTIFIER:
+                    break
+                prop = self.consume().value
+                value = self._parse_kopia_value()
+                args.append((prop, value))
+            else:
+                # typ/grej: auto-detect named vs positional
+                # Check if this looks like a named argument (prop followed by value)
+                if first_tok.type == TOKEN_IDENTIFIER:
+                    # Look at next token to determine if this is a property name
+                    next_tok = self.peek(1)
+                    
+                    # If next is a value token (number, string, bool) or identifier 
+                    # that could be a variable, check if we should treat as named
+                    is_named = False
+                    if next_tok and next_tok.type != TOKEN_COMMA:
+                        # Check if pattern is: identifier (prop) followed by value-like token
+                        # or identifier (prop) followed by another identifier that looks like a value
+                        if self._is_value_token(next_tok):
+                            is_named = True
+                        elif (next_tok.type == TOKEN_IDENTIFIER and 
+                              next_tok.value not in ["med", "till", "i", "från", "som", "för", "om", "annars", "medan", "ge", "i", "eller", "och"]):
+                            # Next is an identifier that could be a value - might be named
+                            # But we need to look ahead more to be sure
+                            pass
+                    
+                    if is_named:
+                        prop = self.consume().value
+                        value = self._parse_kopia_value()
+                        args.append((prop, value))
+                        continue
+                
+                # Positional argument
+                value = self._parse_kopia_value()
+                args.append(value)
+            
+            # Check for comma or end
+            if self.peek() and self.peek().type != TOKEN_COMMA:
+                break
+        
+        return args
+
+    def _parse_function_call_args(self):
+        """Parse function call arguments (positional only, for compatibility)."""
+        args = []
+        while True:
+            if self.peek() and self.peek().type in [TOKEN_NEWLINE, TOKEN_DEDENT]:
+                break
+            if self.peek() and self.peek().type == TOKEN_COMMA:
+                self.consume()
+                continue
+            arg = self.expression()
+            if arg:
+                args.append(arg)
+            if self.peek() and self.peek().type != TOKEN_COMMA:
+                break
+        return args
+
+    def _parse_constructor_or_function_args(self):
+        """Parse arguments for typ constructors or function calls.
+        
+        Supports both named (prop value) and positional arguments.
+        Detects format based on first token pattern.
+        """
+        args = []
+        
+        while self.peek() and self.peek().type not in [TOKEN_NEWLINE, TOKEN_DEDENT]:
+            if self.peek().type == TOKEN_COMMA:
+                self.consume()
+                continue
+            
+            first_tok = self.peek()
+            
+            # Check if this looks like a named argument (prop followed by value)
+            if first_tok.type == TOKEN_IDENTIFIER:
+                next_tok = self.peek(1)
+                
+                # If next token is a value (number, string, bool) or an identifier
+                # that could be a variable value, this might be a named argument
+                if next_tok and next_tok.type != TOKEN_COMMA:
+                    is_named = self._is_value_token(next_tok)
+                    
+                    if is_named:
+                        prop = self.consume().value
+                        value = self.expression()
+                        args.append((prop, value))
+                        continue
+            
+            # Positional argument - use expression parsing for full support
+            arg_expr = self.expression()
+            if arg_expr:
+                args.append(arg_expr)
+            
+            # Check for comma or end
+            if self.peek() and self.peek().type != TOKEN_COMMA:
+                break
+        
+        return args
+
+    def _parse_call_args(self):
+        """Parse function call arguments, consuming all args until boundary.
+        
+        Unlike the previous loop, this keeps consuming until we hit a boundary
+        (newline, dedent, etc.) or an unconsumed token that doesn't look like an arg.
+        """
+        args = []
+        
+        while self.peek() and self.peek().type not in [TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT]:
+            if self.peek().type == TOKEN_COMMA:
+                self.consume()
+                continue
+            
+            arg_expr = self.expression()
+            if arg_expr:
+                args.append(arg_expr)
+            else:
+                # No expression parsed - probably at boundary
+                break
+        
+        return args
 
     def parse_if(self):
         if_token = self.consume(TOKEN_IF)

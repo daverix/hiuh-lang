@@ -475,10 +475,109 @@ class Resolver:
         return FunctionDefNode(params=node.params, body=body, line=node.line, column=node.column)
 
     def visit_FunctionCallNode(self, node):
+        callee_name = node.name if isinstance(node.name, str) else getattr(node.name, 'name', None)
+        
+        # Check for named arguments BEFORE visiting args
+        # This lets us detect named arguments before they're transformed to strings
+        param_names = None
+        
+        if callee_name:
+            # Check if this is a type constructor
+            symbol = self.module_registry.resolve_symbol(callee_name, self._current_module)
+            if symbol and symbol.type == 'type':
+                # Find the type definition to get field names
+                for mod_info in self.modules.values():
+                    if mod_info.ast:
+                        for n in mod_info.ast:
+                            if hasattr(n, 'name') and n.name == callee_name and hasattr(n, 'fields'):
+                                param_names = n.fields
+                                break
+            elif symbol and symbol.type == 'func' and symbol.signature:
+                # It's a function - use its parameter names
+                param_names = symbol.signature.params
+            
+            # If we found parameter names, try to transform named args
+            if param_names:
+                transformed = self._transform_named_args_to_positional(node.args, param_names)
+                if transformed:
+                    return FunctionCallNode(name=node.name, args=transformed, token=node)
+        
+        # Normal processing
         args = self._visit_nodes(node.args)
         if args is node.args:
             return node
         return FunctionCallNode(name=node.name, args=args, token=node)
+
+    def _transform_named_args_to_positional(self, args, field_names):
+        """Transform named arguments to positional based on field order.
+        
+        Handles patterns like: [prop1, value1, prop2, value2] -> [value1, value2]
+        Or mixed: [prop1, value1, value2] where value2 is positional
+        Also handles multi-word identifiers where first word is a field name.
+        """
+        if not args or len(args) < 2:
+            return None
+        
+        # Check if first arg looks like a property name
+        first_arg = args[0]
+        if not isinstance(first_arg, VarAccessNode):
+            return None
+        
+        prop_name = first_arg.name
+        
+        # Check if this is a known field name (either full name or first word of multi-word)
+        is_named = prop_name in field_names
+        if not is_named:
+            # Check if first word is a field name (for multi-word like "namn David")
+            first_word = prop_name.split()[0] if prop_name else None
+            if first_word and first_word in field_names:
+                is_named = True
+                prop_name = first_word  # Use the field name for matching
+        
+        if not is_named:
+            return None
+        
+        # It's a named argument pattern - transform
+        result = []
+        i = 0
+        
+        while i < len(args):
+            if isinstance(args[i], VarAccessNode):
+                var_name = args[i].name
+                
+                # Check if this is a property name (full or first word)
+                is_prop = var_name in field_names
+                first_word = var_name.split()[0] if var_name else None
+                
+                if is_prop or (first_word and first_word in field_names):
+                    # Use the field name
+                    actual_prop = var_name if is_prop else first_word
+                    
+                    # If the VarAccessNode is multi-word ("prop value"), split it
+                    if var_name != actual_prop:
+                        # Multi-word: first part is prop, rest is value
+                        remaining = var_name[len(actual_prop):].strip()
+                        if remaining:
+                            # Use remaining as value (don't skip next arg)
+                            result.append(StringNode(remaining, token=args[i]))
+                            i += 1
+                            continue
+                    
+                    # Single-word property name - use next arg as value
+                    if i + 1 < len(args):
+                        result.append(args[i + 1])
+                        i += 2
+                        continue
+                
+                # Not a property name - positional arg
+                result.append(args[i])
+                i += 1
+            else:
+                # Other node type - treat as positional
+                result.append(args[i])
+                i += 1
+        
+        return result if result else None
 
     def visit_ReturnNode(self, node):
         value = self.visit(node.value)

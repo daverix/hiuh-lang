@@ -181,6 +181,59 @@ sätt p till person med David, 37
 sätt uppdaterad person till kopia av p med namn Eva, ålder 38
 ```
 
+### Named arguments
+
+All three constructs (`typ`, `grej`, and `kopia av`) support **named arguments** in addition to positional arguments.
+
+**Named arguments for `typ` constructors:**
+
+```
+typ person med namn, ålder
+
+. Using named arguments
+sätt p till person med namn David, ålder 37
+
+. Positional arguments still work
+sätt q till person med Eva, 25
+```
+
+**Named arguments for `grej` functions:**
+
+```
+sätt add till grej med a, b
+    ge a plus b
+
+. Using named arguments
+sätt resultat till add med a 5, b 3
+skriv resultat
+
+. Positional arguments still work
+sätt resultat till add med 10, 3
+skriv resultat
+```
+
+outputs:
+```
+8
+7
+```
+
+**Named arguments for `kopia av`:**
+
+```
+sätt p till person med David, 37
+sätt uppdaterad till kopia av p med namn Eva, ålder 40
+skriv namn från uppdaterad
+skriv ny rad
+skriv ålder från uppdaterad
+```
+
+outputs:
+```
+Eva
+40
+```
+
 ### set string literal
 
 Anything specified after "TILL" that does not match any of the other types will be a string:
