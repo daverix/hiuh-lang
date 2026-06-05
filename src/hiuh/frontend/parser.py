@@ -9,7 +9,7 @@ from hiuh.frontend.tokenizer import (
     TOKEN_OP_MUL, TOKEN_OP_DIV, TOKEN_OP_IS, TOKEN_LITERAL_INT,
     TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
-    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COMMENT, TOKEN_COPY, TOKEN_OF
+    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COPY, TOKEN_OF
 )
 
 class Parser:
@@ -40,7 +40,7 @@ class Parser:
         nodes = []
         while self.peek():
             t = self.peek()
-            if t.type in [TOKEN_NEWLINE, TOKEN_COMMENT, TOKEN_DEDENT, TOKEN_INDENT]:
+            if t.type in [TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT]:
                 self.consume(); continue
             nodes.append(self.statement())
         return nodes
@@ -282,7 +282,7 @@ class Parser:
         return PrintNode(val, token=print_token)
 
     def parse_greedy_expression(self):
-        while self.peek() and self.peek().type in [TOKEN_NEWLINE, TOKEN_COMMENT]:
+        while self.peek() and self.peek().type in [TOKEN_NEWLINE]:
             self.consume()
 
         t = self.peek()
@@ -316,7 +316,7 @@ class Parser:
                 return FunctionCallNode(expr.name if hasattr(expr, 'name') else str(expr), args, token=t)
 
             is_at_boundary = not nt or nt.type in [
-                TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT, TOKEN_COMMENT,
+                TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT,
                 TOKEN_FROM
             ] or (nt.type == TOKEN_IDENTIFIER and nt.value in ["för", "som", "till", "i"])
 
@@ -329,7 +329,7 @@ class Parser:
         txt = []
         while self.peek():
             nt = self.peek()
-            if nt.type in [TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT, TOKEN_COMMENT, TOKEN_FROM]:
+            if nt.type in [TOKEN_NEWLINE, TOKEN_DEDENT, TOKEN_INDENT, TOKEN_FROM]:
                 break
             if nt.type == TOKEN_IDENTIFIER and nt.value in ["som", "för", "till", "i"]:
                 break
@@ -657,7 +657,7 @@ class Parser:
         self.consume(TOKEN_INDENT)
         stmts = []
         while self.peek() and self.peek().type != TOKEN_DEDENT:
-            if self.peek().type in [TOKEN_NEWLINE, TOKEN_COMMENT]: self.consume(); continue
+            if self.peek().type in [TOKEN_NEWLINE]: self.consume(); continue
             stmts.append(self.statement())
         self.consume(TOKEN_DEDENT)
         return stmts

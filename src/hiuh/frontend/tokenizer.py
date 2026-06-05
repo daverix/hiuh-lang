@@ -41,7 +41,6 @@ TOKEN_NEWLINE = 37
 TOKEN_INDENT = 38
 TOKEN_DEDENT = 39
 TOKEN_COMMA = 40
-TOKEN_COMMENT = 41
 TOKEN_EOF = 42
 TOKEN_COPY = 43
 TOKEN_OF = 44
@@ -107,8 +106,9 @@ class Tokenizer:
         indent_stack = [0]
 
         for line_idx, line in enumerate(lines, 1):
-            if not line.strip():
-                continue  # Skip empty lines entirely
+            stripped_line = line.strip()
+            if not stripped_line or stripped_line.startswith('.'):
+                continue  # Skip empty lines and comments
 
             indent = 0
             while indent < len(line) and line[indent] == ' ':
@@ -123,12 +123,6 @@ class Tokenizer:
                 while indent < indent_stack[-1]:
                     indent_stack.pop()
                     tokens.append(Token(TOKEN_DEDENT, "", line_idx, 1))
-
-            if content.startswith('.'):
-                tokens.append(Token(TOKEN_COMMENT, content, line_idx, indent + 1))
-                if line_idx < len(lines):
-                    tokens.append(Token(TOKEN_NEWLINE, "\n", line_idx, len(line) + 1))
-                continue
 
             i = 0
             while i < len(content):

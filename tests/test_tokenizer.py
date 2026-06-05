@@ -10,7 +10,7 @@ from hiuh.frontend.tokenizer import (
     TOKEN_OP_MUL, TOKEN_OP_DIV, TOKEN_OP_IS, TOKEN_LITERAL_INT,
     TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
-    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COMMENT
+    TOKEN_DEDENT, TOKEN_COMMA
 )
 
 class TestHiuhReadmeSpecification(unittest.TestCase):
@@ -182,8 +182,6 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
     def test_comments_section(self):
         source = ". skriver\nskriv hej"
         expected = [
-            Token(TOKEN_COMMENT, ". skriver", 1, 1),
-            Token(TOKEN_NEWLINE, "\n", 1, 10),
             Token(TOKEN_PRINT, "skriv", 2, 1),
             Token(TOKEN_IDENTIFIER, "hej", 2, 7)
         ]
@@ -290,8 +288,6 @@ stäng fil"""
             Token(TOKEN_FROM, "från", 5, 29),
             Token(TOKEN_IDENTIFIER, "fil", 5, 34),
             Token(TOKEN_NEWLINE, "\n", 5, 37),
-            Token(TOKEN_COMMENT, ". Inspect the first character of the line to find syntax shapes", 7, 5),
-            Token(TOKEN_NEWLINE, "\n", 7, 68),
             Token(TOKEN_SET, "sätt", 8, 5),
             Token(TOKEN_IDENTIFIER, "första_tecken", 8, 10),
             Token(TOKEN_TO, "till", 8, 24),
