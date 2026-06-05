@@ -44,6 +44,7 @@ TOKEN_COMMA = 40
 TOKEN_EOF = 42
 TOKEN_COPY = 43
 TOKEN_OF = 44
+TOKEN_INFIX = 45
 
 class Token:
     def __init__(self, type, value, line, column):
@@ -94,7 +95,8 @@ class Tokenizer:
             "stäng": TOKEN_CLOSE,
             "som": TOKEN_AS,
             "kopia": TOKEN_COPY,
-            "av": TOKEN_OF
+            "av": TOKEN_OF,
+            "infix": TOKEN_INFIX
         }
 
     def is_digit(self, char):
