@@ -198,51 +198,64 @@ class Parser:
             val = self.expression()
             return AssignNode(str(idx), val, target_type=target, token=assign_token)
 
-        # Check for 'kopia av' pattern
-        kopia_checkpoint = self.pos
-        if self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-            name_parts = [self.consume().value]
-            while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value != "till":
-                name_parts.append(self.consume().value)
-            name = " ".join(name_parts)
-            
-            if self.peek() and self.peek().type == TOKEN_TO:
-                self.consume()
-                if self.peek() and self.peek().type == TOKEN_COPY:
-                    self.consume()
-                    if self.peek() and self.peek().type == TOKEN_OF:
-                        self.consume()
-                        source_parts = []
-                        while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in ["med"]:
-                            source_parts.append(self.consume().value)
-                        source = " ".join(source_parts)
-                        if self.peek() and self.peek().type == TOKEN_WITH:
-                            self.consume()
-                            updates = self._parse_constructor_args(named_only=True)
-                            if updates:
-                                return CopyWithPropNode(name, source, updates, token=assign_token)
-        
-        self.pos = kopia_checkpoint
-        
-        # Standard assignment - collect name then value
+        # Collect variable name and consume 'till'
         name_parts = []
         while self.peek() and self.peek().type not in [TOKEN_TO, TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
-            if self.peek().type == TOKEN_TO:
-                break
             name_parts.append(self.consume().value)
-        
-        if name_parts:
-            name = " ".join(name_parts)
-            self.consume(TOKEN_TO)
-            val = self.expression()
-            return AssignNode(name, val, target_type=None, token=assign_token)
-        
-        # Fallback
-        parts = []
-        while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value != "till":
-            parts.append(self.consume().value)
-        name = " ".join(parts)
+        name = " ".join(name_parts)
         self.consume(TOKEN_TO)
+        
+        # Check for function definition: "sätt x till grej med a, b"
+        # Check by value since 'grej' can have different token types
+        is_grej = self.peek() and self.peek().value == 'grej'
+        is_infix_grej = (
+            self.peek() and self.peek().value == 'infix'
+            and self.peek(1) and self.peek(1).value == 'grej'
+        )
+        
+        if is_grej or is_infix_grej:
+            is_infix = False
+            if is_infix_grej:
+                self.consume()  # consume 'infix'
+                is_infix = True
+            self.consume()  # consume 'grej'
+            
+            if self.peek() and self.peek().type == TOKEN_WITH:
+                self.consume()  # consume 'med'
+                # Parse parameters
+                params = []
+                while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
+                    param_parts = []
+                    while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in [',']:
+                        param_parts.append(self.consume().value)
+                    if param_parts:
+                        params.append(' '.join(param_parts))
+                    if self.peek() and self.peek().value == ',':
+                        self.consume()  # consume comma
+                    else:
+                        break
+                
+                # Parse body (indented block)
+                body = self.parse_block(params=params)
+                func_def = FunctionDefNode(params, body, line=assign_token.line, column=assign_token.column, is_infix=is_infix)
+                return AssignNode(name, func_def, target_type=None, token=assign_token)
+        
+        # Check for 'kopia av' pattern
+        if self.peek() and self.peek().type == TOKEN_COPY:
+            self.consume()
+            if self.peek() and self.peek().type == TOKEN_OF:
+                self.consume()
+                source_parts = []
+                while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in ["med"]:
+                    source_parts.append(self.consume().value)
+                source = " ".join(source_parts)
+                if self.peek() and self.peek().type == TOKEN_WITH:
+                    self.consume()
+                    updates = self._parse_constructor_args(named_only=True)
+                    if updates:
+                        return CopyWithPropNode(name, source, updates, token=assign_token)
+        
+        # Standard assignment - parse expression value
         val = self.expression()
         return AssignNode(name, val, target_type=None, token=assign_token)
 
