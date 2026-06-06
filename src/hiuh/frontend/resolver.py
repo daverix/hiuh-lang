@@ -487,6 +487,11 @@ class Resolver:
         if len(parts) == 1:
             return self._part_to_node(parts[0], node)
 
+        # Check if the entire parts joined is a defined variable (multi-word name)
+        full_name = ' '.join(parts)
+        if self._is_defined(full_name, self._current_module):
+            return VarAccessNode(full_name, target=None, token=node)
+
         # Special case: "ny rad" -> newline string (two tokens)
         if len(parts) == 2 and parts[0] == 'ny' and parts[1] == 'rad':
             return self.visit(StringNode('\n', token=node))
