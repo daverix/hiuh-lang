@@ -672,14 +672,6 @@ class Resolver:
                 if left_parts and right_parts:
                     return self._create_binary_expr(left_parts, 'och', right_parts, node)
 
-        # Level 3: single-word comparisons 'är', 'i'
-        for i, part in enumerate(parts):
-            if part in ['är', 'i']:
-                left_parts = parts[:i]
-                right_parts = parts[i + 1:]
-                if left_parts and right_parts:
-                    return self._create_binary_expr(left_parts, part, right_parts, node)
-
         # Level 4: addition/subtraction (left-associative - find last operator)
         # Find the last occurrence of + or - for left-to-right grouping
         last_plus_idx = None
