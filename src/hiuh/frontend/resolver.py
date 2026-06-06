@@ -1694,6 +1694,26 @@ class Resolver:
 
         return WhileNode(condition=condition, body=body, line=node.line, column=node.column)
 
+    def visit_ForEachNode(self, node):
+        """Resolve a for-each loop.
+        
+        The loop variable is registered as a local var before visiting the body.
+        This allows expressions in the body to reference the loop variable.
+        """
+        # Register the loop variable as a local var
+        self._add_local_var(self._current_module, node.variable)
+        
+        # Resolve the iterable expression
+        iterable = self.visit(node.iterable)
+        
+        # Visit the body with the loop variable registered
+        body = self._visit_nodes(node.body or [])
+
+        if iterable is node.iterable and body is node.body:
+            return node
+
+        return ForEachNode(variable=node.variable, iterable=iterable, body=body, token=node)
+
     def visit_TryCatchNode(self, node):
         if node.error_var:
             self._add_local_var(self._current_module, node.error_var)

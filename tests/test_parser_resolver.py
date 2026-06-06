@@ -379,6 +379,30 @@ slutligen
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_for_each_loop(self):
+        """Verify that for-each loops are resolved correctly with multi-word variable.
+        
+        The resolved tree transforms ExpressionPartsNode into proper nodes.
+        """
+        source = "sätt min lista till lista med a, b, c\nför varje mitt index i min lista\n    skriv mitt index"
+        expected = [
+            AssignNode(
+                name="min lista",
+                value=FunctionCallNode(
+                    name="lista",
+                    args=[StringNode("a"), StringNode("b"), StringNode("c")]
+                )
+            ),
+            ForEachNode(
+                variable="mitt index",
+                iterable=VarAccessNode("min lista"),
+                body=[
+                    PrintNode(value=VarAccessNode("mitt index"))
+                ]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_try_finally(self):
         """Verify that try-finally (no catch) error handling is parsed correctly."""
         source = """
