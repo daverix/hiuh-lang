@@ -711,7 +711,11 @@ sätt uppdatera till grej med lst
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_längd_från_property_minus_expression(self):
-        """Verify that 'längd från värden minus 1' is parsed correctly as arithmetic expression."""
+        """Verify that 'längd från värden minus 1' is parsed correctly as arithmetic expression.
+        
+        The expression should be parsed as: (längd från värden) minus 1
+        NOT: längd från (värden minus 1)
+        """
         source = """
 sätt värden till lista
 sätt x till längd från värden minus 1
@@ -723,12 +727,12 @@ sätt x till längd från värden minus 1
             ),
             AssignNode(
                 name="x",
-                value=PropertyAccessNode(
-                    property_name="längd",
-                    target=SubNode(
-                        left=VarAccessNode("värden"),
-                        right=IntNode("1")
-                    )
+                value=SubNode(
+                    left=PropertyAccessNode(
+                        property_name="längd",
+                        target=VarAccessNode("värden")
+                    ),
+                    right=IntNode("1")
                 )
             )
         ]
