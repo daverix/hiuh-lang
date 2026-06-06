@@ -344,6 +344,107 @@ om färger innehåller blå
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_infix_funktion_custom_definition(self):
+        """Verify that custom infix function 'är del av' is defined and used correctly."""
+        source = """
+sätt är del av till infix grej med del, helhet
+    sätt x till 0
+    medan x är mindre än längd från helhet
+        om element x från helhet är lika med del
+            ge SANT
+        sätt x till x plus 1
+    ge FALSKT
+
+sätt färger till lista med röd, grön, blå
+om grön är del av färger
+    skriv Hittat
+om gul är del av färger
+    skriv Saknas
+sätt resultat till blå är del av färger
+skriv resultat"""
+        expected = [
+            AssignNode(
+                name="är del av",
+                value=FunctionDefNode(
+                    params=["del", "helhet"],
+                    body=[
+                        AssignNode(name="x", value=IntNode("0")),
+                        WhileNode(
+                            condition=ComparisonNode(
+                                left=VarAccessNode("x"),
+                                op="mindre än",
+                                right=PropertyAccessNode(
+                                    property_name="längd",
+                                    target=VarAccessNode("helhet")
+                                )
+                            ),
+                            body=[
+                                IfNode(
+                                    conditions=[
+                                        IfCondition(
+                                            test=ComparisonNode(
+                                                left=ElementAccessNode(
+                                                    index=VarAccessNode("x"),
+                                                    target=VarAccessNode("helhet")
+                                                ),
+                                                op="lika med",
+                                                right=VarAccessNode("del")
+                                            ),
+                                            block=[ReturnNode(value=BoolNode(True))]
+                                        )
+                                    ]
+                                ),
+                                AssignNode(name="x", value=AddNode(VarAccessNode("x"), IntNode("1")))
+                            ]
+                        ),
+                        ReturnNode(value=BoolNode(False))
+                    ],
+                    is_infix=True
+                )
+            ),
+            AssignNode(
+                name="färger",
+                value=FunctionCallNode(
+                    name="lista",
+                    args=[StringNode("röd"), StringNode("grön"), StringNode("blå")]
+                )
+            ),
+            IfNode(
+                conditions=[
+                    IfCondition(
+                        test=InfixCallNode(
+                            left=StringNode("grön"),
+                            operator="är del av",
+                            right=VarAccessNode("färger")
+                        ),
+                        block=[PrintNode(StringNode("Hittat"))]
+                    )
+                ]
+            ),
+            IfNode(
+                conditions=[
+                    IfCondition(
+                        test=InfixCallNode(
+                            left=StringNode("gul"),
+                            operator="är del av",
+                            right=VarAccessNode("färger")
+                        ),
+                        block=[PrintNode(StringNode("Saknas"))]
+                    )
+                ]
+            ),
+            AssignNode(
+                name="resultat",
+                value=InfixCallNode(
+                    left=StringNode("blå"),
+                    operator="är del av",
+                    right=VarAccessNode("färger")
+                )
+            ),
+            PrintNode(value=VarAccessNode("resultat"))
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 
 if __name__ == '__main__':
     unittest.main()
