@@ -185,18 +185,37 @@ class Parser:
     def parse_assignment(self):
         assign_token = self.consume(TOKEN_SET)
 
-        # Check for list indexing: sätt element 0 i minlista till ...
-        if self.peek() and self.peek().value in ["element", "index"] and self.peek(1).type == TOKEN_LITERAL_INT:
-            self.consume()
-            idx = self.consume().value
-            self._consume_keyword("i")
-            target_parts = []
-            while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                target_parts.append(self.consume().value)
-            target = " ".join(target_parts)
-            self.consume(TOKEN_TO)
-            val = self.expression()
-            return AssignNode(str(idx), val, target_type=target, token=assign_token)
+        # Check for list element assignment: sätt element 0 i minlista till ...
+        # Only match if "i" comes immediately after the index (the element assignment pattern)
+        if self.peek() and self.peek().value in ["element", "index"]:
+            # Peek ahead to check if "i" comes immediately after the index
+            # We'll consume tokens only if the pattern matches
+            saved_pos = self.pos
+            saved_tokens = self.tokens[self.pos:]
+            
+            self.consume()  # consume "element" or "index"
+            
+            # Collect index parts (int literal or single identifier for variable)
+            idx_parts = []
+            while self.peek() and self.peek().type == TOKEN_LITERAL_INT:
+                idx_parts.append(self.consume().value)
+            if not idx_parts and self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value != "i":
+                idx_parts.append(self.consume().value)
+            
+            # Check if "i" comes immediately after
+            if self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value == "i":
+                self.consume()  # consume "i"
+                # Collect target list parts
+                target_parts = []
+                while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
+                    target_parts.append(self.consume().value)
+                target = " ".join(target_parts)
+                self.consume(TOKEN_TO)
+                val = self.expression()
+                return ElementAssignNode(" ".join(idx_parts), target, val, token=assign_token)
+            
+            # If "i" doesn't come immediately after, reset position and fall through
+            self.pos = saved_pos
 
         # Collect variable name and consume 'till'
         name_parts = []

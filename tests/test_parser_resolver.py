@@ -650,6 +650,65 @@ för varje med fruktpar, fruktfunk
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_element_assign_int_index(self):
+        """Verify that element assignment with integer index is parsed correctly."""
+        source = """
+sätt element 0 i lista till 42
+        """
+        expected = [
+            ElementAssignNode(
+                index=IntNode("0"),
+                target=VarAccessNode("lista"),
+                value=IntNode("42")
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_element_assign_variable_index(self):
+        """Verify that element assignment with variable index is parsed correctly."""
+        source = """
+sätt x till 2
+sätt element x i lista till hello
+        """
+        expected = [
+            AssignNode("x", IntNode(2)),
+            ElementAssignNode(
+                index=VarAccessNode("x"),
+                target=VarAccessNode("lista"),
+                value=StringNode("hello")
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_element_assign_in_function(self):
+        """Verify that element assignment works inside a function."""
+        source = """
+sätt uppdatera till grej med lst
+    sätt element 0 i lst till 100
+    ge element 0 från lst
+        """
+        expected = [
+            AssignNode(
+                name="uppdatera",
+                value=FunctionDefNode(
+                    params=["lst"],
+                    body=[
+                        ElementAssignNode(
+                            index=IntNode("0"),
+                            target=VarAccessNode("lst"),
+                            value=IntNode("100")
+                        ),
+                        ReturnNode(
+                            value=ElementAccessNode(
+                            index=IntNode("0"),
+                            target=VarAccessNode("lst")
+                        ))
+                    ],
+                    is_infix=False
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
 
 if __name__ == '__main__':
     unittest.main()

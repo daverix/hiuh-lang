@@ -242,6 +242,44 @@ class Interpreter:
         
         raise Exception(f"Kan inte komma åt element från {type(target).__name__}")
 
+    def visit_ElementAssignNode(self, node):
+        """Handle element assignment: sätt element X i list till value"""
+        target = self.visit(node.target)
+        index = self.visit(node.index)
+        value = self.visit(node.value)
+        
+        # Get the actual list value
+        if hasattr(target, 'value'):
+            target = target.value
+        
+        if not isinstance(target, list):
+            raise Exception(f"Kan inte sätta element i {type(target).__name__}")
+        
+        # Convert index to integer
+        if isinstance(index, int):
+            idx = index
+        elif isinstance(index, str):
+            idx = int(index)
+        else:
+            idx = int(str(index))
+        
+        # Get the variable name for the target list
+        target_name = None
+        if isinstance(node.target, VarAccessNode):
+            target_name = node.target.name
+        
+        # Get the actual list from environment
+        list_obj = self.env.get(target_name)
+        if hasattr(list_obj, 'value'):
+            list_obj = list_obj.value
+        
+        if not isinstance(list_obj, list):
+            raise Exception(f"Kan inte sätta element i {type(list_obj).__name__}")
+        
+        # Assign the value
+        list_obj[idx] = value
+        return value
+
     def visit_PropertyAccessNode(self, node):
         """Handle property access: property from object"""
         target = self.visit(node.target)

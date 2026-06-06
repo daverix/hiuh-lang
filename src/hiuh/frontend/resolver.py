@@ -1516,6 +1516,25 @@ class Resolver:
             return node
         return AssignNode(name=node.name, value=value, target_type=node.target_type, token=node)
 
+    def visit_ElementAssignNode(self, node):
+        """Resolve an element assignment node."""
+        # Resolve the index - convert to appropriate node type
+        if node.index.isdigit():
+            idx = IntNode(node.index, token=node)
+        else:
+            idx = VarAccessNode(node.index, target=None, token=node)
+        
+        # Resolve the target list
+        if self._is_defined(node.target, self._current_module):
+            target = VarAccessNode(node.target, target=None, token=node)
+        else:
+            target = self._part_to_node(node.target, node)
+        
+        # Resolve the value
+        value = self.visit(node.value)
+        
+        return ElementAssignNode(index=idx, target=target, value=value, token=node)
+
     def visit_PrintNode(self, node):
         # Set context for expression resolution
         self._in_print_context = True

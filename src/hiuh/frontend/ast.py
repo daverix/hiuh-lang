@@ -50,6 +50,13 @@ class ElementAccessNode(ASTNode):
         self.index = index  # Can be IntNode or VarAccessNode
         self.target = target  # The list being accessed
 
+class ElementAssignNode(ASTNode):
+    def __init__(self, index, target, value, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.index = index  # Can be IntNode or VarAccessNode
+        self.target = target  # The list being modified
+        self.value = value  # The value to set
+
 class PropertyAccessNode(ASTNode):
     def __init__(self, property_name, target, token=None):
         super().__init__(token.line if token else None, token.column if token else None)

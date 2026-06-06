@@ -749,5 +749,47 @@ skriv resultat
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "HittatSANT")
 
+    def test_element_assign_int_index(self):
+        """Verify that element assignment with integer index works correctly."""
+        source = """
+sätt lista till lista med 10, 20, 30
+
+sätt element 0 i lista till 100
+skriv element 0 från lista
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "100")
+
+    def test_element_assign_variable_index(self):
+        """Verify that element assignment with variable index works correctly."""
+        source = """
+sätt lista till lista med 10, 20, 30
+
+sätt idx till 1
+sätt element idx i lista till 200
+skriv element 1 från lista
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "200")
+
+    def test_element_assign_in_function(self):
+        """Verify that element assignment works inside a function."""
+        source = """
+sätt uppdatera till grej med lst, idx, värde
+    sätt element idx i lst till värde
+    ge element idx från lst
+
+sätt lista till lista med 10, 20
+
+sätt resultat till uppdatera med lista, 0, 99
+skriv resultat
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "99")
+
+
 if __name__ == '__main__':
     unittest.main()
