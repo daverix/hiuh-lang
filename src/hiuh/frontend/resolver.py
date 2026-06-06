@@ -636,11 +636,16 @@ class Resolver:
             idx_parts = left_parts[1:]
             target_parts = right_parts
             
-            # Create index node (could be IntNode or VarAccessNode)
+            # Create index node - convert to appropriate node type
             if len(idx_parts) == 1 and idx_parts[0].isdigit():
                 idx_node = IntNode(idx_parts[0], token=node)
+            elif len(idx_parts) == 1:
+                # Single variable - use VarAccessNode directly
+                idx_node = VarAccessNode(idx_parts[0], target=None, token=node)
             else:
-                idx_node = ExpressionPartsNode(idx_parts, token=node)
+                # Multi-word expression - use _part_to_node to handle operators
+                idx_name = ' '.join(idx_parts)
+                idx_node = self._part_to_node(idx_name, node)
             
             # Create target node - prefer VarAccessNode for property access targets
             target_name = ' '.join(target_parts)
@@ -652,39 +657,68 @@ class Resolver:
             
             return ElementAccessNode(index=idx_node, target=target_node, token=node)
 
-        # Check if this is a module function call: "fn från mod med args"
-        # If there's 'med' after 'från', this is a function call, not property access
+        # Check if this is a function call: "fn med args från target"
+        # This handles callbacks like "anrop med element x från värden"
         if 'med' in parts:
             med_idx = parts.index('med')
+            
             if med_idx > från_idx:
-                # This is a module function call
+                # 'med' is after 'från' - module function call pattern
                 fn_name = ' '.join(left_parts)
-                # Find the module name (everything between 'från' and 'med')
+                # Find the module name (everything between 'från' and 'med') if present
                 mod_parts = parts[från_idx + 1:med_idx]
                 mod_name = ' '.join(mod_parts) if mod_parts else None
                 args_parts = parts[med_idx + 1:]
                 
+                # Create function reference
                 if mod_name:
-                    # Create VarAccessNode for the function reference
                     fn_ref = VarAccessNode(fn_name, target=mod_name, token=node)
-                    
-                    # Parse arguments
-                    args = []
-                    i = 0
-                    while i < len(args_parts):
-                        part = args_parts[i]
-                        if part == ',':
-                            i += 1
-                            continue
-                        # Collect argument parts until comma
-                        current_arg = [part]
+                else:
+                    fn_ref = VarAccessNode(fn_name, target=None, token=node)
+                
+                # Parse arguments
+                args = []
+                i = 0
+                while i < len(args_parts):
+                    part = args_parts[i]
+                    if part == ',':
                         i += 1
-                        while i < len(args_parts) and args_parts[i] != ',':
-                            current_arg.append(args_parts[i])
-                            i += 1
-                        args.append(ExpressionPartsNode(current_arg, token=node))
-                    
-                    return FunctionCallNode(name=fn_ref, args=args, token=node)
+                        continue
+                    # Collect argument parts until comma
+                    current_arg = [part]
+                    i += 1
+                    while i < len(args_parts) and args_parts[i] != ',':
+                        current_arg.append(args_parts[i])
+                        i += 1
+                    args.append(ExpressionPartsNode(current_arg, token=node))
+                
+                return FunctionCallNode(name=fn_ref, args=args, token=node)
+            
+            elif med_idx < från_idx:
+                # 'med' is before 'från' - callback function call pattern
+                # Example: "anrop med element x från värden"
+                fn_name = parts[:med_idx][0]  # 'anrop'
+                args_parts = parts[med_idx + 1:från_idx]  # ['element', 'x']
+                target_name = ' '.join(parts[från_idx + 1:])  # 'värden'
+                
+                # Create function reference (no module)
+                fn_ref = VarAccessNode(fn_name, target=None, token=node)
+                
+                # Parse argument - handle element access pattern
+                if len(args_parts) >= 2 and args_parts[0] == 'element':
+                    # "element x från target" -> ElementAccessNode
+                    index_name = args_parts[1]
+                    index_node = IntNode(index_name, token=node) if index_name.isdigit() else VarAccessNode(index_name, target=None, token=node)
+                    target_node = VarAccessNode(target_name, target=None, token=node)
+                    arg = ElementAccessNode(index=index_node, target=target_node, token=node)
+                elif len(args_parts) == 1 and args_parts[0].isdigit():
+                    arg = IntNode(args_parts[0], token=node)
+                elif len(args_parts) == 1:
+                    arg = VarAccessNode(args_parts[0], target=None, token=node)
+                else:
+                    arg = ExpressionPartsNode(args_parts, token=node)
+                
+                return FunctionCallNode(name=fn_ref, args=[arg], token=node)
 
         # Handle property access: "X från Y" -> PropertyAccessNode
         prop_name = ' '.join(left_parts)
