@@ -504,8 +504,8 @@ sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
-    def test_named_args_grej_function_with_expression_body(self):
-        """Verify that grej functions with named args and expression body are parsed correctly."""
+    def test_named_args_grej_function(self):
+        """Verify that grej functions support named arguments."""
         source = """
 sätt add till grej med a, b
     ge a plus b
