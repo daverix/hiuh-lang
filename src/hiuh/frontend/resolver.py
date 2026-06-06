@@ -771,6 +771,11 @@ class Resolver:
         # Handle property access: "X från Y" -> PropertyAccessNode
         prop_name = ' '.join(left_parts)
         
+        # If right_parts contains arithmetic operators, let _try_operator handle it
+        # This prevents creating PropertyAccessNode with string target like "värden minus 1"
+        if 'minus' in right_parts or 'plus' in right_parts or 'gånger' in right_parts or 'delat' in right_parts:
+            return None
+        
         # Create target node - prefer VarAccessNode for property access targets
         target_name = ' '.join(right_parts)
         # If it's a defined local variable, use VarAccessNode (not built-in FunctionCallNode)
@@ -1175,6 +1180,30 @@ class Resolver:
             left_parts = parts[:idx]
             right_parts = parts[idx + 1:]
             if left_parts and right_parts:
+                # Check if left_parts contains 'från' - handle property access on left
+                if 'från' in left_parts:
+                    från_idx = left_parts.index('från')
+                    prop_name_parts = left_parts[från_idx + 1:]
+                    target_parts = left_parts[:från_idx]
+                    prop_name = ' '.join(prop_name_parts)
+                    
+                    # Resolve target
+                    if len(target_parts) == 1:
+                        target_name = target_parts[0]
+                        if self._is_defined(target_name, self._current_module):
+                            target_node = VarAccessNode(target_name, target=None, token=token)
+                        else:
+                            target_node = self._part_to_node(target_name, token)
+                    else:
+                        target_node = self._resolve_precedence(target_parts, token=token)
+                    
+                    right = self._resolve_precedence(right_parts, token=token)
+                    prop_access = PropertyAccessNode(property_name=prop_name, target=target_node, token=token)
+                    if op == 'plus':
+                        return AddNode(prop_access, right, token=token)
+                    else:
+                        return SubNode(prop_access, right, token=token)
+                
                 left = self._resolve_precedence(left_parts, token=token)
                 right = self._resolve_precedence(right_parts, token=token)
                 if op == 'plus':
@@ -1195,6 +1224,30 @@ class Resolver:
                 right_parts = parts[idx + skip:]
 
                 if left_parts and right_parts:
+                    # Check if left_parts contains 'från' - handle property access on left
+                    if 'från' in left_parts:
+                        från_idx = left_parts.index('från')
+                        prop_name_parts = left_parts[från_idx + 1:]
+                        target_parts = left_parts[:från_idx]
+                        prop_name = ' '.join(prop_name_parts)
+                        
+                        # Resolve target
+                        if len(target_parts) == 1:
+                            target_name = target_parts[0]
+                            if self._is_defined(target_name, self._current_module):
+                                target_node = VarAccessNode(target_name, target=None, token=token)
+                            else:
+                                target_node = self._part_to_node(target_name, token)
+                        else:
+                            target_node = self._resolve_precedence(target_parts, token=token)
+                        
+                        right = self._resolve_precedence(right_parts, token=token)
+                        prop_access = PropertyAccessNode(property_name=prop_name, target=target_node, token=token)
+                        if op == 'gånger':
+                            return MulNode(prop_access, right, token=token)
+                        else:
+                            return DivNode(prop_access, right, token=token)
+                    
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
                     if op == 'gånger':
