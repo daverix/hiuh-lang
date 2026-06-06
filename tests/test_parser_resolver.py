@@ -710,5 +710,29 @@ sätt uppdatera till grej med lst
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_längd_från_property_minus_expression(self):
+        """Verify that 'längd från värden minus 1' is parsed correctly as arithmetic expression."""
+        source = """
+sätt värden till lista
+sätt x till längd från värden minus 1
+"""
+        expected = [
+            AssignNode(
+                name="värden",
+                value=FunctionCallNode(name="lista", args=[])
+            ),
+            AssignNode(
+                name="x",
+                value=PropertyAccessNode(
+                    property_name="längd",
+                    target=SubNode(
+                        left=VarAccessNode("värden"),
+                        right=IntNode("1")
+                    )
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 if __name__ == '__main__':
     unittest.main()
