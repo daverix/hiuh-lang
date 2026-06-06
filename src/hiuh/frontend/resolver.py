@@ -568,7 +568,11 @@ class Resolver:
         return self._part_to_node(s, token)
 
     def _try_property_access(self, parts, node):
-        """Try to parse as property access: 'X från Y' -> VarAccessNode(name='X', target='Y')"""
+        """Try to parse as property or element access.
+        
+        'element X från Y' -> ElementAccessNode(index=X, target=Y)
+        'längd från Y' -> PropertyAccessNode(property_name='längd', target=Y)
+        """
         if 'från' not in parts:
             return None
 
@@ -579,16 +583,39 @@ class Resolver:
         if not left_parts or not right_parts:
             return None
 
-        # Handle "element X från Y" -> VarAccessNode(name='X', target='Y')
+        # Handle "element X från Y" -> ElementAccessNode
         if left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
-            idx_name = ' '.join(left_parts[1:])
-            target = ' '.join(right_parts)
-            return VarAccessNode(idx_name, target=target, token=node)
+            idx_parts = left_parts[1:]
+            target_parts = right_parts
+            
+            # Create index node (could be IntNode or VarAccessNode)
+            if len(idx_parts) == 1 and idx_parts[0].isdigit():
+                idx_node = IntNode(idx_parts[0], token=node)
+            else:
+                idx_node = ExpressionPartsNode(idx_parts, token=node)
+            
+            # Create target node - prefer VarAccessNode for property access targets
+            target_name = ' '.join(target_parts)
+            # If it's a defined local variable, use VarAccessNode (not built-in FunctionCallNode)
+            if self._is_defined(target_name, self._current_module):
+                target_node = VarAccessNode(target_name, target=None, token=node)
+            else:
+                target_node = self._part_to_node(target_name, node)
+            
+            return ElementAccessNode(index=idx_node, target=target_node, token=node)
 
+        # Handle property access: "X från Y" -> PropertyAccessNode
         prop_name = ' '.join(left_parts)
-        target = ' '.join(right_parts)
+        
+        # Create target node - prefer VarAccessNode for property access targets
+        target_name = ' '.join(right_parts)
+        # If it's a defined local variable, use VarAccessNode (not built-in FunctionCallNode)
+        if self._is_defined(target_name, self._current_module):
+            target_node = VarAccessNode(target_name, target=None, token=node)
+        else:
+            target_node = self._part_to_node(target_name, node)
 
-        return VarAccessNode(prop_name, target=target, token=node)
+        return PropertyAccessNode(property_name=prop_name, target=target_node, token=node)
 
     def _try_function_call(self, parts, node):
         """Try to parse as function call: 'fn med arg1, arg2' -> FunctionCallNode"""
