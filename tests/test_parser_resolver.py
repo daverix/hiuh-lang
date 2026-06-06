@@ -320,26 +320,38 @@ om färger innehåller blå
 
     def test_try_catch_finally(self):
         """Verify that try-catch-finally error handling is parsed correctly."""
-        source = "försök\n    kasta fel\nfånga fel\n    skriv fel\nslutligen\n    skriv hejdå"
+        source = """
+försök
+    kasta Ojdå
+fånga fel
+    skriv fel
+slutligen
+    skriv mellanrum plus och hejdå
+"""
         expected = [
             TryCatchNode(
-                try_block=[UnaryOpNode(op="kasta", operand=VarAccessNode("fel"))],
+                try_block=[UnaryOpNode(op="kasta", operand=StringNode("Ojdå"))],
                 error_var="fel",
                 catch_block=[PrintNode(VarAccessNode("fel"))],
-                finally_block=[PrintNode(StringNode("hejdå"))]
+                finally_block=[PrintNode(AddNode(VarAccessNode("mellanrum"), StringNode("och hejdå")))]
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_try_finally(self):
         """Verify that try-finally (no catch) error handling is parsed correctly."""
-        source = "försök\n    skriv hej\nslutligen\n    skriv hejdå"
+        source = """
+försök
+    skriv hej
+slutligen
+    skriv mellanrum plus och hejdå
+"""
         expected = [
             TryCatchNode(
                 try_block=[PrintNode(StringNode("hej"))],
                 error_var=None,
                 catch_block=[],
-                finally_block=[PrintNode(StringNode("hejdå"))]
+                finally_block=[PrintNode(AddNode(VarAccessNode("mellanrum"), StringNode("och hejdå")))]
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
