@@ -114,6 +114,28 @@ class TestHiuhParserRaw(unittest.TestCase):
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_for_each_loop(self):
+        """Verify that for-each loops are parsed correctly with multi-word variable.
+        
+        The variable name is joined into a single string.
+        Expression parts remain as separate tokens.
+        """
+        source = "sätt min lista till lista med a, b, c\nför varje mitt index i min lista\n    skriv mitt index"
+        expected = [
+            AssignNode(
+                name="min lista",
+                value=ExpressionPartsNode(parts=["lista", "med", "a", ",", "b", ",", "c"])
+            ),
+            ForEachNode(
+                variable="mitt index",
+                iterable=ExpressionPartsNode(parts=["min", "lista"]),
+                body=[
+                    PrintNode(value=ExpressionPartsNode(parts=["mitt", "index"]))
+                ]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_function_definition(self):
         """Verify that function definitions are parsed correctly."""
         source = "sätt foo till grej med a, b\n    ge a plus b"

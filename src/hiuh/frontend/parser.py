@@ -7,7 +7,8 @@ from hiuh.frontend.tokenizer import (
     TOKEN_CLOSE, TOKEN_AS, TOKEN_LITERAL_INT,
     TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
-    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COPY, TOKEN_OF
+    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COPY, TOKEN_OF,
+    TOKEN_FOR, TOKEN_EACH
 )
 
 class Parser:
@@ -67,6 +68,7 @@ class Parser:
         if t.type == TOKEN_PRINT: return self.parse_print()
         if t.type == TOKEN_IF: return self.parse_if()
         if t.type == TOKEN_WHILE: return self.parse_while()
+        if t.type == TOKEN_FOR: return self.parse_for_each()
         if t.type == TOKEN_TYPE: return self.parse_type_def()
         if t.type == TOKEN_TRY: return self.parse_try_catch()
         if t.type == TOKEN_THROW:
@@ -451,6 +453,42 @@ class Parser:
     def parse_while(self):
         while_token = self.consume(TOKEN_WHILE)
         return WhileNode(self.expression(), self.parse_block(), line=while_token.line, column=while_token.column)
+
+    def parse_for_each(self):
+        """Parse 'för varje X i <expression>' loop.
+        
+        Syntax:
+            för varje <variable> i <iterable>
+                <block>
+        """
+        for_token = self.consume(TOKEN_FOR)
+        
+        # Expect "varje"
+        self.consume(TOKEN_EACH)
+        
+        # Read variable name (collect identifier tokens until we hit "i")
+        # Pattern: för varje <variable> i <iterable>
+        # <variable> can be multi-word like "mitt index"
+        var_parts = []
+        while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value != "i":
+            var_parts.append(self.consume().value)
+        variable = " ".join(var_parts)
+        
+        if not variable:
+            raise SyntaxError(f"Expected variable name after 'för varje' at line {for_token.line}")
+        
+        # Expect "i" (as identifier)
+        i_token = self.consume(TOKEN_IDENTIFIER)
+        if i_token.value != "i":
+            raise SyntaxError(f"Expected 'i' but got '{i_token.value}' at line {i_token.line}")
+        
+        # Parse the iterable expression
+        iterable = self.expression()
+        
+        # Parse the body block
+        body = self.parse_block()
+        
+        return ForEachNode(variable, iterable, body, token=for_token)
 
     def parse_try_catch(self):
         try_token = self.consume(TOKEN_TRY)
