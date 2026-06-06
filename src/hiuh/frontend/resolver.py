@@ -584,6 +584,21 @@ class Resolver:
         if not left_parts or not right_parts:
             return None
 
+        # Check if left_parts contains a multi-word comparison operator - if so, this is not property access
+        # but rather a comparison with property access as the right side
+        # Only check for multi-word operators, not single-word 'i' or 'är'
+        comparison_ops = [
+            'större än eller lika med', 'mindre än eller lika med',
+            'större än', 'mindre än', 'är inte', 'inte i',
+            'lika med'
+        ]
+        for op in comparison_ops:
+            op_tokens = op.split()
+            for i in range(len(left_parts) - len(op_tokens) + 1):
+                if left_parts[i:i+len(op_tokens)] == op_tokens:
+                    # Found a comparison operator - let _try_operator handle this
+                    return None
+
         # Handle "element X från Y" -> ElementAccessNode
         if left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
             idx_parts = left_parts[1:]
@@ -838,18 +853,23 @@ class Resolver:
             right_expr = self._resolve_precedence(right_parts, token=node)
             return InfixCallNode(left_expr, op, right_expr, token=node)
 
-        # For comparison operators, only proceed if left base variable is defined
-        if not self._is_defined(left_base, self._current_module):
+        # For comparison operators, proceed if left base variable is defined
+        # or if it looks like an identifier (not a string literal)
+        # Allow comparisons with undefined variables that look like identifiers
+        left_is_identifier = left_base and left_base[0].isalpha() and left_base.replace(' ', '').isalnum()
+        if not self._is_defined(left_base, self._current_module) and not left_is_identifier:
             left_str = ' '.join(left_parts) if left_parts else left_base
             return StringNode(f"{left_str} {op} {' '.join(right_parts)}", token=node)
 
         # Resolve any operators in operands with proper precedence
-        left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
+        # For comparison operators, always use VarAccessNode for single identifiers
+        # even if they're not defined (let interpreter handle undefined vars)
+        if len(left_parts) == 1 and left_parts[0].isidentifier():
+            left_expr = VarAccessNode(left_parts[0], target=None, token=node)
+        else:
+            left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
+        
         right_expr = self._resolve_precedence(right_parts, token=node)
-
-        # Create expression parts for left and right (will be visited again)
-        left_expr = ExpressionPartsNode(left_parts, token=node) if left_parts else left_expr
-        right_expr = ExpressionPartsNode(right_parts, token=node)
 
         return ComparisonNode(left_expr, op, right_expr, token=node)
 
@@ -895,6 +915,41 @@ class Resolver:
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
                     return ComparisonNode(left, op, right, token=token)
+
+        # Check for property access: "X från Y" -> PropertyAccessNode
+        # This should be checked before comparison operators
+        if 'från' in parts:
+            från_idx = parts.index('från')
+            left_parts = parts[:från_idx]
+            right_parts = parts[från_idx + 1:]
+            if left_parts and right_parts:
+                # Check if left_parts contains a comparison operator - if so, skip
+                comparison_ops = [
+                    'större än eller lika med', 'mindre än eller lika med',
+                    'större än', 'mindre än', 'är inte', 'inte i',
+                    'lika med', 'är', 'i'
+                ]
+                has_comparison = False
+                for op in comparison_ops:
+                    op_tokens = op.split()
+                    for i in range(len(left_parts) - len(op_tokens) + 1):
+                        if left_parts[i:i+len(op_tokens)] == op_tokens:
+                            has_comparison = True
+                            break
+                    if has_comparison:
+                        break
+                
+                if not has_comparison:
+                    prop_name = ' '.join(left_parts)
+                    target_name = ' '.join(right_parts)
+                    
+                    # Create target node
+                    if self._is_defined(target_name, self._current_module):
+                        target_node = VarAccessNode(target_name, target=None, token=token)
+                    else:
+                        target_node = self._part_to_node(target_name, token)
+                    
+                    return PropertyAccessNode(property_name=prop_name, target=target_node, token=token)
 
         # Level 3: comparisons (är, i, etc.)
         multi_word_ops = [
@@ -1085,7 +1140,12 @@ class Resolver:
         # Check if left is unresolved (e.g., 'a större än 2' where 'a' is unknown)
         left_unresolved = isinstance(left, VarAccessNode) and self._is_unresolved(left)
 
-        if left_unresolved:
+        # Check if right is a PropertyAccessNode or ElementAccessNode
+        # If so, don't stringify - keep the comparison
+        right_is_property = isinstance(right, (PropertyAccessNode, ElementAccessNode))
+
+        # Stringify only if left is unresolved AND right is NOT a property/element access
+        if left_unresolved and not right_is_property:
             left_str = self._get_string_value(left)
             right_str = self._get_string_value(self.visit(right))
             return StringNode(f"{left_str} {op} {right_str}".strip(), token=node)
@@ -1104,9 +1164,9 @@ class Resolver:
                 token=node
             )
 
-        # Normal case - transform children
-        new_left = self.visit(left)
-        new_right = self.visit(right)
+        # Normal case - transform children only if they're resolved
+        new_left = self.visit(left) if not left_unresolved else left
+        new_right = self.visit(right) if not right_unresolved else right
 
         if new_left is left and new_right is right:
             return node

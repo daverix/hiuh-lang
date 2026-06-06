@@ -532,6 +532,16 @@ class Interpreter:
         if isinstance(func, str):
             func = self.env.get(func)
         
+        # If not found in env, check module registry
+        if func is None and self.module_registry:
+            # Check all modules for the infix function
+            for mod_name, mod_info in self.module_registry.modules.items():
+                if hasattr(mod_info, 'symbols') and node.operator in mod_info.symbols:
+                    sym = mod_info.symbols[node.operator]
+                    if hasattr(sym, 'node') and sym.node:
+                        func = sym.node
+                        break
+        
         if func is None:
             raise Exception(f"Infix function '{node.operator}' is not defined")
         

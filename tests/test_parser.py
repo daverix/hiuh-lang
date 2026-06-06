@@ -397,6 +397,21 @@ om färger innehåller blå
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_comparison_with_property_target(self):
+        """Verify that 'x är mindre än längd från lista' creates comparison with property access."""
+        source = "medan x är mindre än längd från lista\n    skriv hej"
+        expected = [
+            WhileNode(
+                condition=ComparisonNode(
+                    left=VarAccessNode("x"),
+                    op="mindre än",
+                    right=PropertyAccessNode(property_name="längd", target=VarAccessNode("lista"))
+                ),
+                body=[PrintNode(StringNode("hej"))]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_list_length(self):
         """Verify that 'längd från lista' creates a PropertyAccessNode."""
         source = "sätt frukter till lista med äpple\nskriv längd från frukter"
