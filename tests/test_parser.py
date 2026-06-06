@@ -338,6 +338,20 @@ class TestHiuhParserAST(unittest.TestCase):
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_list_length(self):
+        """Verify that 'längd från lista' creates a property access."""
+        source = "sätt frukter till lista med äpple\nskriv längd från frukter"
+        expected = [
+            AssignNode(
+                name="frukter",
+                value=FunctionCallNode(name="lista", args=[StringNode("äpple")])
+            ),
+            PrintNode(
+                value=VarAccessNode("längd", target="frukter")
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_error_handling_section(self):
         """Test try-catch error handling. 'fel' is in scope in both try and catch blocks."""
         source = "försök\n    kasta fel\nfånga fel\n    skriv fel"
