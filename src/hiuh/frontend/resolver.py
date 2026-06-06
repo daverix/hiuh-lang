@@ -38,6 +38,9 @@ class Resolver:
         self._in_print_context = False
         self._print_write_to_file = None  # Target variable name if "till var" pattern detected
 
+        # Store original parts for expressions (keyed by node id) for stringification
+        self._original_parts = {}  # node_id -> {'left': [...], 'op': '...', 'right': [...]}
+
         self._register_builtins()
 
     def _parts_to_str(self, parts):
@@ -903,12 +906,22 @@ class Resolver:
 
         # Level 2: 'och' (boolean AND) - only checked after arithmetic operators
         # Boolean operators: 'och' and 'eller' (same precedence, after arithmetic)
+        # Only match if both operands are booleans or comparison results
         for i, part in enumerate(parts):
             if part in ['och', 'eller']:
                 left_parts = parts[:i]
                 right_parts = parts[i + 1:]
                 if left_parts and right_parts:
-                    return self._create_binary_expr(left_parts, part, right_parts, node)
+                    # Resolve both sides to check their types
+                    left_node = self._resolve_precedence(left_parts, token=node)
+                    right_node = self._resolve_precedence(right_parts, token=node)
+                    # Only create ComparisonNode if both are booleans or comparisons
+                    left_is_bool_like = isinstance(left_node, (BoolNode, ComparisonNode))
+                    right_is_bool_like = isinstance(right_node, (BoolNode, ComparisonNode))
+                    if left_is_bool_like and right_is_bool_like:
+                        return ComparisonNode(left_node, part, right_node, token=node)
+                    # Otherwise skip - let arithmetic operators handle it
+                    return None
 
         # Level 5: multiplication/division
         for i, part in enumerate(parts):
@@ -942,6 +955,11 @@ class Resolver:
         # Get the base variable name from left_parts (first token that looks like an identifier)
         # This is for the "is defined" check for comparison operators
         left_base = left_parts[0] if left_parts else ''
+
+        # Store original parts before any modifications for stringification
+        original_left_parts = left_parts[:]
+        original_op = op
+        original_right_parts = right_parts[:]
 
         # Handle 'är' as a connector word - remove it from left_parts if it's just a connector
         # 'x är större än 2' -> left should be 'x', not 'x är'
@@ -1013,7 +1031,13 @@ class Resolver:
                 
                 left_expr = ElementAccessNode(index=idx_node, target=target_node, token=node)
                 right_expr = self._resolve_precedence(right_parts, token=node)
-                return ComparisonNode(left_expr, op, right_expr, token=node)
+                result = ComparisonNode(left_expr, op, right_expr, token=node)
+                self._original_parts[id(result)] = {
+                    'left': original_left_parts,
+                    'op': original_op,
+                    'right': original_right_parts
+                }
+                return result
 
         # Resolve any operators in operands with proper precedence
         # For comparison operators, always use VarAccessNode for single identifiers
@@ -1025,7 +1049,20 @@ class Resolver:
         
         right_expr = self._resolve_precedence(right_parts, token=node)
 
-        return ComparisonNode(left_expr, op, right_expr, token=node)
+        result = ComparisonNode(left_expr, op, right_expr, token=node)
+        # Store original parts in resolver for stringification
+        self._original_parts[id(result)] = {
+            'left': original_left_parts,
+            'op': original_op,
+            'right': original_right_parts
+        }
+        return result
+
+    def _create_comparison_with_parts(self, left_expr, op, right_expr, token, original_parts):
+        """Create a ComparisonNode with original parts stored for stringification."""
+        result = ComparisonNode(left_expr, op, right_expr, token=token)
+        self._original_parts[id(result)] = original_parts
+        return result
 
     def _resolve_precedence(self, parts, min_prec=1, token=None):
         """Resolve expression parts with operator precedence.
@@ -1401,7 +1438,16 @@ class Resolver:
         right_is_property = isinstance(right, (PropertyAccessNode, ElementAccessNode))
 
         # Stringify only if left is unresolved AND right is NOT a property/element access
+        # Use original parts if available to preserve 'är' and other words
         if left_unresolved and not right_is_property:
+            # Check if we have original parts stored in resolver
+            node_id = id(node)
+            if node_id in self._original_parts:
+                parts = self._original_parts[node_id]
+                left_str = ' '.join(parts['left']) if parts['left'] else ''
+                right_str = ' '.join(parts['right']) if parts['right'] else ''
+                return StringNode(f"{left_str} {parts['op']} {right_str}".strip(), token=node)
+            # Fallback: stringify using node values
             left_str = self._get_string_value(left)
             right_str = self._get_string_value(self.visit(right))
             return StringNode(f"{left_str} {op} {right_str}".strip(), token=node)
