@@ -10,7 +10,8 @@ from hiuh.frontend.tokenizer import (
     TOKEN_OP_MUL, TOKEN_OP_DIV, TOKEN_OP_IS, TOKEN_LITERAL_INT,
     TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
-    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_INFIX
+    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_INFIX,
+    TOKEN_FOR, TOKEN_EACH
 )
 
 class TestHiuhReadmeSpecification(unittest.TestCase):
@@ -332,6 +333,42 @@ stäng fil"""
             Token(TOKEN_IDENTIFIER, "lista", 1, 37),
             Token(TOKEN_COMMA, ",", 1, 42),
             Token(TOKEN_IDENTIFIER, "värde", 1, 44)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
+
+    def test_for_each_with_multipart_variable(self):
+        """Verify tokenization of 'för varje' loop with multi-word variable name.
+        
+        Each word becomes a separate identifier token.
+        The parser handles joining multi-word names.
+        """
+        source = "sätt min lista till lista med a, b, c\nför varje mitt index i min lista\n    skriv mitt index"
+        expected = [
+            Token(TOKEN_SET, "sätt", 1, 1),
+            Token(TOKEN_IDENTIFIER, "min", 1, 6),
+            Token(TOKEN_IDENTIFIER, "lista", 1, 10),
+            Token(TOKEN_TO, "till", 1, 16),
+            Token(TOKEN_IDENTIFIER, "lista", 1, 21),
+            Token(TOKEN_WITH, "med", 1, 27),
+            Token(TOKEN_IDENTIFIER, "a", 1, 31),
+            Token(TOKEN_COMMA, ",", 1, 32),
+            Token(TOKEN_IDENTIFIER, "b", 1, 34),
+            Token(TOKEN_COMMA, ",", 1, 35),
+            Token(TOKEN_IDENTIFIER, "c", 1, 37),
+            Token(TOKEN_NEWLINE, "\n", 1, 38),
+            Token(TOKEN_FOR, "för", 2, 1),
+            Token(TOKEN_EACH, "varje", 2, 5),
+            Token(TOKEN_IDENTIFIER, "mitt", 2, 11),
+            Token(TOKEN_IDENTIFIER, "index", 2, 16),
+            Token(TOKEN_IDENTIFIER, "i", 2, 22),
+            Token(TOKEN_IDENTIFIER, "min", 2, 24),
+            Token(TOKEN_IDENTIFIER, "lista", 2, 28),
+            Token(TOKEN_NEWLINE, "\n", 2, 33),
+            Token(TOKEN_INDENT, "    ", 3, 1),
+            Token(TOKEN_PRINT, "skriv", 3, 5),
+            Token(TOKEN_IDENTIFIER, "mitt", 3, 11),
+            Token(TOKEN_IDENTIFIER, "index", 3, 16),
+            Token(TOKEN_DEDENT, "", 4, 1)
         ]
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 

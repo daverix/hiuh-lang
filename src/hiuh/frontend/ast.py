@@ -179,6 +179,13 @@ class TryCatchNode(ASTNode):
         self.catch_block = catch_block
         self.finally_block = finally_block
 
+class ForEachNode(ASTNode):
+    def __init__(self, variable, iterable, body, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.variable = variable  # string: loop variable name
+        self.iterable = iterable  # ASTNode: expression returning a list
+        self.body = body  # list[ASTNode]: block to execute
+
 class ImportNode(ASTNode):
     def __init__(self, module_name, alias=None, import_all=False, resolved=False, token=None):
         super().__init__(token.line if token else None, token.column if token else None)
