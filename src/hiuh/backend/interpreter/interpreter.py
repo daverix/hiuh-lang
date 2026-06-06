@@ -193,6 +193,78 @@ class Interpreter:
                 return val if val is not None else node.name
         return self.env.get(node.name)
 
+    def visit_ElementAccessNode(self, node):
+        """Handle element access: element X from list"""
+        target = self.visit(node.target)
+        index = self.visit(node.index)
+        
+        # Get the actual list/string value
+        if hasattr(target, 'value'):
+            target = target.value
+        
+        if isinstance(target, list):
+            # Convert index to integer
+            if isinstance(index, int):
+                idx = index
+            elif isinstance(index, str):
+                idx = int(index)
+            else:
+                idx = int(str(index))
+            
+            try:
+                return target[idx]
+            except IndexError:
+                raise Exception(f"Index {idx} finns inte i listan")
+        
+        if isinstance(target, str):
+            # String character access
+            if isinstance(index, int):
+                idx = index
+            elif isinstance(index, str):
+                idx = int(index)
+            else:
+                idx = int(str(index))
+            
+            try:
+                return Char(target[idx])
+            except IndexError:
+                raise Exception(f"Index {idx} finns inte i texten")
+        
+        raise Exception(f"Kan inte komma åt element från {type(target).__name__}")
+
+    def visit_PropertyAccessNode(self, node):
+        """Handle property access: property from object"""
+        target = self.visit(node.target)
+        prop_name = node.property_name
+        
+        # Get the actual value
+        if hasattr(target, 'value'):
+            target = target.value
+        
+        if isinstance(target, list):
+            # List properties
+            if prop_name == 'längd':
+                return len(target)
+            elif prop_name == 'element':
+                return target  # Return list for element access
+            elif prop_name == 'index':
+                return target  # Return list for index access
+            raise Exception(f"Egenskap '{prop_name}' finns inte i listan")
+        
+        if isinstance(target, dict):
+            val = target.get(prop_name)
+            if callable(val):
+                return val()
+            return val if val is not None else prop_name
+        
+        if isinstance(target, str):
+            # String properties
+            if prop_name == 'längd':
+                return len(target)
+            raise Exception(f"Egenskap '{prop_name}' finns inte i text")
+        
+        raise Exception(f"Kan inte komma åt egenskap '{prop_name}' från {type(target).__name__}")
+
     def visit_AssignNode(self, node):
         value = self.visit(node.value)
 
