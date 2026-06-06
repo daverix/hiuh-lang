@@ -200,6 +200,47 @@ om färger innehåller blå
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_är_comparison_with_defined_variable(self):
+        """Verify that 'är' is preserved in comparisons when variable is defined.
+        
+        'x är mindre än 5' should be parsed as ComparisonNode, not StringNode.
+        """
+        source = """
+sätt x till 10
+om x är mindre än 5
+    skriv hej
+"""
+        expected = [
+            AssignNode(
+                name="x",
+                value=IntNode("10")
+            ),
+            IfNode(
+                conditions=[
+                    IfCondition(
+                        test=ComparisonNode(
+                            left=VarAccessNode("x"),
+                            op="mindre än",
+                            right=IntNode("5")
+                        ),
+                        block=[PrintNode(StringNode("hej"))]
+                    )
+                ]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_är_comparison_with_unresolved_variable(self):
+        """'är' should be preserved in stringified comparisons.
+        
+        'x är mindre än 5' with unresolved 'x' should stringify with 'är' preserved.
+        """
+        source = "skriv x är mindre än 5"
+        expected = [
+            PrintNode(value=StringNode("x är mindre än 5"))
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_infix_function_body_property_access(self):
         """Verify that infix function bodies with property access are parsed correctly."""
         source = "sätt innehåller till infix grej med lista, värde\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"
