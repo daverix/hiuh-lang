@@ -599,6 +599,33 @@ class Resolver:
                     # Found a comparison operator - let _try_operator handle this
                     return None
 
+        # Also check if right_parts contains 'är' followed by registered infix operators
+        # This handles cases like "element x från helhet är lika med del"
+        # where 'helhet' is the target and 'är X Y' is a comparison or infix call
+        # Look for 'är' anywhere in right_parts
+        if 'är' in right_parts:
+            är_idx = right_parts.index('är')
+            remaining = right_parts[är_idx + 1:]
+            
+            # Check for registered infix functions starting with 'är'
+            infix_ops = self._get_registered_infix_ops()
+            for op in infix_ops:
+                if op.startswith('är '):
+                    op_suffix = op[3:]  # Get the part after 'är '
+                    op_tokens = op_suffix.split()
+                    if len(remaining) >= len(op_tokens) and remaining[:len(op_tokens)] == op_tokens:
+                        return None
+            
+            # Also check for multi-word comparison operators
+            multi_word_comparisons = [
+                'lika med', 'mindre än', 'större än', 
+                'mindre än eller lika med', 'större än eller lika med'
+            ]
+            for op in multi_word_comparisons:
+                op_tokens = op.split()
+                if len(remaining) >= len(op_tokens) and remaining[:len(op_tokens)] == op_tokens:
+                    return None
+
         # Handle "element X från Y" -> ElementAccessNode
         if left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
             idx_parts = left_parts[1:]
@@ -873,6 +900,36 @@ class Resolver:
         if not self._is_defined(left_base, self._current_module) and not left_is_identifier:
             left_str = ' '.join(left_parts) if left_parts else left_base
             return StringNode(f"{left_str} {op} {' '.join(right_parts)}", token=node)
+
+        # Check if left_parts contains an element access pattern: "element X från Y"
+        # This handles cases like "element x från helhet är lika med del"
+        # where the left side should be parsed as ElementAccessNode, not as a property access
+        if 'från' in left_parts:
+            från_idx = left_parts.index('från')
+            left_left_parts = left_parts[:från_idx]
+            left_right_parts = left_parts[från_idx + 1:]
+            
+            # Check if this is an element access pattern
+            if len(left_left_parts) >= 2 and left_left_parts[0] in ['element', 'index']:
+                idx_parts = left_left_parts[1:]
+                target_parts = left_right_parts
+                
+                # Create index node
+                if len(idx_parts) == 1 and idx_parts[0].isdigit():
+                    idx_node = IntNode(idx_parts[0], token=node)
+                else:
+                    idx_node = self._resolve_precedence(idx_parts, token=node)
+                
+                # Create target node
+                target_name = ' '.join(target_parts)
+                if self._is_defined(target_name, self._current_module):
+                    target_node = VarAccessNode(target_name, target=None, token=node)
+                else:
+                    target_node = self._part_to_node(target_name, node)
+                
+                left_expr = ElementAccessNode(index=idx_node, target=target_node, token=node)
+                right_expr = self._resolve_precedence(right_parts, token=node)
+                return ComparisonNode(left_expr, op, right_expr, token=node)
 
         # Resolve any operators in operands with proper precedence
         # For comparison operators, always use VarAccessNode for single identifiers
