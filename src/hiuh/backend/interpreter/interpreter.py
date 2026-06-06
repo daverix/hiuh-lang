@@ -11,6 +11,14 @@ class ReturnException(Exception):
     def __init__(self, value):
         self.value = value
 
+class BreakException(Exception):
+    """Internal interpreter exception used to break out of loops."""
+    pass
+
+class ContinueException(Exception):
+    """Internal interpreter exception used to continue to next loop iteration."""
+    pass
+
 class Char:
     """Internal interpreter representation of a single character token byte."""
     def __init__(self, value: str):
@@ -337,7 +345,10 @@ class Interpreter:
 
     def visit_WhileNode(self, node):
         while self.visit(node.condition):
-            for s in node.body: self.visit(s)
+            try:
+                for s in node.body: self.visit(s)
+            except BreakException:
+                break
 
     # --- Functions ---
     def visit_FunctionDefNode(self, node):
@@ -354,6 +365,8 @@ class Interpreter:
                     res = self.visit(s)
                     if isinstance(s, ReturnNode):
                         return res
+            except ReturnException as e:
+                return e.value
             finally:
                 self.env = prev_env
         return hiuh_func
