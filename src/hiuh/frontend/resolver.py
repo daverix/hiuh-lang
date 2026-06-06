@@ -690,11 +690,13 @@ class Resolver:
                 i += 1
                 continue
 
-            # Check for named argument: identifier followed by value (where identifier is not defined)
-            if i + 1 < len(args_parts) and not self._is_defined(part, self._current_module):
+            # Check for named argument: identifier followed by value (not comma)
+            # This pattern is: identifier value or identifier, value
+            if i + 1 < len(args_parts) and args_parts[i + 1] != ',':
                 next_part = args_parts[i + 1]
-                if next_part != ',':
-                    # Named argument
+                # Named argument: identifier followed by a value
+                # The identifier should look like a name (alphanumeric)
+                if part.replace(' ', '').isalnum():
                     value = self._part_to_node(next_part, node)
                     args.append(NamedArgNode(part, value, token=node))
                     i += 2
@@ -737,6 +739,17 @@ class Resolver:
             'lika med', 'innehåller',
         ]
         for op_str in multi_word_ops:
+            op_tokens = op_str.split()
+            for i in range(len(parts) - len(op_tokens) + 1):
+                if parts[i:i+len(op_tokens)] == op_tokens:
+                    left_parts = parts[:i]
+                    right_parts = parts[i+len(op_tokens):]
+                    if left_parts and right_parts:
+                        return self._create_binary_expr(left_parts, op_str, right_parts, node)
+
+        # Check for registered infix functions dynamically
+        infix_ops = self._get_registered_infix_ops()
+        for op_str in infix_ops:
             op_tokens = op_str.split()
             for i in range(len(parts) - len(op_tokens) + 1):
                 if parts[i:i+len(op_tokens)] == op_tokens:
@@ -967,7 +980,23 @@ class Resolver:
                     right = self._resolve_precedence(right_parts, token=token)
                     return ComparisonNode(left, op_str, right, token=token)
 
-        for op in ['är', 'i']:
+        # Check for infix functions dynamically
+        # Get all registered infix function names
+        infix_ops = self._get_registered_infix_ops()
+        for op_str in infix_ops:
+            op_tokens = op_str.split()
+            pos = self._find_op_in_parts(parts, op_tokens)
+            if pos is not None:
+                left_parts = parts[:pos]
+                right_parts = parts[pos + len(op_tokens):]
+                if left_parts and right_parts:
+                    left = self._resolve_precedence(left_parts, token=token)
+                    right = self._resolve_precedence(right_parts, token=token)
+                    return InfixCallNode(left, op_str, right, token=token)
+
+        # Filter out 'är' when it appears with other words (part of a longer phrase)
+        # Only treat 'är' as comparison if it's standalone or followed by simple words
+        for op in ['i']:
             if op in parts:
                 idx = parts.index(op)
                 left_parts = parts[:idx]
@@ -1094,6 +1123,22 @@ class Resolver:
         if module_name in self.local_vars and name in self.local_vars[module_name]:
             return True
         return False
+
+    def _get_registered_infix_ops(self):
+        """Get all registered infix function names as a list."""
+        infix_ops = []
+        for module_name in self.module_registry.modules:
+            mod_info = self.module_registry.modules[module_name]
+            if hasattr(mod_info, 'symbols'):
+                for name, symbol in mod_info.symbols.items():
+                    is_infix = False
+                    if hasattr(symbol, 'is_infix') and symbol.is_infix:
+                        is_infix = True
+                    elif hasattr(symbol, 'signature') and hasattr(symbol.signature, 'is_infix') and symbol.signature.is_infix:
+                        is_infix = True
+                    if is_infix and name not in infix_ops:
+                        infix_ops.append(name)
+        return infix_ops
 
     def _is_infix_function(self, name):
         """Check if a name is defined as an infix function."""
