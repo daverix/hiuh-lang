@@ -44,6 +44,18 @@ class VarAccessNode(ASTNode):
         self.name = name
         self.target = target
 
+class ElementAccessNode(ASTNode):
+    def __init__(self, index, target, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.index = index  # Can be IntNode or VarAccessNode
+        self.target = target  # The list being accessed
+
+class PropertyAccessNode(ASTNode):
+    def __init__(self, property_name, target, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.property_name = property_name  # e.g., "längd"
+        self.target = target  # The object being accessed
+
 # --- Mathematical Operations ---
 class AddNode(ASTNode):
     def __init__(self, left, right, token=None):

@@ -301,7 +301,7 @@ class TestHiuhParserAST(unittest.TestCase):
     def test_stdin_section(self):
         source = "sätt t till nästa rad från inmatning"
         expected = [
-            AssignNode("t", VarAccessNode("nästa rad", target="inmatning"))
+            AssignNode("t", PropertyAccessNode(property_name="nästa rad", target=VarAccessNode("inmatning")))
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
@@ -339,7 +339,7 @@ class TestHiuhParserAST(unittest.TestCase):
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_list_length(self):
-        """Verify that 'längd från lista' creates a property access."""
+        """Verify that 'längd från lista' creates a PropertyAccessNode."""
         source = "sätt frukter till lista med äpple\nskriv längd från frukter"
         expected = [
             AssignNode(
@@ -347,7 +347,24 @@ class TestHiuhParserAST(unittest.TestCase):
                 value=FunctionCallNode(name="lista", args=[StringNode("äpple")])
             ),
             PrintNode(
-                value=VarAccessNode("längd", target="frukter")
+                value=PropertyAccessNode(property_name="längd", target=VarAccessNode("frukter"))
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_element_access(self):
+        """Verify that 'element X från lista' creates an ElementAccessNode."""
+        source = "sätt lista till lista med äpple, banan\nskriv element 0 från lista"
+        expected = [
+            AssignNode(
+                name="lista",
+                value=FunctionCallNode(name="lista", args=[StringNode("äpple"), StringNode("banan")])
+            ),
+            PrintNode(
+                value=ElementAccessNode(
+                    index=IntNode("0"),
+                    target=VarAccessNode("lista")
+                )
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
@@ -390,13 +407,13 @@ class TestHiuhParserAST(unittest.TestCase):
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_property_access_with_from_keyword(self):
-        """Verify that 'fält från objekt' produces a VarAccessNode with a target."""
+        """Verify that 'fält från objekt' produces a PropertyAccessNode."""
         # Pre-define the variable so the scope check doesn't trigger a string fallback
         source = "typ person med namn\nsätt p till person med David\nskriv namn från p"
         expected = [
             TypeDefNode("person", ["namn"]),
             AssignNode("p", FunctionCallNode("person", [StringNode("David")])),
-            PrintNode(VarAccessNode("namn", "p"))
+            PrintNode(PropertyAccessNode(property_name="namn", target=VarAccessNode("p")))
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
@@ -411,7 +428,7 @@ class TestHiuhParserAST(unittest.TestCase):
         expected = [
             AssignNode(name='min lista', value=FunctionCallNode(name='lista', args=[StringNode(value='röd'), StringNode(value='grön')]), target_type=None),
             AssignNode(name='0', value=StringNode(value='blå'), target_type='min lista'),
-            PrintNode(value=VarAccessNode(name='0', target='min lista'))
+            PrintNode(value=ElementAccessNode(index=IntNode("0"), target=VarAccessNode('min lista')))
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
@@ -469,14 +486,13 @@ stäng fil"""
             ),
 
             # medan inte i slutet från fil
-            # CORRECTED WHILE NODE CONTEXT:
             WhileNode(
-                condition=NotNode( # Properly negates the statement
-                    condition=VarAccessNode("i slutet", target="fil") # Single property name!
+                condition=NotNode(
+                    condition=PropertyAccessNode(property_name="i slutet", target=VarAccessNode("fil"))
                 ),
                 body=[
-                    AssignNode(name="rad", value=VarAccessNode("nästa rad", target="fil")),
-                    AssignNode(name="första_tecken", value=VarAccessNode("0", target="rad")),
+                    AssignNode(name="rad", value=PropertyAccessNode(property_name="nästa rad", target=VarAccessNode("fil"))),
+                    AssignNode(name="första_tecken", value=ElementAccessNode(index=IntNode("0"), target=VarAccessNode("rad"))),
                     PrintNode(
                         value=AddNode(
                             left=AddNode(
