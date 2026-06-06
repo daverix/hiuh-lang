@@ -588,10 +588,6 @@ class Resolver:
         prop_name = ' '.join(left_parts)
         target = ' '.join(right_parts)
 
-        # Don't treat as property access if left is a built-in function
-        if prop_name in ['längd', 'element', 'index']:
-            return None
-
         return VarAccessNode(prop_name, target=target, token=node)
 
     def _try_function_call(self, parts, node):
