@@ -877,23 +877,6 @@ class Resolver:
                     if left_parts and right_parts:
                         return self._create_binary_expr(left_parts, op_str, right_parts, node)
 
-        # Single-word operators by precedence
-        # Level 1: 'eller' (lowest)
-        for i, part in enumerate(parts):
-            if part == 'eller':
-                left_parts = parts[:i]
-                right_parts = parts[i + 1:]
-                if left_parts and right_parts:
-                    return self._create_binary_expr(left_parts, 'eller', right_parts, node)
-
-        # Level 2: 'och'
-        for i, part in enumerate(parts):
-            if part == 'och':
-                left_parts = parts[:i]
-                right_parts = parts[i + 1:]
-                if left_parts and right_parts:
-                    return self._create_binary_expr(left_parts, 'och', right_parts, node)
-
         # Level 4: addition/subtraction (left-associative - find last operator)
         # Find the last occurrence of + or - for left-to-right grouping
         last_plus_idx = None
@@ -917,6 +900,15 @@ class Resolver:
             right_parts = parts[idx + 1:]
             if left_parts and right_parts:
                 return self._create_binary_expr(left_parts, op, right_parts, node)
+
+        # Level 2: 'och' (boolean AND) - only checked after arithmetic operators
+        # Boolean operators: 'och' and 'eller' (same precedence, after arithmetic)
+        for i, part in enumerate(parts):
+            if part in ['och', 'eller']:
+                left_parts = parts[:i]
+                right_parts = parts[i + 1:]
+                if left_parts and right_parts:
+                    return self._create_binary_expr(left_parts, part, right_parts, node)
 
         # Level 5: multiplication/division
         for i, part in enumerate(parts):
