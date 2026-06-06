@@ -719,7 +719,7 @@ class Resolver:
         multi_word_ops = [
             'större än eller lika med', 'mindre än eller lika med',
             'större än', 'mindre än', 'är inte', 'inte i',
-            'lika med',
+            'lika med', 'innehåller',
         ]
         for op_str in multi_word_ops:
             op_tokens = op_str.split()
@@ -829,6 +829,14 @@ class Resolver:
             left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
             right_expr = self._resolve_precedence(right_parts, token=node)
             return ComparisonNode(left_expr, op, right_expr, token=node)
+
+        # Infix functions create InfixCallNode (check if operator is defined as infix)
+        # Check if this operator is an infix function definition
+        is_infix = self._is_infix_function(op)
+        if is_infix:
+            left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
+            right_expr = self._resolve_precedence(right_parts, token=node)
+            return InfixCallNode(left_expr, op, right_expr, token=node)
 
         # For comparison operators, only proceed if left base variable is defined
         if not self._is_defined(left_base, self._current_module):
@@ -1030,6 +1038,33 @@ class Resolver:
         # Check local vars tracked by resolver
         if module_name in self.local_vars and name in self.local_vars[module_name]:
             return True
+        return False
+
+    def _is_infix_function(self, name):
+        """Check if a name is defined as an infix function."""
+        # Check in current module
+        if self._current_module and self._current_module in self.module_registry.modules:
+            mod_info = self.module_registry.modules[self._current_module]
+            if hasattr(mod_info, 'symbols') and name in mod_info.symbols:
+                symbol = mod_info.symbols[name]
+                if hasattr(symbol, 'is_infix') and symbol.is_infix:
+                    return True
+            # Also check imported modules
+            if hasattr(mod_info, 'imports'):
+                for imported_module in mod_info.imports:
+                    if imported_module in self.module_registry.modules:
+                        imported_mod = self.module_registry.modules[imported_module]
+                        if hasattr(imported_mod, 'symbols') and name in imported_mod.symbols:
+                            symbol = imported_mod.symbols[name]
+                            if hasattr(symbol, 'is_infix') and symbol.is_infix:
+                                return True
+        # Check in __main__ module
+        if '__main__' in self.module_registry.modules:
+            main_mod = self.module_registry.modules['__main__']
+            if hasattr(main_mod, 'symbols') and name in main_mod.symbols:
+                symbol = main_mod.symbols[name]
+                if hasattr(symbol, 'is_infix') and symbol.is_infix:
+                    return True
         return False
 
 
