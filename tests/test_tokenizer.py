@@ -263,7 +263,7 @@ stäng fil"""
         expected = [
             Token(TOKEN_OPEN, "öppna", 1, 1),
             Token(TOKEN_IDENTIFIER, "källkod_test.hiuh", 1, 7),
-            Token(TOKEN_IDENTIFIER, "för", 1, 25),
+            Token(TOKEN_FOR, "för", 1, 25),
             Token(TOKEN_IDENTIFIER, "läsning", 1, 29),
             Token(TOKEN_AS, "som", 1, 37),
             Token(TOKEN_IDENTIFIER, "fil", 1, 41),

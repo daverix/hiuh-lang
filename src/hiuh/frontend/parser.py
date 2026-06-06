@@ -151,7 +151,7 @@ class Parser:
 
             mode = "läsning"
             mode_token = open_token
-            if self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value == "för":
+            if self.peek() and self.peek().type == TOKEN_FOR:
                 self.consume()
                 mode_parts = []
                 while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in ["som"]:
@@ -455,20 +455,23 @@ class Parser:
         return WhileNode(self.expression(), self.parse_block(), line=while_token.line, column=while_token.column)
 
     def parse_for_each(self):
-        """Parse 'för varje X i <expression>' loop.
+        """Parse 'för varje <variable> i <expression>' loop.
         
         Syntax:
-            för varje <variable> i <iterable>
+            för varje <variable> i <expression>
                 <block>
+        
+        <variable> is collected until 'i' is encountered.
+        <expression> is parsed as expression - must evaluate to a list.
         """
         for_token = self.consume(TOKEN_FOR)
         
         # Expect "varje"
-        self.consume(TOKEN_EACH)
+        varje_tok = self.consume(TOKEN_EACH)
+        if varje_tok.value != "varje":
+            raise SyntaxError(f"Expected 'varje' but got '{varje_tok.value}' at line {varje_tok.line}")
         
-        # Read variable name (collect identifier tokens until we hit "i")
-        # Pattern: för varje <variable> i <iterable>
-        # <variable> can be multi-word like "mitt index"
+        # Collect variable name (collect tokens until we hit 'i')
         var_parts = []
         while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value != "i":
             var_parts.append(self.consume().value)
@@ -477,10 +480,10 @@ class Parser:
         if not variable:
             raise SyntaxError(f"Expected variable name after 'för varje' at line {for_token.line}")
         
-        # Expect "i" (as identifier)
-        i_token = self.consume(TOKEN_IDENTIFIER)
-        if i_token.value != "i":
-            raise SyntaxError(f"Expected 'i' but got '{i_token.value}' at line {i_token.line}")
+        # Expect "i"
+        i_tok = self.consume(TOKEN_IDENTIFIER)
+        if i_tok.value != "i":
+            raise SyntaxError(f"Expected 'i' but got '{i_tok.value}' at line {i_tok.line}")
         
         # Parse the iterable expression
         iterable = self.expression()
