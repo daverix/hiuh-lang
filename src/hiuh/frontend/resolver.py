@@ -194,6 +194,11 @@ class Resolver:
             elif isinstance(node, ImportNode):
                 # Record the import so we can check imported symbols later
                 self.module_registry.add_import(self._current_module, node.module_name)
+                # Also track in ModuleInfo for AST-based lookups
+                if not hasattr(self.modules[self._current_module], 'imports'):
+                    self.modules[self._current_module].imports = []
+                if node.module_name not in self.modules[self._current_module].imports:
+                    self.modules[self._current_module].imports.append(node.module_name)
                 
             elif isinstance(node, (IfNode, WhileNode, TryCatchNode)):
                 # Statement blocks - recursively register declarations
@@ -326,6 +331,12 @@ class Resolver:
         if self._registering:
             # Registration pass: just record the import
             self.module_registry.add_import(self._current_module, node.module_name)
+            # Also track in ModuleInfo for AST-based lookups
+            if self._current_module in self.modules:
+                if not hasattr(self.modules[self._current_module], 'imports'):
+                    self.modules[self._current_module].imports = []
+                if node.module_name not in self.modules[self._current_module].imports:
+                    self.modules[self._current_module].imports.append(node.module_name)
         else:
             # Resolution pass: load module if not already loaded
             if node.module_name not in self.modules:
@@ -487,9 +498,13 @@ class Resolver:
         if len(parts) == 1:
             return self._part_to_node(parts[0], node)
 
-        # Check if the entire parts joined is a defined variable (multi-word name)
+        # Check if the entire parts joined is a defined name (multi-word name)
         full_name = ' '.join(parts)
         if self._is_defined(full_name, self._current_module):
+            # Check if it is a function with no required parameters (grej without params)
+            # Check AST directly for robustness
+            if self._is_function_def_with_empty_params(full_name, self._current_module):
+                return FunctionCallNode(full_name, [], token=node)
             return VarAccessNode(full_name, target=None, token=node)
 
         # Special case: "ny rad" -> newline string (two tokens)
@@ -563,10 +578,43 @@ class Resolver:
             
             if is_builtin:
                 return FunctionCallNode(s, [], token=token)
+            
+            # Check if it's a user-defined function with no required parameters
+            # Grej functions with empty params should be called automatically
+            # Check AST directly for robustness
+            if self._is_function_def_with_empty_params(s, self._current_module):
+                return FunctionCallNode(s, [], token=token)
+            
             return VarAccessNode(s, target=None, token=token)
         else:
             # Undefined - treat as string
             return StringNode(s, token=token)
+
+    def _is_function_def_with_empty_params(self, name, module_name):
+        """Check if a name is defined as a FunctionDefNode with empty params in the AST."""
+        # Check current module first
+        module = self.modules.get(module_name)
+        if module and module.ast:
+            for node in module.ast:
+                if isinstance(node, AssignNode) and node.name == name:
+                    if isinstance(node.value, FunctionDefNode):
+                        params = getattr(node.value, 'params', [])
+                        return len(params) == 0
+        
+        # Check imported modules (for wildcard imports like 'använd ordlista')
+        if module_name in self.modules:
+            mod = self.modules[module_name]
+            if hasattr(mod, 'imports'):
+                for imported_mod_name in mod.imports:
+                    imported_module = self.modules.get(imported_mod_name)
+                    if imported_module and imported_module.ast:
+                        for node in imported_module.ast:
+                            if isinstance(node, AssignNode) and node.name == name:
+                                if isinstance(node.value, FunctionDefNode):
+                                    params = getattr(node.value, 'params', [])
+                                    return len(params) == 0
+        
+        return False
 
     def _string_to_node(self, s, token):
         """Alias for _part_to_node for compatibility."""

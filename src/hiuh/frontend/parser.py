@@ -220,10 +220,11 @@ class Parser:
                 is_infix = True
             self.consume()  # consume 'grej'
             
+            # Grej functions can have params (with 'med') or no params (just 'grej')
+            params = []
             if self.peek() and self.peek().type == TOKEN_WITH:
                 self.consume()  # consume 'med'
                 # Parse parameters
-                params = []
                 while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
                     param_parts = []
                     while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in [',']:
@@ -234,11 +235,11 @@ class Parser:
                         self.consume()  # consume comma
                     else:
                         break
-                
-                # Parse body (indented block)
-                body = self.parse_block(params=params)
-                func_def = FunctionDefNode(params, body, line=assign_token.line, column=assign_token.column, is_infix=is_infix)
-                return AssignNode(name, func_def, target_type=None, token=assign_token)
+            
+            # Parse body (indented block)
+            body = self.parse_block(params=params)
+            func_def = FunctionDefNode(params, body, line=assign_token.line, column=assign_token.column, is_infix=is_infix)
+            return AssignNode(name, func_def, target_type=None, token=assign_token)
         
         # Check for 'kopia av' pattern
         if self.peek() and self.peek().type == TOKEN_COPY:
