@@ -176,10 +176,10 @@ om färger innehåller blå
 
     def test_comparison_with_property_target(self):
         """Verify that comparisons with property access on the right are parsed correctly."""
-        source = "sätt lista till lista med äpple\nom x är mindre än längd från lista\n    skriv hej"
+        source = "sätt frukt till lista med äpple\nom x är mindre än längd från frukt\n    skriv hej"
         expected = [
             AssignNode(
-                name="lista",
+                name="frukt",
                 value=FunctionCallNode(
                     name="lista",
                     args=[StringNode("äpple")]
@@ -191,7 +191,7 @@ om färger innehåller blå
                         test=ComparisonNode(
                             left=VarAccessNode("x"),
                             op="mindre än",
-                            right=PropertyAccessNode(property_name="längd", target=VarAccessNode("lista"))
+                            right=PropertyAccessNode(property_name="längd", target=VarAccessNode("frukt"))
                         ),
                         block=[PrintNode(StringNode("hej"))]
                     )
@@ -737,6 +737,15 @@ sätt x till längd från värden minus 1
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_cannot_reassign_builtin_function(self):
+        """Verify that trying to reassign a built-in function raises an error."""
+        source = """
+sätt lista till lista med 10, 20
+"""
+        with self.assertRaises(Exception) as context:
+            self.parse_source(source)
+        self.assertIn("Kan inte omdefiniera inbyggd funktion 'lista'", str(context.exception))
 
 if __name__ == '__main__':
     unittest.main()

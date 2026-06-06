@@ -752,10 +752,10 @@ skriv resultat
     def test_element_assign_int_index(self):
         """Verify that element assignment with integer index works correctly."""
         source = """
-sätt lista till lista med 10, 20, 30
+sätt saker till lista med 10, 20, 30
 
-sätt element 0 i lista till 100
-skriv element 0 från lista
+sätt element 0 i saker till 100
+skriv element 0 från saker
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
@@ -764,11 +764,11 @@ skriv element 0 från lista
     def test_element_assign_variable_index(self):
         """Verify that element assignment with variable index works correctly."""
         source = """
-sätt lista till lista med 10, 20, 30
+sätt saker till lista med 10, 20, 30
 
 sätt idx till 1
-sätt element idx i lista till 200
-skriv element 1 från lista
+sätt element idx i saker till 200
+skriv element 1 från saker
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
@@ -781,9 +781,9 @@ sätt uppdatera till grej med lst, idx, värde
     sätt element idx i lst till värde
     ge element idx från lst
 
-sätt lista till lista med 10, 20
+sätt saker till lista med 10, 20
 
-sätt resultat till uppdatera med lista, 0, 99
+sätt resultat till uppdatera med saker, 0, 99
 skriv resultat
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:

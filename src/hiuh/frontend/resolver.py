@@ -1306,6 +1306,9 @@ class Resolver:
     
     def _is_defined(self, name, module_name):
         """Check if a variable is defined in any scope."""
+        # Check local vars tracked by resolver FIRST (local vars shadow built-ins)
+        if module_name in self.local_vars and name in self.local_vars[module_name]:
+            return True
         # Check built-in variables
         if name in ['SANT', 'FALSKT', 'mellanrum', 'ny', 'rad']:
             return True
@@ -1328,9 +1331,16 @@ class Resolver:
                         imported_mod = self.module_registry.modules[imported_module]
                         if hasattr(imported_mod, 'symbols') and name in imported_mod.symbols:
                             return True
-        # Check local vars tracked by resolver
-        if module_name in self.local_vars and name in self.local_vars[module_name]:
-            return True
+        return False
+
+    def _is_builtin_function(self, name):
+        """Check if a name is a built-in function (defined in __main__ module)."""
+        if '__main__' in self.module_registry.modules:
+            main_mod = self.module_registry.modules['__main__']
+            if hasattr(main_mod, 'symbols') and name in main_mod.symbols:
+                symbol = main_mod.symbols[name]
+                if symbol.type == 'func':
+                    return True
         return False
 
     def _get_registered_infix_ops(self):
@@ -1572,6 +1582,10 @@ class Resolver:
                 )
             else:
                 self.module_registry.modules[self._current_module].add_symbol(node.name, "var")
+        else:
+            # Check for reassignment of built-in functions
+            if self._is_builtin_function(node.name):
+                raise Exception(f"Kan inte omdefiniera inbyggd funktion '{node.name}'")
 
         # Always collect the variable name as a local var
         self._add_local_var(self._current_module, node.name)
