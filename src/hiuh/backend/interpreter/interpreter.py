@@ -270,8 +270,19 @@ class Interpreter:
                 self.env = prev_env
         return hiuh_func
 
+    def visit_NamedArgNode(self, node):
+        """Named argument - visit the value but keep the name."""
+        return node
+
     def visit_FunctionCallNode(self, node):
-        args = [self.visit(arg) for arg in node.args]
+        # Separate positional and named arguments
+        args = []
+        named_kwargs = {}
+        for arg in node.args:
+            if isinstance(arg, NamedArgNode):
+                named_kwargs[arg.name] = self.visit(arg.value)
+            else:
+                args.append(self.visit(arg))
 
         func_name = str(node.name)
         current_file = os.path.basename(self.script_dir_stack[-1])
@@ -320,8 +331,8 @@ class Interpreter:
 
             try:
                 if callable(func):
-                    return func(*args)
-                return self.execute_hiuh_function(func, args)
+                    return func(*args, **named_kwargs)
+                return self.execute_hiuh_function(func, args, named_kwargs)
             except ReturnException as e:
                 # Catch the return payload thrown by 'ge' and pass it back
                 return e.value
@@ -334,21 +345,47 @@ class Interpreter:
         args_str = ' '.join(str(a) for a in args)
         return f"{func_name} med {args_str}".strip()
 
-    def execute_hiuh_function(self, func_node, args):
+    def execute_hiuh_function(self, func_node, args, named_kwargs=None):
         """Executes a user-defined Hiuh-lang function in an isolated local environment."""
+        if named_kwargs is None:
+            named_kwargs = {}
+        
         # 1. Lexical Scope Isolation
         definition_env = getattr(func_node, 'closure_env', self.globals)
         local_env = Environment(definition_env)
 
         # 2. Bind parameter names to the evaluated runtime arguments
-        if len(args) != len(func_node.params):
+        # Check if we have named arguments that match function parameters
+        func_params = func_node.params if hasattr(func_node, 'params') else []
+        
+        # For typ constructors, handle named arguments
+        if hasattr(func_node, 'fields'):
+            # This is a type constructor
+            fields = func_node.fields
+            instance = {}
+            # Handle positional args first
+            for i, arg_value in enumerate(args):
+                if i < len(fields):
+                    instance[fields[i]] = arg_value
+            # Handle named args
+            for name, value in named_kwargs.items():
+                if name in fields:
+                    instance[name] = value
+            return instance
+        
+        # Regular function
+        if len(args) != len(func_params):
             raise Exception(
-                f"Fel antal argument: Förväntade {len(func_node.params)}, "
+                f"Fel antal argument: Förväntade {len(func_params)}, "
                 f"men fick {len(args)}."
             )
 
-        for param_name, arg_value in zip(func_node.params, args):
+        for param_name, arg_value in zip(func_params, args):
             local_env.define(param_name, arg_value)
+        # Also define named kwargs that match parameters
+        for name, value in named_kwargs.items():
+            if name in func_params:
+                local_env.define(name, value)
 
         # 3. Swap the active environment pointer to our new local scope
         old_env = self.env

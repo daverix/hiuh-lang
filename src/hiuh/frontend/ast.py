@@ -126,6 +126,13 @@ class FunctionCallNode(ASTNode):
         self.name = name
         self.args = args
 
+class NamedArgNode(ASTNode):
+    """Represents a named argument in a function call: name=value"""
+    def __init__(self, name, value, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.name = name
+        self.value = value
+
 class InfixCallNode(ASTNode):
     def __init__(self, left, operator, right, token=None):
         super().__init__(token.line if token else None, token.column if token else None)
