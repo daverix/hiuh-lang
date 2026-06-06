@@ -223,6 +223,35 @@ class TestHiuhParserAST(unittest.TestCase):
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_casting_to_tal(self):
+        """Verify that type casting 'X som Y' creates a CastNode."""
+        source = "sätt x till 5\nsätt kod_A till x som tal"
+        expected = [
+            AssignNode("x", IntNode("5")),
+            AssignNode(
+                name="kod_A",
+                value=CastNode(
+                    value=VarAccessNode("x"),
+                    target_type="tal"
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_casting_to_character(self):
+        """Verify that casting to character type works."""
+        source = "sätt tecken till 65 som tecken"
+        expected = [
+            AssignNode(
+                name="tecken",
+                value=CastNode(
+                    value=IntNode("65"),
+                    target_type="tecken"
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_if_statement_section(self):
         source = "sätt x till 3\nom x är större än 2\n    skriv större\nannars\n    skriv mindre"
         expected = [
