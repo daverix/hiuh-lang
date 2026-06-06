@@ -392,9 +392,12 @@ class Interpreter:
         """Execute a for-each loop: 'för varje X i <iterable> ...'"""
         iterable_val = self.visit(node.iterable)
         
-        # Ensure iterable is a list
-        if not isinstance(iterable_val, list):
-            raise Exception(f"För varje kräver en lista, inte {type(iterable_val).__name__}")
+        # Allow iteration over lists and strings
+        # Strings are iterated character by character
+        if isinstance(iterable_val, str):
+            iterable_val = list(iterable_val)
+        elif not isinstance(iterable_val, list):
+            raise Exception(f"För varje kräver en lista eller text, inte {type(iterable_val).__name__}")
         
         for item in iterable_val:
             self.env.define(node.variable, item)
