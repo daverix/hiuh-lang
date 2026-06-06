@@ -119,11 +119,10 @@ class Parser:
             self.consume()
             is_index_based = True
 
-        self.in_structural_statement = True
-        try:
-            target_expr = self.expression()
-        finally:
-            self.in_structural_statement = False
+        value_parts = []
+        while self.peek() and self.peek().type != TOKEN_FROM:
+            value_parts.append(self.consume().value)
+        target_expr = ExpressionPartsNode(value_parts, token=self.peek()) if value_parts else None
 
         self.consume(TOKEN_FROM)
 
