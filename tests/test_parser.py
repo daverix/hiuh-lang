@@ -352,6 +352,51 @@ class TestHiuhParserAST(unittest.TestCase):
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_list_membership_contains(self):
+        """Verify that 'lista innehåller värde' creates an InfixCallNode."""
+        source = """använd listor
+
+sätt färger till lista med röd, grön
+om färger innehåller röd
+    skriv Japp
+om färger innehåller blå
+    skriv Nej"""
+        expected = [
+            ImportNode(module_name="listor", import_all=True, resolved=True),
+            AssignNode(
+                name="färger",
+                value=FunctionCallNode(
+                    name="lista",
+                    args=[StringNode("röd"), StringNode("grön")]
+                )
+            ),
+            IfNode(
+                conditions=[
+                    IfCondition(
+                        test=InfixCallNode(
+                            left=VarAccessNode("färger"),
+                            operator="innehåller",
+                            right=StringNode("röd")
+                        ),
+                        block=[PrintNode(StringNode("Japp"))]
+                    )
+                ]
+            ),
+            IfNode(
+                conditions=[
+                    IfCondition(
+                        test=InfixCallNode(
+                            left=VarAccessNode("färger"),
+                            operator="innehåller",
+                            right=StringNode("blå")
+                        ),
+                        block=[PrintNode(StringNode("Nej"))]
+                    )
+                ]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_list_length(self):
         """Verify that 'längd från lista' creates a PropertyAccessNode."""
         source = "sätt frukter till lista med äpple\nskriv längd från frukter"

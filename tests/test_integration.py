@@ -205,8 +205,8 @@ skriv element 0 från frukter
             # 4. Result: 'äpple'
             self.assertEqual(fake_out.getvalue().strip(), "äpple")
 
-    def test_list_membership_i(self):
-        """Verify 'val i lista' as a boolean check."""
+    def test_list_membership_contains(self):
+        """Verify 'lista innehåller värde' as a boolean check."""
         source = """
 använd listor
 
