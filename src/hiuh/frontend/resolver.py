@@ -33,6 +33,10 @@ class Resolver:
 
         self._current_module = None
         self._registering = False  # True during registration pass, False during resolution
+        
+        # Context for file write detection
+        self._in_print_context = False
+        self._print_write_to_file = None  # Target variable name if "till var" pattern detected
 
         self._register_builtins()
 
@@ -465,6 +469,19 @@ class Resolver:
 
         if len(parts) == 0:
             return self.visit(StringNode('', token=node))
+
+        # Check for file write pattern: "X till var" when in print context
+        if self._in_print_context and 'till' in parts:
+            till_idx = parts.index('till')
+            value_parts = parts[:till_idx]
+            target_var_parts = parts[till_idx + 1:]
+            if value_parts and target_var_parts:
+                target_var = target_var_parts[0]
+                if target_var and target_var.isidentifier():
+                    self._print_write_to_file = target_var
+                    if len(value_parts) == 1:
+                        return self._part_to_node(value_parts[0], node)
+                    return self.visit(ExpressionPartsNode(value_parts, token=node))
 
         # Single part - convert to appropriate node
         if len(parts) == 1:
@@ -1158,7 +1175,21 @@ class Resolver:
         return AssignNode(name=node.name, value=value, target_type=node.target_type, token=node)
 
     def visit_PrintNode(self, node):
+        # Set context for expression resolution
+        self._in_print_context = True
+        self._print_write_to_file = None
+        
         value = self.visit(node.value)
+        
+        # Reset context
+        self._in_print_context = False
+        
+        # Check if this should be a FileWriteNode
+        if self._print_write_to_file:
+            target_var = self._print_write_to_file
+            self._print_write_to_file = None
+            return FileWriteNode(value=value, target_var=target_var, token=node)
+        
         if value is node.value:
             return node
         return PrintNode(value=value, token=node)
