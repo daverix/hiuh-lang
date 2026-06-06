@@ -388,6 +388,22 @@ class Interpreter:
             except BreakException:
                 break
 
+    def visit_ForEachNode(self, node):
+        """Execute a for-each loop: 'för varje X i <iterable> ...'"""
+        iterable_val = self.visit(node.iterable)
+        
+        # Ensure iterable is a list
+        if not isinstance(iterable_val, list):
+            raise Exception(f"För varje kräver en lista, inte {type(iterable_val).__name__}")
+        
+        for item in iterable_val:
+            self.env.define(node.variable, item)
+            try:
+                for s in node.body:
+                    self.visit(s)
+            except BreakException:
+                break
+
     # --- Functions ---
     def visit_FunctionDefNode(self, node):
         closure = self.env

@@ -294,6 +294,18 @@ slutligen
             # Output: "Ojdå och hejdå"
             self.assertEqual(fake_out.getvalue().strip(), "hej och hejdå")
 
+    def test_for_each_loop(self):
+        """Verify that for-each loops iterate correctly with multi-word variable."""
+        source = """
+sätt min lista till lista med äpple, banan, körsbär
+för varje mitt index i min lista
+    skriv mitt index
+    skriv ny rad
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue(), "äpple\nbanan\nkörsbär\n")
+
     def test_module_import_and_aliasing(self):
         module_filename = "hjälpare.hiuh"
 
