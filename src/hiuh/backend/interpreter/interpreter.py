@@ -135,7 +135,9 @@ class Interpreter:
     # --- Literals ---
     def visit_IntNode(self, node): return int(node.value)
     def visit_FloatNode(self, node): return float(node.value)
-    def visit_BoolNode(self, node): return node.value
+    def visit_BoolNode(self, node):
+        # Return Swedish boolean strings matching source code capitalization
+        return "SANT" if node.value else "FALSKT"
     def visit_StringNode(self, node): return node.value
 
     def _resolve_index(self, name):
@@ -320,7 +322,14 @@ class Interpreter:
     # --- Control Flow ---
     def visit_IfNode(self, node):
         for cond_block in node.conditions:
-            if self.visit(cond_block.test):
+            val = self.visit(cond_block.test)
+            # Handle Swedish boolean strings
+            if isinstance(val, str):
+                if val.upper() == 'FALSKT':
+                    val = False
+                elif val.upper() == 'SANT':
+                    val = True
+            if val:
                 for s in cond_block.block: self.visit(s)
                 return
         if node.else_block:
