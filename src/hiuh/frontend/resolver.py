@@ -1098,13 +1098,18 @@ class Resolver:
                 
                 if not has_comparison:
                     prop_name = ' '.join(left_parts)
-                    target_name = ' '.join(right_parts)
                     
-                    # Create target node
-                    if self._is_defined(target_name, self._current_module):
-                        target_node = VarAccessNode(target_name, target=None, token=token)
+                    # Create target node - use _resolve_precedence to handle expressions
+                    # like 'längd från värden minus 1' -> PropertyAccessNode(längd, SubNode(värden, 1))
+                    if len(right_parts) == 1:
+                        target_name = right_parts[0]
+                        if self._is_defined(target_name, self._current_module):
+                            target_node = VarAccessNode(target_name, target=None, token=token)
+                        else:
+                            target_node = self._part_to_node(target_name, token)
                     else:
-                        target_node = self._part_to_node(target_name, token)
+                        # Multiple parts - parse as expression (handles operators like 'minus')
+                        target_node = self._resolve_precedence(right_parts, token=token)
                     
                     return PropertyAccessNode(property_name=prop_name, target=target_node, token=token)
 
@@ -1251,6 +1256,13 @@ class Resolver:
         # Check built-in variables
         if name in ['SANT', 'FALSKT', 'mellanrum', 'ny', 'rad']:
             return True
+        # Check built-in functions (in __main__ module)
+        if '__main__' in self.module_registry.modules:
+            main_mod = self.module_registry.modules['__main__']
+            if hasattr(main_mod, 'symbols') and name in main_mod.symbols:
+                symbol = main_mod.symbols[name]
+                if symbol.type == 'func':
+                    return True
         # Check module symbols
         if module_name and module_name in self.module_registry.modules:
             mod_info = self.module_registry.modules[module_name]
