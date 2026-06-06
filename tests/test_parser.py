@@ -305,6 +305,39 @@ class TestHiuhParserAST(unittest.TestCase):
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_file_open_for_writing(self):
+        """Verify that opening a file for writing creates correct AST."""
+        source = "öppna test.txt för skrivning som f"
+        expected = [
+            AssignNode(
+                name="f",
+                value=FunctionCallNode(
+                    name="öppna",
+                    args=[StringNode("test.txt"), StringNode("skrivning")]
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_file_write_to(self):
+        """Verify that writing to a file creates FileWriteNode."""
+        source = "skriv Hej till f"
+        expected = [
+            FileWriteNode(
+                value=StringNode("Hej"),
+                target_var="f"
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_file_close(self):
+        """Verify that closing a file creates CloseFileNode."""
+        source = "stäng f"
+        expected = [
+            CloseFileNode(target_var="f")
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_error_handling_section(self):
         """Test try-catch error handling. 'fel' is in scope in both try and catch blocks."""
         source = "försök\n    kasta fel\nfånga fel\n    skriv fel"
