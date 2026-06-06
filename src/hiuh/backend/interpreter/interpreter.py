@@ -171,6 +171,13 @@ class Interpreter:
                     raise Exception(f"Index {index} finns inte i texten {node.target}")
 
             if isinstance(obj, list):
+                # Check if node.name is a built-in function for lists
+                if node.name == 'längd':
+                    return len(obj)
+                elif node.name == 'element':
+                    return obj  # Return list for element access
+                elif node.name == 'index':
+                    return obj  # Return list for index access
                 index = self._resolve_index(node.name)
                 try:
                     return obj[index]
