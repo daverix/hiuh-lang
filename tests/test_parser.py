@@ -338,6 +338,20 @@ class TestHiuhParserAST(unittest.TestCase):
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_module_function_call_with_args(self):
+        """Verify that 'fn från mod med args' creates a FunctionCallNode."""
+        source = "sätt meddelande till hälsa från h med David"
+        expected = [
+            AssignNode(
+                name="meddelande",
+                value=FunctionCallNode(
+                    name=VarAccessNode("hälsa", target="h"),
+                    args=[StringNode("David")]
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_list_length(self):
         """Verify that 'längd från lista' creates a PropertyAccessNode."""
         source = "sätt frukter till lista med äpple\nskriv längd från frukter"
