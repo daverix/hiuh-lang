@@ -252,6 +252,39 @@ class TestHiuhParserAST(unittest.TestCase):
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_casting_som_text(self):
+        """Verify that casting to text type works."""
+        source = "sätt x till 100 som text\nsätt y till 2 som text\nskriv x plus y plus mellanrum plus är ett stort tal"
+        expected = [
+            AssignNode(
+                name="x",
+                value=CastNode(
+                    value=IntNode("100"),
+                    target_type="text"
+                )
+            ),
+            AssignNode(
+                name="y",
+                value=CastNode(
+                    value=IntNode("2"),
+                    target_type="text"
+                )
+            ),
+            PrintNode(
+                value=AddNode(
+                    left=AddNode(
+                        left=AddNode(
+                            left=VarAccessNode("x"),
+                            right=VarAccessNode("y")
+                        ),
+                        right=VarAccessNode("mellanrum")
+                    ),
+                    right=StringNode("är ett stort tal")
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_if_statement_section(self):
         source = "sätt x till 3\nom x är större än 2\n    skriv större\nannars\n    skriv mindre"
         expected = [
