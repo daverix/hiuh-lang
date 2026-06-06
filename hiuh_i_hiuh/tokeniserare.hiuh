@@ -126,7 +126,7 @@ sätt tokenisera till grej med rader
     sätt rad_nummer till 0
 
     . Process each line using a for-each loop from the 'listor' module
-    sätt hantera_rad till grej med rad
+    för varje rad i rader
         sätt rad_nummer till rad_nummer plus 1
 
         . --- Step 1: Handle Indentation ---
@@ -238,8 +238,6 @@ sätt tokenisera till grej med rader
         . --- Step 4: Add Newline Token ---
         om rad_nummer är mindre än längd från rader
             lägg till skapa_token med TOKEN NEWLINE, "\n", rad_nummer, längd från rad plus 1 i tokens
-
-    för varje med rader, hantera_rad
 
     . --- Step 5: Final Dedents ---
     medan längd från indent_stack är större än 1

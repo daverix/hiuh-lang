@@ -549,12 +549,10 @@ rensa från fruktantal med banan
 
 sätt fruktpar till värden från fruktantal
 
-sätt fruktfunk till grej med par
+för varje par i fruktpar
     sätt fruktnamn till nyckel från par
     sätt fruktantal till värde från par
     skriv fruktnamn plus mellanrum plus fruktantal plus . plus mellanrum
-
-för varje med fruktpar, fruktfunk
 
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
@@ -664,10 +662,9 @@ sätt rader till lista med "sätt x till 42", "skriv x"
 
 sätt tokens till tokenisera med rader
 
-sätt funk till grej med t
+för varje t i tokens
     skriv rad från t plus ":" plus tokentyp från t plus ":" plus värde från t
 
-för varje med tokens, funk
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
@@ -693,13 +690,11 @@ sätt tokens till tokenisera med rader
 
 sätt indent_count till 0
 
-sätt funk till grej med t
+för varje t i tokens
     om tokentyp från t är lika med 38
         sätt indent_count till indent_count plus 1
     om tokentyp från t är lika med 39
         sätt indent_count till indent_count minus 1
-
-för varje med tokens, funk
 
 skriv indent_count
 """

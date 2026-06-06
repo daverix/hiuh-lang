@@ -1,10 +1,8 @@
 
-sätt innehåller till infix grej med lista, värde
-    sätt x till 0
-    medan x är mindre än längd från lista
+sätt innehåller till infix grej med värden, värde
+    för varje värde i värden
         om element x från lista är lika med värde
             ge SANT
-        sätt x till x plus 1
     ge FALSKT
 
 sätt index på första matchande till grej med värden, anrop
@@ -23,9 +21,3 @@ sätt första matchande till grej med värden, anrop
         kasta värdet finns inte!
 
     ge element x från värden
-
-sätt för varje till grej med värden, anrop
-    sätt x till 0
-    medan x är mindre än längd från värden
-        anrop med element x från värden
-        sätt x till x plus 1

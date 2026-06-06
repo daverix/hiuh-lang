@@ -633,12 +633,11 @@ rensa från fruktantal med banan
 
 sätt fruktpar till värden från fruktantal
 
-sätt fruktfunk till grej med par
+för varje par i fruktpar
     sätt fruktnamn till nyckel från par
     sätt fruktantal till värde från par
     skriv fruktnamn plus mellanrum plus fruktantal plus . plus mellanrum
 
-för varje med fruktpar, fruktfunk
 """
         expected = [
             ImportNode(module_name="ordlista", import_all=True, resolved=True),
@@ -681,47 +680,37 @@ för varje med fruktpar, fruktfunk
                     target=VarAccessNode("fruktantal")
                 )
             ),
-            AssignNode(
-                name="fruktfunk",
-                value=FunctionDefNode(
-                    params=["par"],
-                    body=[
-                        AssignNode(
-                            name="fruktnamn",
-                            value=PropertyAccessNode(
-                                property_name="nyckel",
-                                target=VarAccessNode("par")
-                            )
-                        ),
-                        AssignNode(
-                            name="fruktantal",
-                            value=PropertyAccessNode(
-                                property_name="värde",
-                                target=VarAccessNode("par")
-                            )
-                        ),
-                        PrintNode(value=AddNode(
+            ForEachNode(
+                variable="par",
+                iterable=VarAccessNode("fruktpar"),
+                body=[
+                    AssignNode(
+                        name="fruktnamn",
+                        value=PropertyAccessNode(
+                            property_name="nyckel",
+                            target=VarAccessNode("par")
+                        )
+                    ),
+                    AssignNode(
+                        name="fruktantal",
+                        value=PropertyAccessNode(
+                            property_name="värde",
+                            target=VarAccessNode("par")
+                        )
+                    ),
+                    PrintNode(value=AddNode(
+                        left=AddNode(
                             left=AddNode(
                                 left=AddNode(
-                                    left=AddNode(
-                                        left=VarAccessNode("fruktnamn"),
-                                        right=VarAccessNode("mellanrum")
-                                    ),
-                                    right=VarAccessNode("fruktantal")
+                                    left=VarAccessNode("fruktnamn"),
+                                    right=VarAccessNode("mellanrum")
                                 ),
-                                right=StringNode(".")
+                                right=VarAccessNode("fruktantal")
                             ),
-                            right=VarAccessNode("mellanrum")
-                        ))
-                    ],
-                    is_infix=False
-                )
-            ),
-            FunctionCallNode(
-                name="för varje",
-                args=[
-                    VarAccessNode("fruktpar"),
-                    VarAccessNode("fruktfunk")
+                            right=StringNode(".")
+                        ),
+                        right=VarAccessNode("mellanrum")
+                    ))
                 ]
             )
         ]

@@ -16,5 +16,5 @@ stäng fil
 sätt tokens till tokenisera med rader
 
 . Skriv ut alla tokens
-för varje t från tokens
+för varje t i tokens
     skriv rad från t plus ": " plus tokentyp från t plus " " plus värde från t
