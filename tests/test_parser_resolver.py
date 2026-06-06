@@ -504,6 +504,43 @@ sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_named_args_grej_function_with_expression_body(self):
+        """Verify that grej functions with named args and expression body are parsed correctly."""
+        source = """
+sätt add till grej med a, b
+    ge a plus b
+
+sätt resultat till add med a 5, b 3
+skriv resultat
+"""
+        expected = [
+            AssignNode(
+                name="add",
+                value=FunctionDefNode(
+                    params=["a", "b"],
+                    body=[
+                        ReturnNode(value=AddNode(
+                            left=VarAccessNode("a"),
+                            right=VarAccessNode("b")
+                        ))
+                    ],
+                    is_infix=False
+                )
+            ),
+            AssignNode(
+                name="resultat",
+                value=FunctionCallNode(
+                    name="add",
+                    args=[
+                        NamedArgNode(name="a", value=IntNode("5")),
+                        NamedArgNode(name="b", value=IntNode("3"))
+                    ]
+                )
+            ),
+            PrintNode(value=VarAccessNode("resultat"))
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 
 if __name__ == '__main__':
     unittest.main()
