@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
 from hiuh.frontend.ast import *
 from hiuh.frontend.tokenizer import (
-    TOKEN_PRINT, TOKEN_SET, TOKEN_TO, TOKEN_FUNC, TOKEN_WITH, TOKEN_GIVE,
-    TOKEN_TYPE, TOKEN_IN, TOKEN_FROM, TOKEN_IF, TOKEN_ELSE, TOKEN_TRY,
+    TOKEN_PRINT, TOKEN_SET, TOKEN_TO, TOKEN_WITH, TOKEN_GIVE,
+    TOKEN_TYPE, TOKEN_FROM, TOKEN_IF, TOKEN_ELSE, TOKEN_TRY,
     TOKEN_THROW, TOKEN_CATCH, TOKEN_WHILE, TOKEN_IMPORT, TOKEN_OPEN,
-    TOKEN_CLOSE, TOKEN_AS, TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL,
-    TOKEN_THAN, TOKEN_OR, TOKEN_AND, TOKEN_OP_ADD, TOKEN_OP_SUB,
-    TOKEN_OP_MUL, TOKEN_OP_DIV, TOKEN_OP_IS, TOKEN_LITERAL_INT,
+    TOKEN_CLOSE, TOKEN_AS, TOKEN_LITERAL_INT,
     TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
-    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COPY, TOKEN_OF, TOKEN_INFIX
+    TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COPY, TOKEN_OF
 )
 
 class Parser:
@@ -72,7 +70,7 @@ class Parser:
         if t.type == TOKEN_TYPE: return self.parse_type_def()
         if t.type == TOKEN_TRY: return self.parse_try_catch()
         if t.type == TOKEN_THROW:
-            self.consume(); return UnaryOpNode("kasta", self.parse_greedy_expression(), token=t)
+            self.consume(); return UnaryOpNode("kasta", self.expression(), token=t)
         if t.type == TOKEN_GIVE:
             self.consume(); return ReturnNode(self.expression(), token=t)
         return self.expression()
@@ -123,7 +121,7 @@ class Parser:
 
         self.in_structural_statement = True
         try:
-            target_expr = self.parse_greedy_expression()
+            target_expr = self.expression()
         finally:
             self.in_structural_statement = False
 
@@ -198,7 +196,7 @@ class Parser:
                 target_parts.append(self.consume().value)
             target = " ".join(target_parts)
             self.consume(TOKEN_TO)
-            val = self.parse_greedy_expression()
+            val = self.expression()
             return AssignNode(str(idx), val, target_type=target, token=assign_token)
 
         # Check for 'kopia av' pattern
@@ -237,7 +235,7 @@ class Parser:
         if name_parts:
             name = " ".join(name_parts)
             self.consume(TOKEN_TO)
-            val = self.parse_greedy_expression()
+            val = self.expression()
             return AssignNode(name, val, target_type=None, token=assign_token)
         
         # Fallback
@@ -246,7 +244,7 @@ class Parser:
             parts.append(self.consume().value)
         name = " ".join(parts)
         self.consume(TOKEN_TO)
-        val = self.parse_greedy_expression()
+        val = self.expression()
         return AssignNode(name, val, target_type=None, token=assign_token)
 
     def parse_print(self):
@@ -262,42 +260,8 @@ class Parser:
         except:
             pass
         self.pos = checkpoint
-        val = self.parse_greedy_expression()
+        val = self.expression()
         return PrintNode(val, token=print_token)
-
-    def parse_greedy_expression(self):
-        while self.peek() and self.peek().type in [TOKEN_NEWLINE]:
-            self.consume()
-
-        t = self.peek()
-        if not t or t.type in [TOKEN_DEDENT, TOKEN_INDENT]:
-            return None
-
-        if t.type == TOKEN_IDENTIFIER and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
-            self.consume(); self.consume()
-            return StringNode("\n", token=t)
-
-        return self.expression()
-
-    def _collect_until_keyword(self, keyword):
-        """Collect tokens until we hit a specific keyword."""
-        parts = []
-        while self.peek() and not (self.peek().type == TOKEN_IDENTIFIER and self.peek().value == keyword):
-            t = self.peek()
-            if t.type in [TOKEN_IDENTIFIER, TOKEN_LITERAL_INT, TOKEN_LITERAL_FLOAT, 
-                         TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE, TOKEN_STRING]:
-                parts.append(t.value)
-            elif t.type in [TOKEN_OP_IS, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV,
-                           TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OR, TOKEN_AND, 
-                           TOKEN_WITH, TOKEN_AS, TOKEN_OF, TOKEN_FROM]:
-                parts.append(t.value)
-            elif t.type == TOKEN_COMMA:
-                parts.append(',')
-            self.consume()
-        
-        if parts:
-            return ExpressionPartsNode(parts, token=self.peek())
-        return self.primary()
 
     def _collect_until(self, *keywords):
         """Collect tokens until we hit one of the keywords."""
@@ -306,94 +270,25 @@ class Parser:
             t = self.peek()
             if t.type == TOKEN_IDENTIFIER and t.value in keywords:
                 break
-            if t.type in [TOKEN_IDENTIFIER, TOKEN_LITERAL_INT, TOKEN_LITERAL_FLOAT, 
-                         TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE, TOKEN_STRING]:
-                parts.append(t.value)
-            elif t.type in [TOKEN_OP_IS, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV,
-                           TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OR, TOKEN_AND, 
-                           TOKEN_WITH, TOKEN_AS, TOKEN_OF, TOKEN_FROM]:
-                parts.append(t.value)
-            elif t.type == TOKEN_COMMA:
-                parts.append(',')
-            self.consume()
+            parts.append(self.consume().value)
         
         if parts:
             return ExpressionPartsNode(parts, token=self.peek())
-        return self.primary()
+        return ExpressionPartsNode([], token=self.peek())
 
     def expression(self):
-        """Parse expression - just collect all tokens as parts for resolver to handle."""
-        t = self.peek()
-        
-        # Handle 'inte' prefix
-        if t and t.type == TOKEN_IDENTIFIER and t.value == "inte":
-            self.consume()
-            inner = self.expression()
-            return NotNode(inner, token=t)
-        
-        # Collect all tokens until boundary
+        """Parse expression - collect all tokens as strings for resolver to handle."""
         parts = []
         t = self.peek()
         
         while t and t.type not in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
-            if t.type in [TOKEN_IDENTIFIER, TOKEN_LITERAL_INT, TOKEN_LITERAL_FLOAT, 
-                         TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE, TOKEN_STRING]:
-                parts.append(t.value)
-            elif t.type in [TOKEN_OP_IS, TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV,
-                           TOKEN_GREATER, TOKEN_LESS, TOKEN_EQUAL, TOKEN_THAN, TOKEN_OR, TOKEN_AND, 
-                           TOKEN_WITH, TOKEN_AS, TOKEN_OF, TOKEN_FROM]:
-                parts.append(t.value)
-            elif t.type == TOKEN_COMMA:
-                parts.append(',')
-            self.consume()
+            parts.append(self.consume().value)
             t = self.peek()
         
         if parts:
             return ExpressionPartsNode(parts, token=t)
         
-        return self.primary()
-
-    def primary(self):
-        t = self.peek()
-        if not t: raise SyntaxError("Expected primary")
-
-        if t.type == TOKEN_FUNC:
-            self.consume(); p = []
-            if self.peek() and self.peek().type == TOKEN_WITH:
-                self.consume()
-                while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                    p.append(self.consume().value)
-                    if self.peek() and self.peek().type == TOKEN_COMMA: self.consume()
-                    else: break
-            return FunctionDefNode(p, self.parse_block(params=p), line=t.line, column=t.column)
-        
-        # Handle 'infix grej'
-        if t.type == TOKEN_INFIX and self.peek(1) and self.peek(1).type == TOKEN_FUNC:
-            infix_token = self.consume()
-            self.consume()
-            p = []
-            if self.peek() and self.peek().type == TOKEN_WITH:
-                self.consume()
-                while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                    p.append(self.consume().value)
-                    if self.peek() and self.peek().type == TOKEN_COMMA: self.consume()
-                    else: break
-            body = []
-            while self.peek() and self.peek().type == TOKEN_NEWLINE:
-                self.consume()
-            if self.peek() and self.peek().type == TOKEN_INDENT:
-                body = self.parse_block(params=p)
-            return FunctionDefNode(p, body, line=infix_token.line, column=infix_token.column, is_infix=True)
-
-        if t.type == TOKEN_IDENTIFIER and t.value == "ny" and self.peek(1) and self.peek(1).value == "rad":
-            self.consume(); self.consume(); return StringNode("\n", token=t)
-
-        if t.type == TOKEN_LITERAL_INT: return IntNode(self.consume().value, token=t)
-        if t.type == TOKEN_LITERAL_FLOAT: return FloatNode(self.consume().value, token=t)
-        if t.type == TOKEN_LITERAL_TRUE: self.consume(); return BoolNode(True, token=t)
-        if t.type == TOKEN_LITERAL_FALSE: self.consume(); return BoolNode(False, token=t)
-        if t.type == TOKEN_STRING: return StringNode(self.consume().value, token=t)
-        raise SyntaxError(f"Unexpected {t.type} ({t.value}) at line {t.line}")
+        return ExpressionPartsNode([], token=t)
 
     def parse_block(self, params=None):
         while self.peek() and self.peek().type == TOKEN_NEWLINE: self.consume()
@@ -536,13 +431,13 @@ class Parser:
 
         err_var = None
         catch_b = None
-        if self.peek() and self.peek().value == "fånga":
+        if self.peek() and self.peek().type == TOKEN_CATCH:
             self.consume()
             err_var = self.consume(TOKEN_IDENTIFIER).value
             catch_b = self.parse_block(params=[err_var])
 
         finally_b = None
-        if self.peek() and self.peek().value == "slutligen":
+        if self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value == "slutligen":
             self.consume()
             finally_b = self.parse_block()
 
