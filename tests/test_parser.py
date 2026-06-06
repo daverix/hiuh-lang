@@ -412,6 +412,150 @@ om färger innehåller blå
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_infix_function_body_property_access(self):
+        """Verify that infix function bodies with property access are parsed correctly."""
+        source = "sätt innehåller till infix grej med lista, värde\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"
+        expected = [
+            AssignNode(
+                name="innehåller",
+                value=FunctionDefNode(
+                    params=["lista", "värde"],
+                    body=[
+                        AssignNode(name="x", value=IntNode("0")),
+                        WhileNode(
+                            condition=ComparisonNode(
+                                left=VarAccessNode("x"),
+                                op="mindre än",
+                                right=PropertyAccessNode(property_name="längd", target=VarAccessNode("lista"))
+                            ),
+                            body=[ReturnNode(value=BoolNode(True))]
+                        )
+                    ],
+                    is_infix=True
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_infix_function_custom_definition(self):
+        """Verify that custom infix function 'är del av' is defined correctly."""
+        source = "sätt är del av till infix grej med del, helhet\n    sätt x till 0\n    ge FALSKT"
+        expected = [
+            AssignNode(
+                name="är del av",
+                value=FunctionDefNode(
+                    params=["del", "helhet"],
+                    body=[
+                        AssignNode(name="x", value=IntNode("0")),
+                        ReturnNode(value=BoolNode(False))
+                    ],
+                    is_infix=True
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_infix_function_call_in_comparison(self):
+        """Verify that infix function call in comparison is parsed correctly."""
+        source = "sätt är del av till infix grej med del, helhet\n    ge FALSKT\nom grön är del av färger\n    skriv Hittat"
+        expected = [
+            AssignNode(
+                name="är del av",
+                value=FunctionDefNode(
+                    params=["del", "helhet"],
+                    body=[ReturnNode(value=BoolNode(False))],
+                    is_infix=True
+                )
+            ),
+            IfNode(
+                conditions=[
+                    IfCondition(
+                        test=InfixCallNode(
+                            left=StringNode("grön"),
+                            operator="är del av",
+                            right=StringNode("färger")
+                        ),
+                        block=[PrintNode(StringNode("Hittat"))]
+                    )
+                ]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_named_args_in_function_call(self):
+        """Verify that named arguments in function calls are parsed correctly."""
+        source = "sätt beräkna till grej med a, b\n    ge 0\nsätt resultat till beräkna med a 5, b 3"
+        expected = [
+            AssignNode(
+                name="beräkna",
+                value=FunctionDefNode(
+                    params=["a", "b"],
+                    body=[ReturnNode(value=IntNode("0"))],
+                    is_infix=False
+                )
+            ),
+            AssignNode(
+                name="resultat",
+                value=FunctionCallNode(
+                    name="beräkna",
+                    args=[
+                        NamedArgNode(name="a", value=IntNode("5")),
+                        NamedArgNode(name="b", value=IntNode("3"))
+                    ]
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_try_catch_finally(self):
+        """Verify that try-catch-finally error handling is parsed correctly."""
+        source = "försök\n    kasta fel\nfånga fel\n    skriv fel\nslutligen\n    skriv hejdå"
+        expected = [
+            TryCatchNode(
+                try_block=[UnaryOpNode(op="kasta", operand=VarAccessNode("fel"))],
+                error_var="fel",
+                catch_block=[PrintNode(VarAccessNode("fel"))],
+                finally_block=[PrintNode(StringNode("hejdå"))]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_try_finally(self):
+        """Verify that try-finally (no catch) error handling is parsed correctly."""
+        source = "försök\n    skriv hej\nslutligen\n    skriv hejdå"
+        expected = [
+            TryCatchNode(
+                try_block=[PrintNode(StringNode("hej"))],
+                error_var=None,
+                catch_block=[],  # Note: parser creates empty list, not None
+                finally_block=[PrintNode(StringNode("hejdå"))]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_normal_function_body_property_access(self):
+        """Verify that normal function bodies with property access are parsed correctly."""
+        source = "sätt foo till grej med a, b\n    skriv a är mindre än längd från b"
+        expected = [
+            AssignNode(
+                name="foo",
+                value=FunctionDefNode(
+                    params=["a", "b"],
+                    body=[
+                        PrintNode(
+                            value=ComparisonNode(
+                                left=VarAccessNode("a"),
+                                op="mindre än",
+                                right=PropertyAccessNode(property_name="längd", target=VarAccessNode("b"))
+                            )
+                        )
+                    ],
+                    is_infix=False
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_list_length(self):
         """Verify that 'längd från lista' creates a PropertyAccessNode."""
         source = "sätt frukter till lista med äpple\nskriv längd från frukter"
