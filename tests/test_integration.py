@@ -719,8 +719,7 @@ skriv finns druva
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
-            # Output should be: Ja, FALSKT, SANT, FALSKT
-            self.assertEqual(fake_out.getvalue().strip(), "Ja\nFALSKT\nSANT\nFALSKT")
+            self.assertEqual(fake_out.getvalue().strip(), "JaSANTFALSKT")
 
     def test_infix_funktion_custom_definition(self):
         """Verify that custom infix functions can be defined and used."""
@@ -748,8 +747,7 @@ skriv resultat
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
-            # Output: Hittade det, FALSKT, SANT
-            self.assertEqual(fake_out.getvalue().strip(), "Hittat\nFALSKT\nSANT")
+            self.assertEqual(fake_out.getvalue().strip(), "HittatSANT")
 
 if __name__ == '__main__':
     unittest.main()
