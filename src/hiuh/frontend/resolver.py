@@ -572,6 +572,7 @@ class Resolver:
         
         'element X från Y' -> ElementAccessNode(index=X, target=Y)
         'längd från Y' -> PropertyAccessNode(property_name='längd', target=Y)
+        'fn från mod med args' -> FunctionCallNode(name=VarAccessNode(fn, target=mod), args)
         """
         if 'från' not in parts:
             return None
@@ -603,6 +604,40 @@ class Resolver:
                 target_node = self._part_to_node(target_name, node)
             
             return ElementAccessNode(index=idx_node, target=target_node, token=node)
+
+        # Check if this is a module function call: "fn från mod med args"
+        # If there's 'med' after 'från', this is a function call, not property access
+        if 'med' in parts:
+            med_idx = parts.index('med')
+            if med_idx > från_idx:
+                # This is a module function call
+                fn_name = ' '.join(left_parts)
+                # Find the module name (everything between 'från' and 'med')
+                mod_parts = parts[från_idx + 1:med_idx]
+                mod_name = ' '.join(mod_parts) if mod_parts else None
+                args_parts = parts[med_idx + 1:]
+                
+                if mod_name:
+                    # Create VarAccessNode for the function reference
+                    fn_ref = VarAccessNode(fn_name, target=mod_name, token=node)
+                    
+                    # Parse arguments
+                    args = []
+                    i = 0
+                    while i < len(args_parts):
+                        part = args_parts[i]
+                        if part == ',':
+                            i += 1
+                            continue
+                        # Collect argument parts until comma
+                        current_arg = [part]
+                        i += 1
+                        while i < len(args_parts) and args_parts[i] != ',':
+                            current_arg.append(args_parts[i])
+                            i += 1
+                        args.append(ExpressionPartsNode(current_arg, token=node))
+                    
+                    return FunctionCallNode(name=fn_ref, args=args, token=node)
 
         # Handle property access: "X från Y" -> PropertyAccessNode
         prop_name = ' '.join(left_parts)
