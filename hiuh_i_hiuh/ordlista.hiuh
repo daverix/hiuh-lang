@@ -24,7 +24,7 @@ sätt ny ordlista till grej med värden
 
     sätt rensa till grej med nyckel
         sätt x till längd från värden minus 1
-        medan x är större än 0
+        medan x är större än eller lika med 0
             sätt listpar till element x från värden
             sätt n till nyckel från listpar
             om nyckel är lika med n
