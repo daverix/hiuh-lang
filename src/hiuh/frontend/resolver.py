@@ -203,7 +203,7 @@ class Resolver:
                 if node.module_name not in self.modules[self._current_module].imports:
                     self.modules[self._current_module].imports.append(node.module_name)
                 
-            elif isinstance(node, (IfNode, WhileNode, TryCatchNode)):
+            elif isinstance(node, (IfNode, WhileNode, ForEachNode, TryCatchNode)):
                 # Statement blocks - recursively register declarations
                 self._register_declarations_only(node.conditions if hasattr(node, 'conditions') else [])
                 if hasattr(node, 'body') and node.body:
@@ -523,7 +523,10 @@ class Resolver:
                 return NotNode(inner_result, token=node)
 
         # Check for type casting: "X som Y" -> CastNode(value=X, target_type=Y)
-        if 'som' in parts:
+        # But don't create CastNode if:
+        # 1. There's a comma anywhere (it's a function call argument, not a cast)
+        # 2. 'som' is a string literal (not the keyword)
+        if 'som' in parts and ',' not in parts:
             som_idx = parts.index('som')
             value_parts = parts[:som_idx]
             target_parts = parts[som_idx + 1:]
