@@ -36,6 +36,10 @@ class Resolver:
 
         self._register_builtins()
 
+    def _parts_to_str(self, parts):
+        """Join parts to a string, filtering out AST nodes."""
+        return ' '.join(p for p in parts if isinstance(p, str))
+    
     def _register_builtins(self):
         """Register built-in symbols."""
         for mod in ['__main__', 'main']:
@@ -152,16 +156,54 @@ class Resolver:
         # Register in module registry
         self.module_registry.add_module(module_name, script_dir or "", ast)
 
-        # Register all declarations using visitor
+        # Register all declarations - only collect names, don't visit expression values
         self._current_module = module_name
-        self._registering = True
-        for node in ast:
-            self.visit(node)
-        self._registering = False
+        self._register_declarations_only(ast)
 
         # If script_dir is provided, also use it as stdlib_path fallback
         if script_dir and not self.stdlib_path:
             self.stdlib_path = script_dir
+
+    def _register_declarations_only(self, nodes: list):
+        """Register declarations without visiting expression values.
+        
+        This avoids issues with ExpressionPartsNode needing variables to be
+        defined before they can be resolved.
+        """
+        for node in nodes:
+            if isinstance(node, AssignNode):
+                if isinstance(node.value, FunctionDefNode):
+                    is_infix = getattr(node.value, 'is_infix', False)
+                    self.module_registry.modules[self._current_module].add_symbol(
+                        node.name, "func", FunctionSignature(params=node.value.params), is_infix=is_infix
+                    )
+                elif isinstance(node.value, TypeDefNode):
+                    self.module_registry.modules[self._current_module].add_symbol(node.name, "type")
+                else:
+                    self.module_registry.modules[self._current_module].add_symbol(node.name, "var")
+                self._add_local_var(self._current_module, node.name)
+                
+            elif isinstance(node, TypeDefNode):
+                self.module_registry.modules[self._current_module].add_symbol(node.name, "type")
+                self._add_local_var(self._current_module, node.name)
+                
+            elif isinstance(node, ImportNode):
+                # Record the import so we can check imported symbols later
+                self.module_registry.add_import(self._current_module, node.module_name)
+                
+            elif isinstance(node, (IfNode, WhileNode, TryCatchNode)):
+                # Statement blocks - recursively register declarations
+                self._register_declarations_only(node.conditions if hasattr(node, 'conditions') else [])
+                if hasattr(node, 'body') and node.body:
+                    self._register_declarations_only(node.body)
+                if hasattr(node, 'else_block') and node.else_block:
+                    self._register_declarations_only(node.else_block)
+                if hasattr(node, 'try_block') and node.try_block:
+                    self._register_declarations_only(node.try_block)
+                if hasattr(node, 'catch_block') and node.catch_block:
+                    self._register_declarations_only(node.catch_block)
+                if hasattr(node, 'finally_block') and node.finally_block:
+                    self._register_declarations_only(node.finally_block)
 
     def _path_to_module_name(self, file_path: str, base_dir: str) -> str:
         rel = os.path.relpath(file_path, base_dir)
@@ -194,12 +236,9 @@ class Resolver:
         # Register in module registry
         self.module_registry.add_module(module_name, file_path, ast)
 
-        # Register all declarations using visitor
+        # Register all declarations without visiting expression values
         self._current_module = module_name
-        self._registering = True
-        for node in ast:
-            self.visit(node)
-        self._registering = False
+        self._register_declarations_only(ast)
 
     def _find_module_file(self, module_name: str, from_module: str) -> str:
         from_module_info = self.modules.get(from_module)
@@ -423,356 +462,443 @@ class Resolver:
     def visit_ExpressionPartsNode(self, node):
         """Transform ExpressionPartsNode to the correct node type based on parts."""
         parts = node.parts
-        
+
         if len(parts) == 0:
-            return node  # Can't transform empty parts
-        
-        # Check for property access FIRST: "X från Y" -> property X of Y
-        # This must be checked before comparison handling because 'från' is not a comparison operator
-        # BUT don't match if left side is a built-in function name
-        if 'från' in parts:
-            from_idx = parts.index('från')
-            left_parts = parts[:from_idx]
-            right_parts = parts[from_idx+1:]
-            
-            # Only treat as property access if left is a simple property name
-            # and right is a defined variable (not a function call result)
-            if len(left_parts) == 1 and len(right_parts) >= 1:
-                prop_name = left_parts[0]
-                target_str = ' '.join(right_parts)
-                # Don't treat as property access if left is a built-in function
-                if prop_name in ['längd', 'element', 'index']:
-                    pass  # Don't treat as property access
-                # Check if target is a defined variable
-                elif self._is_defined(target_str, self._current_module) or \
-                   (len(right_parts) == 1 and self._is_defined(right_parts[0], self._current_module)):
-                    return VarAccessNode(prop_name, target=target_str, token=node)
-        
+            return self.visit(StringNode('', token=node))
+
+        # Single part - convert to appropriate node
         if len(parts) == 1:
-            # Single part - it's a variable name or literal
-            part = parts[0]
-            # Check if it's a known literal
-            if part.lower() == 'sant':
-                return BoolNode(True, token=node)
-            elif part.lower() == 'falskt':
-                return BoolNode(False, token=node)
-            elif part.isdigit():
-                return IntNode(part, token=node)
-            elif self._is_float(part):
-                return FloatNode(part, token=node)
-            elif part.startswith('"') or part.startswith("'"):
-                return StringNode(part[1:-1], token=node)
-            else:
-                return VarAccessNode(part, target=None, token=node)
-        
-        # Check for infix function call FIRST
-        # This ensures "är del av" is recognized as an infix function, not a comparison
-        # Handle both "a innehåller b" and "a är del av b" (är is syntactic sugar)
-        if len(parts) >= 3:
-            # Try all possible splits to find an infix function
-            for i in range(1, len(parts)):
-                left_parts = parts[:i]
-                right_parts = parts[i:]
-                
-                # Try all possible prefixes of right_parts as the function name
-                for j in range(1, len(right_parts)):
-                    fn_name = ' '.join(right_parts[:j])
-                    if self._is_infix_function(fn_name, self._current_module):
-                        left = self._part_to_node(' '.join(left_parts), node)
-                        right = self._part_to_node(' '.join(right_parts[j:]), node)
-                        return FunctionCallNode(fn_name, [left, right], token=node)
-        
-        # Case: Simple 3-part infix function call "a op b"
-        if len(parts) == 3:
-            left = self._part_to_node(parts[0], node)
-            op = parts[1]
-            right = self._part_to_node(parts[2], node)
-            
-            if self._is_infix_function(op, self._current_module):
-                return FunctionCallNode(op, [left, right], token=node)
-        
-        # Check for built-in function call pattern "längd från X"
-        # This pattern should be treated as a function call, not a comparison
-        for i, part in enumerate(parts):
-            # Handle both "längd från X" (separate parts) and "längd från X" (single part)
-            if part == 'längd' and i + 2 < len(parts) and parts[i + 1] == 'från':
-                # Found "längd från X" pattern (separate parts)
-                left_parts = parts[:i]
-                target = ' '.join(parts[i + 2:])
-                
-                # Only create function call if there's no left side (pure "längd från X")
-                # If there's a left side, let the comparison handling take over
-                if not left_parts:
-                    return FunctionCallNode('längd', [VarAccessNode(target, target=None, token=node)], token=node)
-            elif part.startswith('längd från '):
-                # Found "längd från X" pattern (single part)
-                left_parts = parts[:i]
-                target = part[10:].strip()  # Remove 'längd från ' prefix and strip
-                
-                # Only create function call if there's no left side (pure "längd från X")
-                # If there's a left side, let the comparison handling take over
-                if not left_parts:
-                    return FunctionCallNode('längd', [VarAccessNode(target, target=None, token=node)], token=node)
-        
-        # Multi-part expression - check for comparison operators
-        comparison_ops = ['är', 'större', 'mindre', 'lika', 'än', 'inte', 'eller', 'med', 'och', 'i']
-        has_comparison = any(op in parts for op in comparison_ops)
-        
-        if has_comparison:
-            # First, check if the first part is a defined function name followed by "med"
-            # This handles cases like "index på första matchande med namn_lista, matchar_hiuh"
-            if parts[0] in comparison_ops or (len(parts) > 1 and ' '.join(parts[:2]) in comparison_ops):
-                pass  # Continue to comparison detection
-            else:
-                # Check if first part or first two parts form a defined function name
-                fn_name = parts[0]
-                if len(parts) > 1 and parts[1] in comparison_ops:
-                    pass  # First part is not a function name
-                else:
-                    # Try to find a function name at the start
-                    found_fn = None
-                    for i in range(1, len(parts)):
-                        test_name = ' '.join(parts[:i])
-                        if self._is_defined(test_name, self._current_module):
-                            found_fn = test_name
-                            # Continue to try longer names
-                        elif found_fn:
-                            # We found a function name before, but this longer name isn't defined
-                            # Use the found function name
-                            if parts[i - 1] == 'med':
-                                # This is a function call with "med" separator
-                                # args_parts starts after "med" (parts[i-1])
-                                args_parts = parts[i:]
-                                args = []
-                                current_arg = []
-                                for part in args_parts:
-                                    if part == ',':
-                                        if current_arg:
-                                            arg_str = ' '.join(current_arg)
-                                            args.append(self._part_to_node(arg_str, node))
-                                            current_arg = []
-                                    else:
-                                        current_arg.append(part)
-                                if current_arg:
-                                    arg_str = ' '.join(current_arg)
-                                    args.append(self._part_to_node(arg_str, node))
-                                return FunctionCallNode(found_fn, args, token=node)
-                            break
-                        elif parts[i] in comparison_ops:
-                            # Hit a comparison operator without finding a function name
-                            break
-                    
-                    # If we found a function name and the next token is 'med', create the function call
-                    if found_fn and i < len(parts) and parts[i] == 'med':
-                        # This is a function call with "med" separator
-                        args_parts = parts[i + 1:]
-                        args = []
-                        current_arg = []
-                        for part in args_parts:
-                            if part == ',':
-                                if current_arg:
-                                    arg_str = ' '.join(current_arg)
-                                    args.append(self._part_to_node(arg_str, node))
-                                    current_arg = []
-                            else:
-                                current_arg.append(part)
-                        if current_arg:
-                            arg_str = ' '.join(current_arg)
-                            args.append(self._part_to_node(arg_str, node))
-                        return FunctionCallNode(found_fn, args, token=node)
-            
-            # Check if this is a simple function call: "fn_name arg"
-            # where the argument contains a pattern like "element x från lista"
-            if len(parts) >= 2:
-                fn_name = parts[0]
-                arg_parts = parts[1:]
-                arg_str = ' '.join(arg_parts)
-                # Check for "element x från lista" pattern in argument
-                if arg_str.startswith('element ') and ' från ' in arg_str:
-                    remaining = arg_str[8:]  # Remove 'element '
-                    parts_split = remaining.split(' från ')
-                    if len(parts_split) == 2:
-                        idx_name = parts_split[0].strip()
-                        target = parts_split[1].strip()
-                        arg = FunctionCallNode('element', [
-                            self._part_to_node(idx_name, node),
-                            VarAccessNode(target, target=None, token=node)
-                        ], token=node)
-                        return FunctionCallNode(fn_name, [arg], token=node)
-                # Also check for "index x från lista" pattern
-                elif arg_str.startswith('index ') and ' från ' in arg_str:
-                    remaining = arg_str[6:]  # Remove 'index '
-                    parts_split = remaining.split(' från ')
-                    if len(parts_split) == 2:
-                        idx_name = parts_split[0].strip()
-                        target = parts_split[1].strip()
-                        arg = FunctionCallNode('element', [
-                            self._part_to_node(idx_name, node),
-                            VarAccessNode(target, target=None, token=node)
-                        ], token=node)
-                        return FunctionCallNode(fn_name, [arg], token=node)
-            
-            # Transform to ComparisonNode
-            left_parts = []
-            op_parts = []
-            right_parts = []
-            in_op = False
-            in_right = False
-            
-            for part in parts:
-                if part in comparison_ops and not in_right:
-                    in_op = True
-                    in_right = False
-                    op_parts.append(part)
-                elif in_op and part not in comparison_ops:
-                    in_right = True
-                    right_parts.append(part)
-                elif not in_op and not in_right:
-                    left_parts.append(part)
-            
-            # Build left side
-            left_str = ' '.join(left_parts)
-            # Check for "element x från lista" pattern first (before calling _part_to_node)
-            if left_str.startswith('element ') and ' från ' in left_str:
-                # Transform to element access: element(x, lista)
-                # Format: "element index från target"
-                remaining = left_str[8:]  # Remove 'element '
-                parts_split = remaining.split(' från ')
-                if len(parts_split) == 2:
-                    idx_name = parts_split[0].strip()
-                    target = parts_split[1].strip()
-                    left = FunctionCallNode('element', [
-                        self._part_to_node(idx_name, node),
-                        VarAccessNode(target, target=None, token=node)
-                    ], token=node)
-                else:
-                    left = self._part_to_node(left_str, node)
-            elif len(left_parts) == 1:
-                left = self._part_to_node(left_parts[0], node)
-            else:
-                left = VarAccessNode(left_str, target=None, token=node)
-            
-            # Build operator
-            op = ' '.join(op_parts)
-            
-            # Build right side
-            if len(right_parts) == 1:
-                right_str = right_parts[0]
-                # Check for "längd från X" pattern
-                if right_str.startswith('längd från '):
-                    target = right_str[10:].strip()
-                    right = FunctionCallNode('längd', [VarAccessNode(target, target=None, token=node)], token=node)
-                else:
-                    right = self._part_to_node(right_str, node)
-            else:
-                right_str = ' '.join(right_parts)
-                # Check for "längd från X" pattern
-                if right_str.startswith('längd från '):
-                    target = right_str[10:].strip()
-                    right = FunctionCallNode('längd', [VarAccessNode(target, target=None, token=node)], token=node)
-                else:
-                    right = VarAccessNode(right_str, target=None, token=node)
-            
-            # Build left side
-            left_str = ' '.join(left_parts)
-            
-            # Check if left side is a defined function AND operator is 'med'
-            # If so, treat as function call: "fn med args" -> fn(args)
-            if len(op_parts) == 1 and op_parts[0] == 'med':
-                # Check if left is a defined function
-                if self._is_defined(left_str, self._current_module) or left_str in ['skriv', 'ge', 'lista', 'längd', 'element', 'inmatning']:
-                    # This is a function call
-                    # Build arguments from right side (split by comma)
-                    right_str = ' '.join(right_parts)
-                    args = []
-                    current_arg = []
-                    for part in right_parts:
-                        if part == ',':
-                            if current_arg:
-                                arg_str = ' '.join(current_arg)
-                                args.append(self._part_to_node(arg_str, node))
-                                current_arg = []
-                        else:
-                            current_arg.append(part)
-                    if current_arg:
-                        arg_str = ' '.join(current_arg)
-                        args.append(self._part_to_node(arg_str, node))
-                    return FunctionCallNode(left_str, args, token=node)
-            
-            # Check if left side is an undefined variable - if so, treat as string
-            # This handles cases like "sätt x till detta är en hemlighet"
-            if isinstance(left, VarAccessNode) and not left.target:
-                if not self._is_defined(left.name, self._current_module):
-                    return StringNode(' '.join(parts), token=node)
-            
-            # If right side is an undefined variable, treat it as a string literal
-            # This handles cases like "text_stycke lika med Hiuhi do" where Hiuhi do is not defined
-            if isinstance(right, VarAccessNode) and not right.target:
-                if not self._is_defined(right.name, self._current_module):
-                    right = StringNode(right.name, token=right)
-            
-            # Strip leading "är " from operator (är is syntactic sugar)
-            if op.startswith('är '):
-                op = op[3:]
-            
-            return ComparisonNode(left, op, right, token=node)
-        
-        # Check for 'som' cast operator (e.g., "10 som tal" or "x som text")
-        if len(parts) == 3 and parts[1] == 'som':
-            left = self._part_to_node(parts[0], node)
-            target_type = parts[2]  # 'tal' or 'text'
-            return CastNode(left, target_type=target_type, token=node)
-        
-        # Check for function call with multiple arguments using "med" separator
-        # Pattern: "fn_name med arg1, arg2" or "fn_name med arg1 med arg2"
-        # This handles cases like "index på första matchande med namn_lista, matchar_hiuh"
-        if 'med' in parts:
-            med_index = parts.index('med')
-            fn_name = ' '.join(parts[:med_index])
-            args_parts = parts[med_index + 1:]
-            
-            # Split args by comma
-            args = []
-            current_arg = []
-            for part in args_parts:
-                if part == ',':
-                    if current_arg:
-                        arg_str = ' '.join(current_arg)
-                        args.append(self._part_to_node(arg_str, node))
-                        current_arg = []
-                else:
-                    current_arg.append(part)
-            if current_arg:
-                arg_str = ' '.join(current_arg)
-                args.append(self._part_to_node(arg_str, node))
-            
-            # Check if function name is defined
-            if self._is_defined(fn_name, self._current_module):
-                return FunctionCallNode(fn_name, args, token=node)
-        
-        # Default: parse with operator precedence
-        return self._parse_expression_with_precedence(parts, node)
-    
-    def _part_to_node(self, part, token):
-        """Convert a single part to the appropriate node."""
-        if part.lower() == 'sant':
+            return self._part_to_node(parts[0], node)
+
+        # Special case: "ny rad" -> newline string (two tokens)
+        if len(parts) == 2 and parts[0] == 'ny' and parts[1] == 'rad':
+            return self.visit(StringNode('\n', token=node))
+
+        # Check for negation: "inte X" -> NotNode(X)
+        if parts[0] == 'inte':
+            inner_parts = parts[1:]
+            if inner_parts:
+                inner_node = ExpressionPartsNode(inner_parts, token=node)
+                inner_result = self.visit(inner_node)
+                return NotNode(inner_result, token=node)
+
+        # Check for property access: "X från Y" -> VarAccessNode with target
+        result = self._try_property_access(parts, node)
+        if result:
+            return self.visit(result)
+
+        # Check for function call with "med" separator: "fn med arg1, arg2, ..."
+        result = self._try_function_call(parts, node)
+        if result:
+            return self.visit(result)
+
+        # Check for operators (arithmetic, comparison)
+        result = self._try_operator(parts, node)
+        if result:
+            return self.visit(result)
+
+        # No special pattern - treat as string
+        return self.visit(StringNode(' '.join(parts), token=node))
+
+    def _part_to_node(self, s, token):
+        """Convert a string to the appropriate AST node."""
+        # Check for known literals
+        if s.lower() == 'sant':
             return BoolNode(True, token=token)
-        elif part.lower() == 'falskt':
+        elif s.lower() == 'falskt':
             return BoolNode(False, token=token)
-        elif part.isdigit():
-            return IntNode(part, token=token)
-        elif self._is_float(part):
-            return FloatNode(part, token=token)
-        elif part.startswith('"') or part.startswith("'"):
-            return StringNode(part[1:-1], token=token)
+        elif s.isdigit():
+            return IntNode(s, token=token)
+        elif self._is_float(s):
+            # Handle both '.' and ',' as decimal separator
+            value = float(s.replace(',', '.'))
+            return FloatNode(value, token=token)
+        elif s.startswith('"') or s.startswith("'"):
+            return StringNode(s[1:-1], token=token)
+        # Check if it's a defined function (with no arguments)
+        elif self._is_defined(s, self._current_module):
+            # Check if it's a built-in function that should be called (like 'lista')
+            # Built-in functions are in __main__ module
+            is_builtin = False
+            
+            # Check if the symbol exists in __main__ as a func
+            if '__main__' in self.module_registry.modules:
+                main_mod = self.module_registry.modules['__main__']
+                if hasattr(main_mod, 'symbols') and s in main_mod.symbols:
+                    symbol = main_mod.symbols[s]
+                    if symbol.type == 'func':
+                        is_builtin = True
+            
+            if is_builtin:
+                return FunctionCallNode(s, [], token=token)
+            return VarAccessNode(s, target=None, token=token)
         else:
-            return VarAccessNode(part, target=None, token=token)
-    
+            # Undefined - treat as string
+            return StringNode(s, token=token)
+
+    def _string_to_node(self, s, token):
+        """Alias for _part_to_node for compatibility."""
+        return self._part_to_node(s, token)
+
+    def _try_property_access(self, parts, node):
+        """Try to parse as property access: 'X från Y' -> VarAccessNode(name='X', target='Y')"""
+        if 'från' not in parts:
+            return None
+
+        från_idx = parts.index('från')
+        left_parts = parts[:från_idx]
+        right_parts = parts[från_idx + 1:]
+
+        if not left_parts or not right_parts:
+            return None
+
+        # Handle "element X från Y" -> VarAccessNode(name='X', target='Y')
+        if left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
+            idx_name = ' '.join(left_parts[1:])
+            target = ' '.join(right_parts)
+            return VarAccessNode(idx_name, target=target, token=node)
+
+        prop_name = ' '.join(left_parts)
+        target = ' '.join(right_parts)
+
+        # Don't treat as property access if left is a built-in function
+        if prop_name in ['längd', 'element', 'index']:
+            return None
+
+        return VarAccessNode(prop_name, target=target, token=node)
+
+    def _try_function_call(self, parts, node):
+        """Try to parse as function call: 'fn med arg1, arg2' -> FunctionCallNode"""
+        if 'med' not in parts:
+            return None
+
+        med_idx = parts.index('med')
+        fn_name = ' '.join(parts[:med_idx])
+        args_parts = parts[med_idx + 1:]
+
+        if not self._is_defined(fn_name, self._current_module):
+            return None
+
+        # Parse arguments (handle commas and named args)
+        args = []
+        i = 0
+        while i < len(args_parts):
+            part = args_parts[i]
+
+            # Skip commas
+            if part == ',':
+                i += 1
+                continue
+
+            # Check for named argument: identifier followed by value (where identifier is not defined)
+            if i + 1 < len(args_parts) and not self._is_defined(part, self._current_module):
+                next_part = args_parts[i + 1]
+                if next_part != ',':
+                    # Named argument
+                    value = self._part_to_node(next_part, node)
+                    args.append(NamedArgNode(part, value, token=node))
+                    i += 2
+                    continue
+
+            # Regular positional argument - collect until comma
+            current_arg = [part]
+            i += 1
+            while i < len(args_parts) and args_parts[i] != ',':
+                current_arg.append(args_parts[i])
+                i += 1
+            args.append(ExpressionPartsNode(current_arg, token=node))
+
+        return FunctionCallNode(fn_name, args, token=node)
+
+    def _try_operator(self, parts, node):
+        """Try to parse as operator expression (arithmetic or comparison).
+        
+        Uses precedence-based parsing: finds the lowest precedence operator first.
+        """
+        # Find the lowest precedence operator
+        # Precedence (low to high):
+        # 1. eller
+        # 2. och  
+        # 3. comparisons
+        # 4. plus, minus
+        # 5. gånger, delat med
+        
+        # First, find all operators and their positions
+        # Then select the one with lowest precedence
+        
+        # Collect all possible operators with their positions and precedence
+        operators = []
+        
+        # Multi-word comparisons (precedence 3) - must be checked FIRST
+        # to avoid splitting 'större än eller lika med' at 'eller'
+        multi_word_ops = [
+            'större än eller lika med', 'mindre än eller lika med',
+            'större än', 'mindre än', 'är inte', 'inte i',
+            'lika med',
+        ]
+        for op_str in multi_word_ops:
+            op_tokens = op_str.split()
+            for i in range(len(parts) - len(op_tokens) + 1):
+                if parts[i:i+len(op_tokens)] == op_tokens:
+                    left_parts = parts[:i]
+                    right_parts = parts[i+len(op_tokens):]
+                    if left_parts and right_parts:
+                        return self._create_binary_expr(left_parts, op_str, right_parts, node)
+
+        # Single-word operators by precedence
+        # Level 1: 'eller' (lowest)
+        for i, part in enumerate(parts):
+            if part == 'eller':
+                left_parts = parts[:i]
+                right_parts = parts[i + 1:]
+                if left_parts and right_parts:
+                    return self._create_binary_expr(left_parts, 'eller', right_parts, node)
+
+        # Level 2: 'och'
+        for i, part in enumerate(parts):
+            if part == 'och':
+                left_parts = parts[:i]
+                right_parts = parts[i + 1:]
+                if left_parts and right_parts:
+                    return self._create_binary_expr(left_parts, 'och', right_parts, node)
+
+        # Level 3: single-word comparisons 'är', 'i'
+        for i, part in enumerate(parts):
+            if part in ['är', 'i']:
+                left_parts = parts[:i]
+                right_parts = parts[i + 1:]
+                if left_parts and right_parts:
+                    return self._create_binary_expr(left_parts, part, right_parts, node)
+
+        # Level 4: addition/subtraction (left-associative - find last operator)
+        # Find the last occurrence of + or - for left-to-right grouping
+        last_plus_idx = None
+        last_minus_idx = None
+        for i, part in enumerate(parts):
+            if part == 'plus':
+                last_plus_idx = i
+            elif part == 'minus':
+                last_minus_idx = i
+        
+        # Use the rightmost + or - if found
+        if last_plus_idx is not None or last_minus_idx is not None:
+            if last_plus_idx is not None and (last_minus_idx is None or last_plus_idx > last_minus_idx):
+                op = 'plus'
+                idx = last_plus_idx
+            else:
+                op = 'minus'
+                idx = last_minus_idx
+                
+            left_parts = parts[:idx]
+            right_parts = parts[idx + 1:]
+            if left_parts and right_parts:
+                return self._create_binary_expr(left_parts, op, right_parts, node)
+
+        # Level 5: multiplication/division
+        for i, part in enumerate(parts):
+            if part == 'gånger':
+                left_parts = parts[:i]
+                right_parts = parts[i + 1:]
+                if left_parts and right_parts:
+                    return self._create_binary_expr(left_parts, 'gånger', right_parts, node)
+            elif part == 'delat' and i + 1 < len(parts) and parts[i + 1] == 'med':
+                left_parts = parts[:i]
+                right_parts = parts[i + 2:]
+                if left_parts and right_parts:
+                    return self._create_binary_expr(left_parts, 'delat med', right_parts, node)
+
+        return None
+
+    def _create_binary_expr(self, left_parts, op, right_parts, node):
+        """Create a binary expression node from parts, handling precedence."""
+        # Define operator precedence (lower number = lower precedence)
+        precedence = {
+            'eller': 1, 'och': 1,
+            'är': 2, 'är inte': 2, 'i': 2, 'inte i': 2,
+            'större än': 2, 'mindre än': 2, 'större än eller lika med': 2, 'mindre än eller lika med': 2,
+            'plus': 3, 'minus': 3,
+            'gånger': 4, 'delat med': 4,
+        }
+
+        # Get precedence of current operator (default to 0 for unknown)
+        current_prec = precedence.get(op, 0)
+
+        # Get the base variable name from left_parts (first token that looks like an identifier)
+        # This is for the "is defined" check for comparison operators
+        left_base = left_parts[0] if left_parts else ''
+
+        # Handle 'är' as a connector word - remove it from left_parts if it's just a connector
+        # 'x är större än 2' -> left should be 'x', not 'x är'
+        if left_parts and left_parts[-1] == 'är' and len(left_parts) > 1:
+            left_parts = left_parts[:-1]
+            left_base = left_parts[0] if left_parts else left_base
+
+        # Arithmetic operators - always proceed (literals are OK)
+        arithmetic_ops = {
+            'plus': AddNode,
+            'minus': SubNode,
+            'gånger': MulNode,
+            'delat med': DivNode,
+        }
+
+        if op in arithmetic_ops:
+            # Resolve any operators in operands with proper precedence
+            left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
+            right_expr = self._resolve_precedence(right_parts, token=node)
+            return arithmetic_ops[op](left_expr, right_expr, token=node)
+
+        # Boolean operators 'och' and 'eller' use ComparisonNode
+        if op in ['och', 'eller']:
+            left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
+            right_expr = self._resolve_precedence(right_parts, token=node)
+            return ComparisonNode(left_expr, op, right_expr, token=node)
+
+        # For comparison operators, only proceed if left base variable is defined
+        if not self._is_defined(left_base, self._current_module):
+            left_str = ' '.join(left_parts) if left_parts else left_base
+            return StringNode(f"{left_str} {op} {' '.join(right_parts)}", token=node)
+
+        # Resolve any operators in operands with proper precedence
+        left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
+        right_expr = self._resolve_precedence(right_parts, token=node)
+
+        # Create expression parts for left and right (will be visited again)
+        left_expr = ExpressionPartsNode(left_parts, token=node) if left_parts else left_expr
+        right_expr = ExpressionPartsNode(right_parts, token=node)
+
+        return ComparisonNode(left_expr, op, right_expr, token=node)
+
+    def _resolve_precedence(self, parts, min_prec=1, token=None):
+        """Resolve expression parts with operator precedence.
+        
+        Precedence (low to high):
+        1. eller
+        2. och
+        3. jämförelser (är, i, etc.)
+        4. plus, minus
+        5. gånger, delat med
+        
+        Returns an AST node.
+        """
+        if not parts or len(parts) == 0:
+            return StringNode('', token=token)
+
+        if len(parts) == 1:
+            return self._part_to_node(parts[0], token)
+
+        # Try operators from lowest to highest precedence
+        # When we find one, we split there and recursively resolve both sides
+
+        # Level 1: 'eller' (lowest)
+        for op in ['eller']:
+            if op in parts:
+                idx = parts.index(op)
+                left_parts = parts[:idx]
+                right_parts = parts[idx + 1:]
+                if left_parts and right_parts:
+                    left = self._resolve_precedence(left_parts, token=token)
+                    right = self._resolve_precedence(right_parts, token=token)
+                    return ComparisonNode(left, op, right, token=token)
+
+        # Level 2: 'och'
+        for op in ['och']:
+            if op in parts:
+                idx = parts.index(op)
+                left_parts = parts[:idx]
+                right_parts = parts[idx + 1:]
+                if left_parts and right_parts:
+                    left = self._resolve_precedence(left_parts, token=token)
+                    right = self._resolve_precedence(right_parts, token=token)
+                    return ComparisonNode(left, op, right, token=token)
+
+        # Level 3: comparisons (är, i, etc.)
+        multi_word_ops = [
+            'större än eller lika med', 'mindre än eller lika med',
+            'större än', 'mindre än', 'är inte', 'inte i',
+        ]
+        for op_str in multi_word_ops:
+            op_tokens = op_str.split()
+            pos = self._find_op_in_parts(parts, op_tokens)
+            if pos is not None:
+                left_parts = parts[:pos]
+                right_parts = parts[pos + len(op_tokens):]
+                if left_parts and right_parts:
+                    left = self._resolve_precedence(left_parts, token=token)
+                    right = self._resolve_precedence(right_parts, token=token)
+                    return ComparisonNode(left, op_str, right, token=token)
+
+        for op in ['är', 'i']:
+            if op in parts:
+                idx = parts.index(op)
+                left_parts = parts[:idx]
+                right_parts = parts[idx + 1:]
+                if left_parts and right_parts:
+                    left = self._resolve_precedence(left_parts, token=token)
+                    right = self._resolve_precedence(right_parts, token=token)
+                    return ComparisonNode(left, op, right, token=token)
+
+        # Level 4: addition/subtraction (left-associative - find last operator)
+        # Find the last occurrence of + or - for left-to-right grouping
+        last_plus_idx = None
+        last_minus_idx = None
+        for i, part in enumerate(parts):
+            if part == 'plus':
+                last_plus_idx = i
+            elif part == 'minus':
+                last_minus_idx = i
+        
+        if last_plus_idx is not None or last_minus_idx is not None:
+            if last_plus_idx is not None and (last_minus_idx is None or last_plus_idx > last_minus_idx):
+                op = 'plus'
+                idx = last_plus_idx
+            else:
+                op = 'minus'
+                idx = last_minus_idx
+            left_parts = parts[:idx]
+            right_parts = parts[idx + 1:]
+            if left_parts and right_parts:
+                left = self._resolve_precedence(left_parts, token=token)
+                right = self._resolve_precedence(right_parts, token=token)
+                if op == 'plus':
+                    return AddNode(left, right, token=token)
+                else:
+                    return SubNode(left, right, token=token)
+
+        # Level 5: multiplication/division (highest)
+        for op in ['gånger', 'delat']:
+            if op in parts:
+                idx = parts.index(op)
+                # For 'delat', check if next word is 'med'
+                skip = 1
+                if op == 'delat' and idx + 1 < len(parts) and parts[idx + 1] == 'med':
+                    skip = 2
+
+                left_parts = parts[:idx]
+                right_parts = parts[idx + skip:]
+
+                if left_parts and right_parts:
+                    left = self._resolve_precedence(left_parts, token=token)
+                    right = self._resolve_precedence(right_parts, token=token)
+                    if op == 'gånger':
+                        return MulNode(left, right, token=token)
+                    else:
+                        return DivNode(left, right, token=token)
+
+        # No operator found, return as single value
+        return self._part_to_node(' '.join(parts), token)
+
+    def _find_op_in_parts(self, parts, op_tokens):
+        """Find operator tokens in parts list."""
+        for i in range(len(parts) - len(op_tokens) + 1):
+            if parts[i:i+len(op_tokens)] == op_tokens:
+                return i
+        return None
+
     def _is_float(self, s):
         """Check if string is a float."""
         try:
             float(s.replace(',', '.'))
-            return '.' in s
+            return '.' in s or ',' in s
         except:
             return False
     
@@ -828,193 +954,7 @@ class Resolver:
         if module_name in self.local_vars and name in self.local_vars[module_name]:
             return True
         return False
-    
-    def _parse_expression_with_precedence(self, parts, node):
-        """Parse expression parts with proper operator precedence.
-        
-        Precedence (lowest to highest):
-        1. Boolean: " eller ", " och "
-        2. Comparison: " är ", " större än ", " mindre än ", " lika med ", etc.
-        3. Addition: "plus", "minus"
-        4. Multiplication: "gånger", "delat med"
-        """
-        if not parts:
-            return None
-        
-        if len(parts) == 1:
-            return self._part_to_node(parts[0], node)
-        
-        # Check for built-in function calls first
-        # "längd från X" -> längd(X)
-        # "element X från Y" -> element(X, Y)
-        # "kopia av X" -> kopia_av(X)
-        if parts[0] == 'längd' and len(parts) >= 3 and parts[1] == 'från':
-            # "längd från X" pattern
-            target = ' '.join(parts[2:])
-            return FunctionCallNode('längd', [VarAccessNode(target, target=None, token=node)], token=node)
-        
-        if parts[0] == 'längd' and len(parts) >= 2:
-            # "längd X" pattern (alternative syntax)
-            target = ' '.join(parts[1:])
-            return FunctionCallNode('längd', [VarAccessNode(target, target=None, token=node)], token=node)
-        
-        if parts[0] in ['element', 'index'] and len(parts) >= 4 and 'från' in parts:
-            # "element X från Y" or "index X från Y" pattern
-            from_idx = parts.index('från')
-            idx_name = ' '.join(parts[1:from_idx])
-            target = ' '.join(parts[from_idx + 1:])
-            return FunctionCallNode('element', [
-                self._part_to_node(idx_name, node),
-                VarAccessNode(target, target=None, token=node)
-            ], token=node)
-        
-        if parts[0] == 'kopia' and len(parts) >= 3 and parts[1] == 'av':
-            # "kopia av X" pattern
-            target = ' '.join(parts[2:])
-            return FunctionCallNode('kopia_av', [VarAccessNode(target, target=None, token=node)], token=node)
-        
-        # Define operator precedence levels
-        # Each level is a list of operators to check (in order of precedence within the level)
-        precedence_levels = [
-            # Level 1: Boolean operators (lowest precedence)
-            [' eller ', ' och '],
-            # Level 2: Comparison operators
-            [' är ', ' större än ', ' mindre än ', ' lika med ', ' inte ',
-             ' större ', ' mindre ', ' är inte ', ' och ', ' eller ', ' i '],
-            # Level 3: Addition/subtraction
-            [' plus ', ' minus '],
-            # Level 4: Multiplication/division (highest precedence)
-            [' gånger ', ' delat med '],
-        ]
-        
-        def split_by_operator(parts, operator):
-            """Split parts by a specific operator, returning (left, op, right) tuples."""
-            result = []
-            current = []
-            op_str = operator.strip()
-            
-            for i, part in enumerate(parts):
-                # Check if this part starts an operator
-                found_op = None
-                for op in precedence_levels[-1]:  # Check highest precedence first
-                    if part == op.strip():
-                        found_op = op
-                        break
-                
-                if found_op and len(current) > 0:
-                    result.append((' '.join(current), found_op, parts[i+1:] if i+1 < len(parts) else []))
-                    current = []
-                else:
-                    current.append(part)
-            
-            if current:
-                result.append((' '.join(current), None, []))
-            
-            return result
-        
-        # Simplified approach: find the lowest precedence operator first
-        # Then recursively parse left and right sides
-        
-        def find_operator(parts, level_index):
-            """Find the rightmost operator at the given precedence level."""
-            if level_index >= len(precedence_levels):
-                return None, None
-            
-            operators = precedence_levels[level_index]
-            found_op = None
-            found_pos = -1
-            
-            # Build a combined string to search for operators
-            combined = ' '.join(parts)
-            
-            for op in operators:
-                pos = combined.find(op)
-                if pos >= 0 and (found_pos < 0 or pos < found_pos):
-                    found_op = op
-                    found_pos = pos
-            
-            if found_op:
-                # Split parts around this operator
-                left_parts = []
-                right_parts = []
-                in_right = False
-                op_len = len(found_op.strip().split())
-                
-                # Count tokens to skip for the operator
-                op_tokens = found_op.strip().split()
-                skip_count = 0
-                
-                for part in parts:
-                    if skip_count > 0:
-                        skip_count -= 1
-                        continue
-                    if in_right:
-                        right_parts.append(part)
-                    else:
-                        # Check if this part starts the operator
-                        if part == op_tokens[0]:
-                            # Check if rest of operator matches
-                            match = True
-                            for j in range(1, len(op_tokens)):
-                                if parts[parts.index(part) + j] != op_tokens[j]:
-                                    match = False
-                                    break
-                            if match:
-                                skip_count = len(op_tokens) - 1
-                                in_right = True
-                                continue
-                        left_parts.append(part)
-                
-                return left_parts, found_op
-            
-            return None, None
-        
-        def parse_recursive(parts):
-            if not parts:
-                return None
-            if len(parts) == 1:
-                return self._part_to_node(parts[0], node)
-            
-            # Try each precedence level from lowest to highest
-            for level_index in range(len(precedence_levels)):
-                left_parts, found_op = find_operator(parts, level_index)
-                
-                if found_op and left_parts:
-                    # Calculate right parts
-                    combined = ' '.join(parts)
-                    op_pos = combined.find(found_op)
-                    right_combined = combined[op_pos + len(found_op):].strip()
-                    right_parts = right_combined.split(' ') if right_combined else []
-                    
-                    left = parse_recursive(left_parts)
-                    right = parse_recursive(right_parts)
-                    
-                    op_stripped = found_op.strip()
-                    
-                    # Create the appropriate node based on operator
-                    if op_stripped == '+' or op_stripped == 'plus':
-                        return AddNode(left, right, token=node)
-                    elif op_stripped == '-' or op_stripped == 'minus':
-                        return SubNode(left, right, token=node)
-                    elif op_stripped == '*' or op_stripped == 'gånger':
-                        return MulNode(left, right, token=node)
-                    elif op_stripped == '/' or op_stripped == 'delat med':
-                        return DivNode(left, right, token=node)
-                    elif op_stripped == 'och':
-                        return AndNode(left, right, token=node)
-                    elif op_stripped == 'eller':
-                        return OrNode(left, right, token=node)
-                    else:
-                        # Comparison operator
-                        return ComparisonNode(left, op_stripped, right, token=node)
-            
-            # No operator found - treat as single value or string
-            combined = ' '.join(parts)
-            return self._part_to_node(combined, node)
-        
-        return parse_recursive(parts)
-    
-    # === ComparisonNode - special handling for stringification ===
+
 
     def visit_ComparisonNode(self, node):
         op = node.op.strip() if hasattr(node, 'op') and node.op else ''
@@ -1175,9 +1115,7 @@ class Resolver:
         # Only return if we found all fields
         if len(result) == len(field_names):
             return result
-        
-        return None
-        
+
         # Reorder values to match field_names order
         result = []
         for field in field_names:
