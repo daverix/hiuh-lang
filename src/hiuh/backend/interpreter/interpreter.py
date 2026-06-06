@@ -353,10 +353,14 @@ class Interpreter:
     # --- Functions ---
     def visit_FunctionDefNode(self, node):
         closure = self.env
-        def hiuh_func(*args):
+        def hiuh_func(*args, **kwargs):
             call_env = Environment(closure)
             for n, v in zip(node.params, args):
                 call_env.define(n, v)
+            # Handle named arguments
+            for name, value in kwargs.items():
+                if name in node.params:
+                    call_env.define(name, value)
 
             prev_env = self.env
             self.env = call_env
@@ -634,11 +638,15 @@ class Interpreter:
 
     def visit_TypeDefNode(self, node):
         # Store constructor: takes field values and returns a dict with field names as keys
-        def make_constructor(*args):
+        def make_constructor(*args, **kwargs):
             result = {}
             for i, field in enumerate(node.fields):
                 field_name = field.strip()
                 result[field_name] = args[i] if i < len(args) else None
+            # Handle named arguments
+            for name, value in kwargs.items():
+                if name in node.fields:
+                    result[name] = value
             return result
         self.env.define(node.name, make_constructor)
 
