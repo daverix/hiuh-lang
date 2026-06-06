@@ -284,11 +284,8 @@ class Parser:
         while t and t.type not in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
             parts.append(self.consume().value)
             t = self.peek()
-        
-        if parts:
-            return ExpressionPartsNode(parts, token=t)
-        
-        return ExpressionPartsNode([], token=t)
+
+        return ExpressionPartsNode(parts, token=t)
 
     def parse_block(self, params=None):
         while self.peek() and self.peek().type == TOKEN_NEWLINE: self.consume()
