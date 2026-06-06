@@ -445,6 +445,65 @@ skriv resultat"""
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_listor_utility_callbacks(self):
+        """Verify that listor.hiuh high-order functions are parsed and used correctly."""
+        source = """
+använd listor
+
+sätt matchar_hiuh till grej med text_stycke
+    ge text_stycke lika med Hiuh
+
+sätt namn_lista till lista med Java, Python, Hiuh, Kotlin
+
+sätt hittat_index till index på första matchande med namn_lista, matchar_hiuh
+sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
+"""
+        expected = [
+            ImportNode(module_name="listor", import_all=True, resolved=True),
+            AssignNode(
+                name="matchar_hiuh",
+                value=FunctionDefNode(
+                    params=["text_stycke"],
+                    body=[
+                        ReturnNode(value=ComparisonNode(
+                            left=VarAccessNode("text_stycke"),
+                            op="lika med",
+                            right=StringNode("Hiuh")
+                        ))
+                    ],
+                    is_infix=False
+                )
+            ),
+            AssignNode(
+                name="namn_lista",
+                value=FunctionCallNode(
+                    name="lista",
+                    args=[StringNode("Java"), StringNode("Python"), StringNode("Hiuh"), StringNode("Kotlin")]
+                )
+            ),
+            AssignNode(
+                name="hittat_index",
+                value=FunctionCallNode(
+                    name="index på första matchande",
+                    args=[
+                        VarAccessNode("namn_lista"),
+                        VarAccessNode("matchar_hiuh")
+                    ]
+                )
+            ),
+            AssignNode(
+                name="hittat_namn",
+                value=FunctionCallNode(
+                    name="första matchande",
+                    args=[
+                        VarAccessNode("namn_lista"),
+                        VarAccessNode("matchar_hiuh")
+                    ]
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 
 if __name__ == '__main__':
     unittest.main()
