@@ -1,7 +1,7 @@
 
 sätt innehåller till infix grej med värden, värde
-    för varje värde i värden
-        om element x från lista är lika med värde
+    för varje v i värden
+        om v är lika med värde
             ge SANT
     ge FALSKT
 
