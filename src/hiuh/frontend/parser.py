@@ -272,9 +272,7 @@ class Parser:
                 break
             parts.append(self.consume().value)
         
-        if parts:
-            return ExpressionPartsNode(parts, token=self.peek())
-        return ExpressionPartsNode([], token=self.peek())
+        return ExpressionPartsNode(parts, token=self.peek())
 
     def expression(self):
         """Parse expression - collect all tokens as strings for resolver to handle."""
