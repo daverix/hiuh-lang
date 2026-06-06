@@ -168,11 +168,11 @@ skriv längd från frukter
 
     def test_casting_som_text(self):
         """Tests converting a number back to text."""
-        source = "sätt x till 100 som text\nskriv x plus mellanrum plus är ett stort tal"
+        source = "sätt x till 100 som text\nsätt y till 2 som text\nskriv x plus y plus mellanrum plus är ett stort tal"
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             # Should join with space: "100 är ett stort tal"
-            self.assertEqual(fake_out.getvalue().strip(), "100 är ett stort tal")
+            self.assertEqual(fake_out.getvalue().strip(), "1002 är ett stort tal")
 
     def test_list_append_lägg_till(self):
         """Verify adding items to a list using 'lägg till'."""
