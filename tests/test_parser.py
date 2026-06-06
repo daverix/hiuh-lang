@@ -223,7 +223,7 @@ class TestHiuhParserAST(unittest.TestCase):
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
-    def test_casting_to_tal(self):
+    def test_casting_som_tal(self):
         """Verify that type casting 'X som Y' creates a CastNode."""
         source = "sätt x till 5\nsätt kod_A till x som tal"
         expected = [

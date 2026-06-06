@@ -482,6 +482,16 @@ class Resolver:
                 inner_result = self.visit(inner_node)
                 return NotNode(inner_result, token=node)
 
+        # Check for type casting: "X som Y" -> CastNode(value=X, target_type=Y)
+        if 'som' in parts:
+            som_idx = parts.index('som')
+            value_parts = parts[:som_idx]
+            target_parts = parts[som_idx + 1:]
+            if value_parts and target_parts:
+                value_node = self.visit(ExpressionPartsNode(value_parts, token=node))
+                target_type = ' '.join(target_parts)
+                return CastNode(value=value_node, target_type=target_type, token=node)
+
         # Check for property access: "X från Y" -> VarAccessNode with target
         result = self._try_property_access(parts, node)
         if result:
