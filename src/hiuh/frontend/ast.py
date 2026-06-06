@@ -215,4 +215,4 @@ class ExpressionPartsNode(ASTNode):
     """
     def __init__(self, parts, token=None):
         super().__init__(token.line if token else None, token.column if token else None)
-        self.parts = parts  # List of strings like ['frukt', 'innehåller', 'banan']
+        self.parts = parts
