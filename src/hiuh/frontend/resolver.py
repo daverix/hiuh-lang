@@ -863,6 +863,29 @@ class Resolver:
         
         Uses precedence-based parsing: finds the lowest precedence operator first.
         """
+        # Special case: if parts form "element X från Y" or "index X från Y" where X contains
+        # arithmetic operators, we need to split the index into its operator sub-expression,
+        # resolve it, then build the ElementAccessNode.
+        if 'från' in parts:
+            från_idx = parts.index('från')
+            left_parts = parts[:från_idx]
+            right_parts = parts[från_idx + 1:]
+            if left_parts and right_parts and left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
+                idx_parts = left_parts[1:]
+                # Check if the index expression contains any operators
+                if any(op in idx_parts for op in ['plus', 'minus', 'gånger', 'delat']):
+                    # Resolve the index expression with full operator precedence
+                    idx_node = self._resolve_precedence(idx_parts, token=node)
+                    # Resolve the target
+                    if len(right_parts) == 1:
+                        target_name = right_parts[0]
+                        if self._is_defined(target_name, self._current_module):
+                            target_node = VarAccessNode(target_name, target=None, token=node)
+                        else:
+                            target_node = self._part_to_node(target_name, node)
+                    else:
+                        target_node = self._resolve_precedence(right_parts, token=node)
+                    return ElementAccessNode(index=idx_node, target=target_node, token=node)
         # Level 2: 'och' and 'eller' - checked first to respect lowest precedence
         # Only match if both operands are booleans or comparison results
         for i, part in enumerate(parts):
@@ -1245,7 +1268,7 @@ class Resolver:
                 last_plus_idx = i
             elif part == 'minus':
                 last_minus_idx = i
-        
+
         if last_plus_idx is not None or last_minus_idx is not None:
             if last_plus_idx is not None and (last_minus_idx is None or last_plus_idx > last_minus_idx):
                 op = 'plus'
