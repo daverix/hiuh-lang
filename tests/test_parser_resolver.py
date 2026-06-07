@@ -269,6 +269,40 @@ om x är inte lika med 3
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_modulo_resolver(self):
+        """Verify that 'resten av x delat med y' compiles to ModNode."""
+        source = """
+sätt x till 10
+sätt y till resten av x delat med 3
+sätt z till resten av x delat på 4
+"""
+        expected = [
+            AssignNode(name="x", value=IntNode("10")),
+            AssignNode(
+                name="y",
+                value=ModNode(left=VarAccessNode("x"), right=IntNode("3"))
+            ),
+            AssignNode(
+                name="z",
+                value=ModNode(left=VarAccessNode("x"), right=IntNode("4"))
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_modulo_with_nested_expressions(self):
+        """Verify that modulo handles nested expressions correctly on left and right sides."""
+        source = "sätt x till resten av 3 gånger 2 delat på 4"
+        expected = [
+            AssignNode(
+                name="x",
+                value=ModNode(
+                    left=MulNode(left=IntNode("3"), right=IntNode("2")),
+                    right=IntNode("4")
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_infix_function_body_property_access(self):
         """Verify that infix function bodies with property access are parsed correctly."""
         source = "sätt innehåller till infix grej med lista, värde\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"

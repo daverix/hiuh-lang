@@ -92,8 +92,18 @@ sätt c till b gånger b plus a
 | minus     | equivalent to - in other languages |
 | gånger    | equivalent to * in other languages |
 | delat med | equivalent to / in other languages |
+| resten av <left> delat med <right> | equivalent to % in other languages |
 
 (this table also applies for float values)
+
+### set modulo variable
+```
+sätt x till 10
+sätt y till resten av x delat med 3
+skriv y
+```
+
+outputs: `1`
 
 ### set float variable
 ```

@@ -465,6 +465,13 @@ class Resolver:
             return node
         return DivNode(left=left, right=right, token=node)
 
+    def visit_ModNode(self, node):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        if left is node.left and right is node.right:
+            return node
+        return ModNode(left=left, right=right, token=node)
+
     def visit_NotNode(self, node):
         condition = self.visit(node.condition)
         if condition is node.condition:
@@ -931,7 +938,22 @@ class Resolver:
                     # Otherwise skip - let arithmetic operators handle it
                     return None
 
-        # Level 5: multiplication/division
+        # Level 5: multiplication/division/modulo
+        if len(parts) >= 6 and parts[0] == 'resten' and parts[1] == 'av':
+            # Find the position of 'delat med' or 'delat på'
+            delat_idx = None
+            for i in range(2, len(parts) - 1):
+                if parts[i] == 'delat' and parts[i+1] in ('med', 'på'):
+                    delat_idx = i
+                    break
+            if delat_idx is not None:
+                left_parts = parts[2:delat_idx]
+                right_parts = parts[delat_idx + 2:]
+                if left_parts and right_parts:
+                    left_node = self._resolve_precedence(left_parts, token=node)
+                    right_node = self._resolve_precedence(right_parts, token=node)
+                    return ModNode(left_node, right_node, token=node)
+
         for i, part in enumerate(parts):
             if part == 'gånger':
                 left_parts = parts[:i]

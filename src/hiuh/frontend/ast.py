@@ -84,6 +84,11 @@ class DivNode(ASTNode):
         super().__init__(token.line if token else None, token.column if token else None)
         self.left, self.right = left, right
 
+class ModNode(ASTNode):
+    def __init__(self, left, right, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.left, self.right = left, right
+
 # --- Comparisons and Logic ---
 class NotNode(ASTNode):
     def __init__(self, condition, token=None):

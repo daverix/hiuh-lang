@@ -436,6 +436,15 @@ class Interpreter:
     def visit_MulNode(self, node): return self.visit(node.left) * self.visit(node.right)
     def visit_DivNode(self, node): return self.visit(node.left) / self.visit(node.right)
 
+    def visit_ModNode(self, node):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        if not isinstance(left, (int, float)) or not isinstance(right, (int, float)):
+            raise Exception(f"Kan inte utföra modulo på icke-numeriska värden ({left} och {right})")
+        if right == 0:
+            raise Exception("Division med nolla är inte tillåten")
+        return left % right
+
     # --- Control Flow ---
     def visit_IfNode(self, node):
         for cond_block in node.conditions:

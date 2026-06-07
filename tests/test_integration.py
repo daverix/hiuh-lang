@@ -904,6 +904,39 @@ dela ord med 2
             self.run_source(source3)
         self.assertIn("inte definierad", str(context.exception))
 
+    def test_modulo_operations(self):
+        """Verify that modulo expressions are evaluated correctly."""
+        # Standard positive integer modulo
+        source = """
+sätt x till 10
+sätt y till resten av x delat med 3
+sätt z till resten av x delat på 4
+skriv y
+skriv " "
+skriv z
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip().split(), ["1", "2"])
+
+        # Modulo by zero error
+        source_err1 = """
+sätt x till 10
+sätt y till resten av x delat med 0
+"""
+        with self.assertRaises(Exception) as context:
+            self.run_source(source_err1)
+        self.assertIn("Division med nolla", str(context.exception))
+
+        # Modulo non-numeric error
+        source_err2 = """
+sätt ord till hej
+sätt y till resten av ord delat med 2
+"""
+        with self.assertRaises(Exception) as context:
+            self.run_source(source_err2)
+        self.assertIn("Kan inte utföra modulo", str(context.exception))
+
 
 if __name__ == '__main__':
     unittest.main()
