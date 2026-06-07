@@ -112,7 +112,7 @@ sätt delsträng till grej med text, start, längd
     sätt slut till start plus längd
     medan pos är mindre än slut och pos är mindre än längd från text
         sätt resultat till resultat plus element pos från text
-        sätt pos till pos plus 1
+        öka pos med 1
     ge resultat
 
 . =============================================================
@@ -127,13 +127,13 @@ sätt tokenisera till grej med rader
 
     . Process each line using a for-each loop from the 'listor' module
     för varje rad i rader
-        sätt rad_nummer till rad_nummer plus 1
+        öka rad_nummer med 1
 
         . --- Step 1: Handle Indentation ---
         . Calculate current line's indentation level
         sätt indent till 0
         medan indent är mindre än längd från rad och element indent från rad är lika med " "
-            sätt indent till indent plus 1
+            öka indent med 1
 
         sätt innehåll till delsträng från rad med indent
         
@@ -159,28 +159,28 @@ sätt tokenisera till grej med rader
             
             . Whitespace
             om tecken är lika med mellanrum
-                sätt pos till pos plus 1
+                öka pos med 1
                 fortsätt
             
             . Comma
             om tecken är lika med ","
                 sätt ny_token till skapa_token med TOKEN COMMA, ",", rad_nummer, indent plus pos plus 1
                 lägg till ny_token i tokens
-                sätt pos till pos plus 1
+                öka pos med 1
                 fortsätt
 
             . String literals
             om tecken är lika med CITAT
                 sätt start till pos
-                sätt pos till pos plus 1
+                öka pos med 1
                 medan pos är mindre än längd från innehåll och element pos från innehåll är inte lika med CITAT
-                    sätt pos till pos plus 1
+                    öka pos med 1
                 
                 om pos är lika med längd från innehåll
                     kasta "Oavslutad textsträng på rad " plus rad_nummer
                 
                 sätt värde till delsträng från innehåll med start plus 1, pos minus start minus 1
-                sätt pos till pos plus 1 . skip closing quote
+                öka pos med 1 . skip closing quote
                 lägg till skapa_token med TOKEN STRING, värde, rad_nummer, indent plus start plus 1 i tokens
                 fortsätt
 
@@ -192,14 +192,14 @@ sätt tokenisera till grej med rader
             om är_siffra med tecken eller (tecken är lika med "-" och är_siffra med nästa_tecken)
                 sätt start till pos
                 sätt har_komma till falskt
-                sätt pos till pos plus 1
+                öka pos med 1
                 medan pos är mindre än längd från innehåll
                     sätt siffra_tecken till element pos från innehåll
                     om siffra_tecken är lika med ","
                         sätt har_komma till sant
-                        sätt pos till pos plus 1
+                        öka pos med 1
                     annars om är_siffra med siffra_tecken
-                        sätt pos till pos plus 1
+                        öka pos med 1
                     annars
                         bryt . break the loop
                 
@@ -217,7 +217,7 @@ sätt tokenisera till grej med rader
                 sätt id_tecken till element pos från innehåll
                 om id_tecken är lika med mellanrum eller id_tecken är lika med "," eller id_tecken är lika med CITAT
                     bryt
-                sätt pos till pos plus 1
+                öka pos med 1
             
             sätt värde till delsträng från innehåll med start, pos minus start
             

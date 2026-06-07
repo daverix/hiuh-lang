@@ -11,7 +11,7 @@ sätt index på första matchande till grej med värden, anrop
         om anrop med element x från värden
             ge x
 
-        sätt x till x plus 1
+        öka x med 1
 
     ge -1
 

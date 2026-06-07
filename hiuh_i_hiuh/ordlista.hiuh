@@ -30,7 +30,7 @@ sätt ny ordlista till grej med värden
             om nyckel är lika med n
                 ta bort element x från värden
 
-            sätt x till x minus 1
+            minska x med 1
 
     ge ordlista med värden, putta, hämta, rensa, finns
 
