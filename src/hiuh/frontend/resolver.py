@@ -650,6 +650,20 @@ class Resolver:
         if not left_parts or not right_parts:
             return None
 
+        # Check if there are any lower-precedence operators (arithmetic, comparison, boolean)
+        # that should be evaluated after property access.
+        is_module_call = 'med' in parts and parts.index('med') > från_idx
+        operators = ['plus', 'minus', 'gånger', 'delat', 'och', 'eller']
+        comparison_keywords = ['är', 'större', 'mindre', 'lika']
+        
+        if not is_module_call:
+            if any(op in left_parts or op in right_parts for op in operators + comparison_keywords):
+                return None
+        else:
+            mod_parts = parts[från_idx + 1:parts.index('med')]
+            if any(op in left_parts or op in mod_parts for op in operators + comparison_keywords):
+                return None
+
         # Check if left_parts contains a multi-word comparison operator - if so, this is not property access
         # but rather a comparison with property access as the right side
         # Only check for multi-word operators, not single-word 'i' or 'är'
@@ -705,9 +719,8 @@ class Resolver:
                 # Single variable - use VarAccessNode directly
                 idx_node = VarAccessNode(idx_parts[0], target=None, token=node)
             else:
-                # Multi-word expression - use _part_to_node to handle operators
-                idx_name = ' '.join(idx_parts)
-                idx_node = self._part_to_node(idx_name, node)
+                # Multi-word expression - resolve precedence
+                idx_node = self._resolve_precedence(idx_parts, token=node)
             
             # Create target node - prefer VarAccessNode for property access targets
             target_name = ' '.join(target_parts)
@@ -850,6 +863,27 @@ class Resolver:
         
         Uses precedence-based parsing: finds the lowest precedence operator first.
         """
+        # Level 2: 'och' and 'eller' - checked first to respect lowest precedence
+        # Only match if both operands are booleans or comparison results
+        for i, part in enumerate(parts):
+            if part in ['och', 'eller']:
+                if part == 'eller':
+                    if i > 0 and parts[i - 1] == 'än':
+                        if i + 2 < len(parts) and parts[i + 1] == 'lika' and parts[i + 2] == 'med':
+                            continue
+                left_parts = parts[:i]
+                right_parts = parts[i + 1:]
+                if left_parts and right_parts:
+                    # Resolve both sides to check their types
+                    left_node = self._resolve_precedence(left_parts, token=node)
+                    right_node = self._resolve_precedence(right_parts, token=node)
+                    # Only create AndNode or OrNode if both are booleans or comparisons
+                    left_is_bool_like = isinstance(left_node, (BoolNode, ComparisonNodes))
+                    right_is_bool_like = isinstance(right_node, (BoolNode, ComparisonNodes))
+                    if left_is_bool_like and right_is_bool_like:
+                        node_class = AndNode if part == 'och' else OrNode
+                        return node_class(left_node, right_node, token=node)
+
         # Find the lowest precedence operator
         # Precedence (low to high):
         # 1. eller
@@ -918,25 +952,7 @@ class Resolver:
             if left_parts and right_parts:
                 return self._create_binary_expr(left_parts, op, right_parts, node)
 
-        # Level 2: 'och' (boolean AND) - only checked after arithmetic operators
-        # Boolean operators: 'och' and 'eller' (same precedence, after arithmetic)
-        # Only match if both operands are booleans or comparison results
-        for i, part in enumerate(parts):
-            if part in ['och', 'eller']:
-                left_parts = parts[:i]
-                right_parts = parts[i + 1:]
-                if left_parts and right_parts:
-                    # Resolve both sides to check their types
-                    left_node = self._resolve_precedence(left_parts, token=node)
-                    right_node = self._resolve_precedence(right_parts, token=node)
-                    # Only create AndNode or OrNode if both are booleans or comparisons
-                    left_is_bool_like = isinstance(left_node, (BoolNode, ComparisonNodes))
-                    right_is_bool_like = isinstance(right_node, (BoolNode, ComparisonNodes))
-                    if left_is_bool_like and right_is_bool_like:
-                        node_class = AndNode if part == 'och' else OrNode
-                        return node_class(left_node, right_node, token=node)
-                    # Otherwise skip - let arithmetic operators handle it
-                    return None
+
 
         # Level 5: multiplication/division/modulo
         if len(parts) >= 6 and parts[0] == 'resten' and parts[1] == 'av':
@@ -1139,13 +1155,23 @@ class Resolver:
         # Level 1: 'eller' (lowest)
         for op in ['eller']:
             if op in parts:
-                idx = parts.index(op)
-                left_parts = parts[:idx]
-                right_parts = parts[idx + 1:]
-                if left_parts and right_parts:
-                    left = self._resolve_precedence(left_parts, token=token)
-                    right = self._resolve_precedence(right_parts, token=token)
-                    return OrNode(left, right, token=token)
+                idx = -1
+                for i, part in enumerate(parts):
+                    if part == 'eller':
+                        is_part_of_comp = False
+                        if i > 0 and parts[i - 1] == 'än':
+                            if i + 2 < len(parts) and parts[i + 1] == 'lika' and parts[i + 2] == 'med':
+                                is_part_of_comp = True
+                        if not is_part_of_comp:
+                            idx = i
+                            break
+                if idx != -1:
+                    left_parts = parts[:idx]
+                    right_parts = parts[idx + 1:]
+                    if left_parts and right_parts:
+                        left = self._resolve_precedence(left_parts, token=token)
+                        right = self._resolve_precedence(right_parts, token=token)
+                        return OrNode(left, right, token=token)
 
         # Level 2: 'och'
         for op in ['och']:
@@ -1157,65 +1183,6 @@ class Resolver:
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
                     return AndNode(left, right, token=token)
-
-        # Check for property access: "X från Y" -> PropertyAccessNode
-        # This should be checked before comparison operators
-        if 'från' in parts:
-            från_idx = parts.index('från')
-            left_parts = parts[:från_idx]
-            right_parts = parts[från_idx + 1:]
-            if left_parts and right_parts:
-                # Check if left_parts contains a comparison operator - if so, skip
-                comparison_ops = [
-                    'är inte lika med',
-                    'större än eller lika med', 'mindre än eller lika med',
-                    'större än', 'mindre än', 'är inte',
-                    'lika med', 'är'
-                ]
-                has_comparison = False
-                for op in comparison_ops:
-                    op_tokens = op.split()
-                    for i in range(len(left_parts) - len(op_tokens) + 1):
-                        if left_parts[i:i+len(op_tokens)] == op_tokens:
-                            has_comparison = True
-                            break
-                    if has_comparison:
-                        break
-                
-                # Check if right_parts contains a comparison operator - if so, skip
-                # We exclude single-word 'är' because it can be a connector at the end of right_parts
-                if not has_comparison:
-                    right_comparison_ops = [
-                        'är inte lika med',
-                        'större än eller lika med', 'mindre än eller lika med',
-                        'större än', 'mindre än', 'är inte',
-                        'lika med', 'och', 'eller'
-                    ]
-                    for op in right_comparison_ops:
-                        op_tokens = op.split()
-                        for i in range(len(right_parts) - len(op_tokens) + 1):
-                            if right_parts[i:i+len(op_tokens)] == op_tokens:
-                                has_comparison = True
-                                break
-                        if has_comparison:
-                            break
-                
-                if not has_comparison:
-                    prop_name = ' '.join(left_parts)
-                    
-                    # Create target node - use _resolve_precedence to handle expressions
-                    # like 'längd från värden minus 1' -> PropertyAccessNode(längd, SubNode(värden, 1))
-                    if len(right_parts) == 1:
-                        target_name = right_parts[0]
-                        if self._is_defined(target_name, self._current_module):
-                            target_node = VarAccessNode(target_name, target=None, token=token)
-                        else:
-                            target_node = self._part_to_node(target_name, token)
-                    else:
-                        # Multiple parts - parse as expression (handles operators like 'minus')
-                        target_node = self._resolve_precedence(right_parts, token=token)
-                    
-                    return PropertyAccessNode(property_name=prop_name, target=target_node, token=token)
 
         # Level 3: comparisons (är, etc.)
         multi_word_ops = [
@@ -1289,30 +1256,6 @@ class Resolver:
             left_parts = parts[:idx]
             right_parts = parts[idx + 1:]
             if left_parts and right_parts:
-                # Check if left_parts contains 'från' - handle property access on left
-                if 'från' in left_parts:
-                    från_idx = left_parts.index('från')
-                    prop_name_parts = left_parts[från_idx + 1:]
-                    target_parts = left_parts[:från_idx]
-                    prop_name = ' '.join(prop_name_parts)
-                    
-                    # Resolve target
-                    if len(target_parts) == 1:
-                        target_name = target_parts[0]
-                        if self._is_defined(target_name, self._current_module):
-                            target_node = VarAccessNode(target_name, target=None, token=token)
-                        else:
-                            target_node = self._part_to_node(target_name, token)
-                    else:
-                        target_node = self._resolve_precedence(target_parts, token=token)
-                    
-                    right = self._resolve_precedence(right_parts, token=token)
-                    prop_access = PropertyAccessNode(property_name=prop_name, target=target_node, token=token)
-                    if op == 'plus':
-                        return AddNode(prop_access, right, token=token)
-                    else:
-                        return SubNode(prop_access, right, token=token)
-                
                 left = self._resolve_precedence(left_parts, token=token)
                 right = self._resolve_precedence(right_parts, token=token)
                 if op == 'plus':
@@ -1333,36 +1276,51 @@ class Resolver:
                 right_parts = parts[idx + skip:]
 
                 if left_parts and right_parts:
-                    # Check if left_parts contains 'från' - handle property access on left
-                    if 'från' in left_parts:
-                        från_idx = left_parts.index('från')
-                        prop_name_parts = left_parts[från_idx + 1:]
-                        target_parts = left_parts[:från_idx]
-                        prop_name = ' '.join(prop_name_parts)
-                        
-                        # Resolve target
-                        if len(target_parts) == 1:
-                            target_name = target_parts[0]
-                            if self._is_defined(target_name, self._current_module):
-                                target_node = VarAccessNode(target_name, target=None, token=token)
-                            else:
-                                target_node = self._part_to_node(target_name, token)
-                        else:
-                            target_node = self._resolve_precedence(target_parts, token=token)
-                        
-                        right = self._resolve_precedence(right_parts, token=token)
-                        prop_access = PropertyAccessNode(property_name=prop_name, target=target_node, token=token)
-                        if op == 'gånger':
-                            return MulNode(prop_access, right, token=token)
-                        else:
-                            return DivNode(prop_access, right, token=token)
-                    
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
                     if op == 'gånger':
                         return MulNode(left, right, token=token)
                     else:
                         return DivNode(left, right, token=token)
+
+        # Check for property access: "X från Y" -> PropertyAccessNode / ElementAccessNode
+        if 'från' in parts:
+            från_idx = parts.index('från')
+            left_parts = parts[:från_idx]
+            right_parts = parts[från_idx + 1:]
+            if left_parts and right_parts:
+                if left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
+                    idx_parts = left_parts[1:]
+                    if len(idx_parts) == 1 and idx_parts[0].isdigit():
+                        idx_node = IntNode(idx_parts[0], token=token)
+                    elif len(idx_parts) == 1:
+                        idx_node = VarAccessNode(idx_parts[0], target=None, token=token)
+                    else:
+                        idx_node = self._resolve_precedence(idx_parts, token=token)
+                    
+                    if len(right_parts) == 1:
+                        target_name = right_parts[0]
+                        if self._is_defined(target_name, self._current_module):
+                            target_node = VarAccessNode(target_name, target=None, token=token)
+                        else:
+                            target_node = self._part_to_node(target_name, token)
+                    else:
+                        target_node = self._resolve_precedence(right_parts, token=token)
+                    return ElementAccessNode(index=idx_node, target=target_node, token=token)
+
+                prop_name = ' '.join(left_parts)
+                
+                # Create target node
+                if len(right_parts) == 1:
+                    target_name = right_parts[0]
+                    if self._is_defined(target_name, self._current_module):
+                        target_node = VarAccessNode(target_name, target=None, token=token)
+                    else:
+                        target_node = self._part_to_node(target_name, token)
+                else:
+                    target_node = self._resolve_precedence(right_parts, token=token)
+                
+                return PropertyAccessNode(property_name=prop_name, target=target_node, token=token)
 
         # No operator found, return as single value
         return self._part_to_node(' '.join(parts), token)

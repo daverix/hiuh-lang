@@ -910,5 +910,72 @@ dela poäng med 2
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_delstrang_function_call_ast(self):
+        """Verify the resolved AST of the delsträng definition and call."""
+        source = """
+sätt delsträng till grej med text, start, längd
+    sätt resultat till ""
+    sätt pos till start
+    sätt slut till start plus längd
+    medan pos är mindre än slut och pos är mindre än längd från text
+        sätt resultat till resultat plus element pos från text
+        öka pos med 1
+    ge resultat
+
+sätt rad till hejsan
+sätt res till delsträng med rad, 1, 3
+skriv res
+"""
+        expected = [
+            AssignNode(
+                name="delsträng",
+                value=FunctionDefNode(
+                    params=["text", "start", "längd"],
+                    body=[
+                        AssignNode(name="resultat", value=StringNode("")),
+                        AssignNode(name="pos", value=VarAccessNode("start")),
+                        AssignNode(
+                            name="slut",
+                            value=AddNode(left=VarAccessNode("start"), right=VarAccessNode("längd"))
+                        ),
+                        WhileNode(
+                            condition=AndNode(
+                                left=LessThanNode(left=VarAccessNode("pos"), right=VarAccessNode("slut")),
+                                right=LessThanNode(
+                                    left=VarAccessNode("pos"),
+                                    right=PropertyAccessNode(property_name="längd", target=VarAccessNode("text"))
+                                )
+                            ),
+                            body=[
+                                AssignNode(
+                                    name="resultat",
+                                    value=AddNode(
+                                        left=VarAccessNode("resultat"),
+                                        right=ElementAccessNode(target=VarAccessNode("text"), index=VarAccessNode("pos"))
+                                    )
+                                ),
+                                AddAssignNode(target="pos", value=IntNode("1"))
+                            ]
+                        ),
+                        ReturnNode(value=VarAccessNode("resultat"))
+                    ]
+                )
+            ),
+            AssignNode(name="rad", value=StringNode("hejsan")),
+            AssignNode(
+                name="res",
+                value=FunctionCallNode(
+                    name="delsträng",
+                    args=[
+                        VarAccessNode("rad"),
+                        IntNode("1"),
+                        IntNode("3")
+                    ]
+                )
+            ),
+            PrintNode(value=VarAccessNode("res"))
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 if __name__ == '__main__':
     unittest.main()

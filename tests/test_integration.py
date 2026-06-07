@@ -703,6 +703,26 @@ skriv indent_count
             # After processing, indent_count should be 0 (balanced)
             self.assertEqual(fake_out.getvalue().strip(), "0")
 
+    def test_delstrang_function_call(self):
+        """Verify that delsträng can be defined and called with text, start, length."""
+        source = """
+sätt delsträng till grej med text, start, längd
+    sätt resultat till ""
+    sätt pos till start
+    sätt slut till start plus längd
+    medan pos är mindre än slut och pos är mindre än längd från text
+        sätt resultat till resultat plus element pos från text
+        öka pos med 1
+    ge resultat
+
+sätt rad till hejsan
+sätt res till delsträng med rad, 1, 3
+skriv res
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "ejs")
+
     def test_infix_funktion_innehåller(self):
         """Verify that infix functions work correctly with the 'innehåller' function from listor."""
         source = """
