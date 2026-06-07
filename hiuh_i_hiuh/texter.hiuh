@@ -4,7 +4,7 @@ sätt delsträng till grej med text, start, längd
     sätt pos till start
     sätt slut till start plus längd
     medan pos är mindre än slut och pos är mindre än längd från text
-        öka resultat med element pos från text
+        sätt resultat till resultat plus element pos från text
         öka pos med 1
     ge resultat
 
