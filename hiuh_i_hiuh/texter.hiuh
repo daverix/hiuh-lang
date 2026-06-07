@@ -1,0 +1,14 @@
+. Helper function to get substring
+sätt delsträng till grej med text, start, längd
+    sätt resultat till ""
+    sätt pos till start
+    sätt slut till start plus längd
+    medan pos är mindre än slut och pos är mindre än längd från text
+        öka resultat med element pos från text
+        öka pos med 1
+    ge resultat
+
+. Helper to check if a character is a numeric digit
+sätt är_siffra till grej med tecken
+    sätt kod till tecken som tal
+    ge kod är större än eller lika med 48 och kod är mindre än eller lika med 57
