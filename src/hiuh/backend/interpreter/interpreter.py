@@ -320,7 +320,7 @@ class Interpreter:
             return self._is_defined_in_env(env.parent, name)
         return False
 
-    def visit_IncrementNode(self, node):
+    def visit_AddAssignNode(self, node):
         if not self._is_defined_in_env(self.env, node.target):
             raise Exception(f"Variabeln '{node.target}' är inte definierad")
         
@@ -336,7 +336,7 @@ class Interpreter:
         self.env.define(node.target, new_val)
         return new_val
 
-    def visit_DecrementNode(self, node):
+    def visit_SubAssignNode(self, node):
         if not self._is_defined_in_env(self.env, node.target):
             raise Exception(f"Variabeln '{node.target}' är inte definierad")
         
@@ -347,6 +347,40 @@ class Interpreter:
             raise Exception(f"Kan inte minska icke-numeriska värden ({current_val} och {value_to_sub})")
             
         new_val = current_val - value_to_sub
+        self.env.define(node.target, new_val)
+        return new_val
+
+    def visit_MultiplyAssignNode(self, node):
+        if not self._is_defined_in_env(self.env, node.target):
+            raise Exception(f"Variabeln '{node.target}' är inte definierad")
+        
+        current_val = self.env.get(node.target)
+        value_to_mul = self.visit(node.value)
+        
+        if isinstance(current_val, (int, float)) and isinstance(value_to_mul, (int, float)):
+            new_val = current_val * value_to_mul
+        elif isinstance(current_val, str) and isinstance(value_to_mul, int):
+            new_val = current_val * value_to_mul
+        else:
+            raise Exception(f"Kan inte multiplicera värden av typ {type(current_val).__name__} och {type(value_to_mul).__name__}")
+            
+        self.env.define(node.target, new_val)
+        return new_val
+
+    def visit_DivideAssignNode(self, node):
+        if not self._is_defined_in_env(self.env, node.target):
+            raise Exception(f"Variabeln '{node.target}' är inte definierad")
+        
+        current_val = self.env.get(node.target)
+        value_to_div = self.visit(node.value)
+        
+        if not isinstance(current_val, (int, float)) or not isinstance(value_to_div, (int, float)):
+            raise Exception(f"Kan inte dividera icke-numeriska värden ({current_val} och {value_to_div})")
+            
+        if value_to_div == 0:
+            raise Exception("Division med nolla är inte tillåten")
+            
+        new_val = current_val / value_to_div
         self.env.define(node.target, new_val)
         return new_val
 

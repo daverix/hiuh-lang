@@ -815,13 +815,33 @@ minska poäng med 1
 """
         expected = [
             AssignNode(name="poäng", value=IntNode("10")),
-            IncrementNode(
+            AddAssignNode(
                 target="poäng",
                 value=AddNode(left=IntNode("5"), right=IntNode("2"))
             ),
-            DecrementNode(
+            SubAssignNode(
                 target="poäng",
                 value=IntNode("1")
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_resolver_multiply_divide_assign(self):
+        """Verify that resolver correctly resolves multiply/divide assign expression values."""
+        source = """
+sätt poäng till 10
+gångra poäng med 3 plus 1
+dela poäng med 2
+"""
+        expected = [
+            AssignNode(name="poäng", value=IntNode("10")),
+            MultiplyAssignNode(
+                target="poäng",
+                value=AddNode(left=IntNode("3"), right=IntNode("1"))
+            ),
+            DivideAssignNode(
+                target="poäng",
+                value=IntNode("2")
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)

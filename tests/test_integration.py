@@ -839,6 +839,71 @@ minska mintext med då
             self.run_source(source2)
         self.assertIn("Kan inte minska", str(context.exception))
 
+    def test_multiply_divide_assign_operations(self):
+        """Verify that multiply/divide assign statements work correctly at runtime."""
+        # Test multiplication (both keywords)
+        source1 = """
+sätt x till 10
+gångra x med 3
+skriv x
+skriv ny rad
+multiplicera x med 2
+skriv x
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source1)
+            self.assertEqual(fake_out.getvalue().strip(), "30\n60")
+
+        # Test division (both keywords)
+        source2 = """
+sätt y till 100
+dela y med 4
+skriv y
+skriv ny rad
+dividera y med 5
+skriv y
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source2)
+            self.assertEqual(fake_out.getvalue().strip(), "25.0\n5.0")
+
+    def test_multiply_string_replication(self):
+        """Verify that multiplying a string by an integer replicates the string."""
+        source = """
+sätt ord till ja
+gångra ord med 3
+skriv ord
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "jajaja")
+
+    def test_multiply_divide_errors(self):
+        """Verify that errors are raised for invalid types, undefined variables, or division by zero."""
+        # Division by zero
+        source1 = """
+sätt x till 10
+dela x med 0
+"""
+        with self.assertRaises(Exception) as context:
+            self.run_source(source1)
+        self.assertIn("Division med nolla", str(context.exception))
+
+        # Non-numeric division
+        source2 = """
+sätt ord till hej
+dela ord med 2
+"""
+        with self.assertRaises(Exception) as context:
+            self.run_source(source2)
+        self.assertIn("Kan inte dividera", str(context.exception))
+
+        # Undefined variable multiplication
+        source3 = "gångra okänd med 2"
+        with self.assertRaises(Exception) as context:
+            self.run_source(source3)
+        self.assertIn("inte definierad", str(context.exception))
+
 
 if __name__ == '__main__':
     unittest.main()

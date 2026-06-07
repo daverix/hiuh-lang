@@ -277,9 +277,11 @@ medan x är mindre än 10
 
 outputs: `12345678910`
 
-## öka and minska
+## öka, minska, gångra and dela
 
-To increment or decrement a variable's value, use `öka` or `minska` followed by the variable name, the keyword `med`, and the amount:
+To modify a variable in-place (equivalent to `+=`, `-=`, `*=`, `/=`), use these keywords followed by the variable name, the keyword `med`, and the amount:
+
+### öka and minska
 
 ```
 sätt poäng till 10
@@ -308,6 +310,39 @@ skriv ord
 outputs:
 ```
 hejdå
+```
+
+### gångra and dela (or multiplicera and dividera)
+
+Multiplication and division assignments support both standard and informal Swedish verbs for ease of use:
+
+```
+sätt poäng till 10
+gångra poäng med 3    . can also use: multiplicera poäng med 3
+skriv poäng
+skriv ny rad
+
+dela poäng med 2      . can also use: dividera poäng med 2
+skriv poäng
+```
+
+outputs:
+```
+30
+15.0
+```
+
+Multiplying a string by an integer replicates the string:
+
+```
+sätt ord till ja
+gångra ord med 3
+skriv ord
+```
+
+outputs:
+```
+jajaja
 ```
 
 ## stdin

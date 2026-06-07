@@ -361,28 +361,46 @@ class TestHiuhParserRaw(unittest.TestCase):
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_increment_statement(self):
-        """Verify that 'öka x med 5' parses to IncrementNode."""
+        """Verify that 'öka x med 5' parses to AddAssignNode."""
         source = "öka x med 5"
         expected = [
-            IncrementNode(target="x", value=ExpressionPartsNode(parts=["5"]))
+            AddAssignNode(target="x", value=ExpressionPartsNode(parts=["5"]))
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_decrement_statement(self):
-        """Verify that 'minska x med 10' parses to DecrementNode."""
+        """Verify that 'minska x med 10' parses to SubAssignNode."""
         source = "minska x med 10"
         expected = [
-            DecrementNode(target="x", value=ExpressionPartsNode(parts=["10"]))
+            SubAssignNode(target="x", value=ExpressionPartsNode(parts=["10"]))
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_increment_multi_word_variable(self):
-        """Verify that 'öka min hälsa med 1,5' parses to IncrementNode with multi-word target."""
+        """Verify that 'öka min hälsa med 1,5' parses to AddAssignNode with multi-word target."""
         source = "öka min hälsa med 1,5"
         expected = [
-            IncrementNode(target="min hälsa", value=ExpressionPartsNode(parts=["1,5"]))
+            AddAssignNode(target="min hälsa", value=ExpressionPartsNode(parts=["1,5"]))
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_multiply_assign_statements(self):
+        """Verify that both multiplicera and gångra parse to MultiplyAssignNode."""
+        for kw in ["multiplicera", "gångra"]:
+            source = f"{kw} x med 3"
+            expected = [
+                MultiplyAssignNode(target="x", value=ExpressionPartsNode(parts=["3"]))
+            ]
+            self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_divide_assign_statements(self):
+        """Verify that both dividera and dela parse to DivideAssignNode."""
+        for kw in ["dividera", "dela"]:
+            source = f"{kw} x med 2"
+            expected = [
+                DivideAssignNode(target="x", value=ExpressionPartsNode(parts=["2"]))
+            ]
+            self.assertNodesEqual(self.parse_source(source), expected)
 
 
 if __name__ == '__main__':

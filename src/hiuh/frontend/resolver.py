@@ -1690,21 +1690,37 @@ class Resolver:
 
     # === Statement nodes - transform children ===
 
-    def visit_IncrementNode(self, node):
+    def visit_AddAssignNode(self, node):
         if self._registering:
             return node
         value = self.visit(node.value)
         if value is node.value:
             return node
-        return IncrementNode(target=node.target, value=value, token=node)
+        return AddAssignNode(target=node.target, value=value, token=node)
 
-    def visit_DecrementNode(self, node):
+    def visit_SubAssignNode(self, node):
         if self._registering:
             return node
         value = self.visit(node.value)
         if value is node.value:
             return node
-        return DecrementNode(target=node.target, value=value, token=node)
+        return SubAssignNode(target=node.target, value=value, token=node)
+
+    def visit_MultiplyAssignNode(self, node):
+        if self._registering:
+            return node
+        value = self.visit(node.value)
+        if value is node.value:
+            return node
+        return MultiplyAssignNode(target=node.target, value=value, token=node)
+
+    def visit_DivideAssignNode(self, node):
+        if self._registering:
+            return node
+        value = self.visit(node.value)
+        if value is node.value:
+            return node
+        return DivideAssignNode(target=node.target, value=value, token=node)
 
     def visit_AssignNode(self, node):
         if self._registering:
