@@ -277,6 +277,39 @@ medan x är mindre än 10
 
 outputs: `12345678910`
 
+## öka and minska
+
+To increment or decrement a variable's value, use `öka` or `minska` followed by the variable name, the keyword `med`, and the amount:
+
+```
+sätt poäng till 10
+öka poäng med 5
+skriv poäng
+skriv ny rad
+
+minska poäng med 3
+skriv poäng
+```
+
+outputs:
+```
+15
+12
+```
+
+Incrementing (`öka`) also supports string concatenation when used on string variables:
+
+```
+sätt ord till hej
+öka ord med då
+skriv ord
+```
+
+outputs:
+```
+hejdå
+```
+
 ## stdin
 
 ```

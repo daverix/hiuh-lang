@@ -360,6 +360,30 @@ class TestHiuhParserRaw(unittest.TestCase):
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_increment_statement(self):
+        """Verify that 'öka x med 5' parses to IncrementNode."""
+        source = "öka x med 5"
+        expected = [
+            IncrementNode(target="x", value=ExpressionPartsNode(parts=["5"]))
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_decrement_statement(self):
+        """Verify that 'minska x med 10' parses to DecrementNode."""
+        source = "minska x med 10"
+        expected = [
+            DecrementNode(target="x", value=ExpressionPartsNode(parts=["10"]))
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_increment_multi_word_variable(self):
+        """Verify that 'öka min hälsa med 1,5' parses to IncrementNode with multi-word target."""
+        source = "öka min hälsa med 1,5"
+        expected = [
+            IncrementNode(target="min hälsa", value=ExpressionPartsNode(parts=["1,5"]))
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 
 if __name__ == '__main__':
     unittest.main()

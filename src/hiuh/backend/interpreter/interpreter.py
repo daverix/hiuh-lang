@@ -313,6 +313,43 @@ class Interpreter:
         
         raise Exception(f"Kan inte komma åt egenskap '{prop_name}' från {type(target).__name__}")
 
+    def _is_defined_in_env(self, env, name):
+        if name in env.vars:
+            return True
+        if env.parent:
+            return self._is_defined_in_env(env.parent, name)
+        return False
+
+    def visit_IncrementNode(self, node):
+        if not self._is_defined_in_env(self.env, node.target):
+            raise Exception(f"Variabeln '{node.target}' är inte definierad")
+        
+        current_val = self.env.get(node.target)
+        value_to_add = self.visit(node.value)
+        
+        # Try to use addition (numeric or string concatenation)
+        if isinstance(current_val, (int, float)) and isinstance(value_to_add, (int, float)):
+            new_val = current_val + value_to_add
+        else:
+            new_val = str(current_val) + str(value_to_add)
+            
+        self.env.define(node.target, new_val)
+        return new_val
+
+    def visit_DecrementNode(self, node):
+        if not self._is_defined_in_env(self.env, node.target):
+            raise Exception(f"Variabeln '{node.target}' är inte definierad")
+        
+        current_val = self.env.get(node.target)
+        value_to_sub = self.visit(node.value)
+        
+        if not isinstance(current_val, (int, float)) or not isinstance(value_to_sub, (int, float)):
+            raise Exception(f"Kan inte minska icke-numeriska värden ({current_val} och {value_to_sub})")
+            
+        new_val = current_val - value_to_sub
+        self.env.define(node.target, new_val)
+        return new_val
+
     def visit_AssignNode(self, node):
         value = self.visit(node.value)
 

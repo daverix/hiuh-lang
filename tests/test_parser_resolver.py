@@ -806,5 +806,25 @@ sätt lista till lista med 10, 20
             self.parse_source(source)
         self.assertIn("Kan inte omdefiniera inbyggd funktion 'lista'", str(context.exception))
 
+    def test_resolver_increment_decrement(self):
+        """Verify that resolver correctly resolves increment/decrement expression values."""
+        source = """
+sätt poäng till 10
+öka poäng med 5 plus 2
+minska poäng med 1
+"""
+        expected = [
+            AssignNode(name="poäng", value=IntNode("10")),
+            IncrementNode(
+                target="poäng",
+                value=AddNode(left=IntNode("5"), right=IntNode("2"))
+            ),
+            DecrementNode(
+                target="poäng",
+                value=IntNode("1")
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 if __name__ == '__main__':
     unittest.main()

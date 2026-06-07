@@ -797,6 +797,48 @@ skriv resultat
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "99")
 
+    def test_increment_decrement_operations(self):
+        """Verify that increment and decrement statements work correctly at runtime."""
+        source = """
+sätt x till 10
+öka x med 5
+skriv x
+skriv ny rad
+minska x med 3
+skriv x
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "15\n12")
+
+    def test_increment_string_concatenation(self):
+        """Verify that increment works as string concatenation for string values."""
+        source = """
+sätt ord till hej
+öka ord med då
+skriv ord
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "hejdå")
+
+    def test_increment_decrement_errors(self):
+        """Verify that incrementing or decrementing undefined variables or invalid types raises errors."""
+        # Undefined variable
+        source1 = "öka okänd med 5"
+        with self.assertRaises(Exception) as context:
+            self.run_source(source1)
+        self.assertIn("inte definierad", str(context.exception))
+
+        # Decrement non-numeric
+        source2 = """
+sätt mintext till hej
+minska mintext med då
+"""
+        with self.assertRaises(Exception) as context:
+            self.run_source(source2)
+        self.assertIn("Kan inte minska", str(context.exception))
+
 
 if __name__ == '__main__':
     unittest.main()

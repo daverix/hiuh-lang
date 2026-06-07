@@ -140,6 +140,18 @@ class AssignNode(ASTNode):
         self.value = value
         self.target_type = target_type  # Used for 'sätt x i person'
 
+class IncrementNode(ASTNode):
+    def __init__(self, target, value, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.target = target
+        self.value = value
+
+class DecrementNode(ASTNode):
+    def __init__(self, target, value, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.target = target
+        self.value = value
+
 class PrintNode(ASTNode):
     def __init__(self, value, token=None):
         super().__init__(token.line if token else None, token.column if token else None)

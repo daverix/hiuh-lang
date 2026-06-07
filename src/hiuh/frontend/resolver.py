@@ -1690,6 +1690,22 @@ class Resolver:
 
     # === Statement nodes - transform children ===
 
+    def visit_IncrementNode(self, node):
+        if self._registering:
+            return node
+        value = self.visit(node.value)
+        if value is node.value:
+            return node
+        return IncrementNode(target=node.target, value=value, token=node)
+
+    def visit_DecrementNode(self, node):
+        if self._registering:
+            return node
+        value = self.visit(node.value)
+        if value is node.value:
+            return node
+        return DecrementNode(target=node.target, value=value, token=node)
+
     def visit_AssignNode(self, node):
         if self._registering:
             # Registration pass: register symbol in module registry

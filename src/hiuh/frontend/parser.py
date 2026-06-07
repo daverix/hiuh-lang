@@ -64,6 +64,10 @@ class Parser:
         if t.type == TOKEN_IDENTIFIER and t.value == "ta":
             if self.peek(1) and self.peek(1).value == "bort":
                 return self.parse_remove()
+        if t.type == TOKEN_IDENTIFIER and t.value == "öka":
+            return self.parse_increment()
+        if t.type == TOKEN_IDENTIFIER and t.value == "minska":
+            return self.parse_decrement()
         if t.type == TOKEN_SET: return self.parse_assignment()
         if t.type == TOKEN_PRINT: return self.parse_print()
         if t.type == TOKEN_IF: return self.parse_if()
@@ -136,6 +140,34 @@ class Parser:
         if is_index_based:
             return RemoveIndexNode(target_expr, list_name, token=remove_token)
         return RemoveValueNode(target_expr, list_name, token=remove_token)
+
+    def parse_increment(self):
+        inc_token = self.consume()  # consume 'öka'
+        
+        # Collect target parts until we see TOKEN_WITH
+        target_parts = []
+        while self.peek() and self.peek().type != TOKEN_WITH:
+            target_parts.append(self.consume().value)
+            
+        target = " ".join(target_parts)
+        self.consume(TOKEN_WITH)  # consume 'med'
+        
+        val = self.expression()
+        return IncrementNode(target, val, token=inc_token)
+
+    def parse_decrement(self):
+        dec_token = self.consume()  # consume 'minska'
+        
+        # Collect target parts until we see TOKEN_WITH
+        target_parts = []
+        while self.peek() and self.peek().type != TOKEN_WITH:
+            target_parts.append(self.consume().value)
+            
+        target = " ".join(target_parts)
+        self.consume(TOKEN_WITH)  # consume 'med'
+        
+        val = self.expression()
+        return DecrementNode(target, val, token=dec_token)
 
     def parse_open_file(self):
         open_token = self.consume(TOKEN_OPEN)
