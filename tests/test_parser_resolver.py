@@ -977,5 +977,25 @@ skriv res
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_element_access_with_arithmetic_index_ast(self):
+        """Verify that 'element <expr> från Y' correctly resolves the index expression with arithmetic."""
+        source = """
+sätt pos till 1
+sätt innehåll till "hejsan"
+sätt nästa_tecken till element pos plus 1 från innehåll
+"""
+        expected = [
+            AssignNode(name="pos", value=IntNode("1")),
+            AssignNode(name="innehåll", value=StringNode("hejsan")),
+            AssignNode(
+                name="nästa_tecken",
+                value=ElementAccessNode(
+                    target=VarAccessNode("innehåll"),
+                    index=AddNode(left=VarAccessNode("pos"), right=IntNode("1"))
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 if __name__ == '__main__':
     unittest.main()
