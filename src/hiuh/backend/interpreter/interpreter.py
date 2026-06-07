@@ -91,9 +91,10 @@ class Interpreter:
             return visitor(node)
         except Exception as e:
             # Catch errors anywhere in the execution tree and print the trace once
-            if not hasattr(e, '_hiuh_traceback_printed'):
-                self.print_hiuh_traceback()
-                e._hiuh_traceback_printed = True
+            if not isinstance(e, (ReturnException, BreakException, ContinueException)):
+                if not hasattr(e, '_hiuh_traceback_printed'):
+                    self.print_hiuh_traceback()
+                    e._hiuh_traceback_printed = True
             raise e
 
     def print_hiuh_traceback(self):
