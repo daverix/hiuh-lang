@@ -188,9 +188,8 @@ om färger innehåller blå
             IfNode(
                 conditions=[
                     IfCondition(
-                        test=ComparisonNode(
+                        test=LessThanNode(
                             left=VarAccessNode("x"),
-                            op="mindre än",
                             right=PropertyAccessNode(property_name="längd", target=VarAccessNode("frukt"))
                         ),
                         block=[PrintNode(StringNode("hej"))]
@@ -218,9 +217,8 @@ om x är mindre än 5
             IfNode(
                 conditions=[
                     IfCondition(
-                        test=ComparisonNode(
+                        test=LessThanNode(
                             left=VarAccessNode("x"),
-                            op="mindre än",
                             right=IntNode("5")
                         ),
                         block=[PrintNode(StringNode("hej"))]
@@ -252,9 +250,8 @@ om x är mindre än 5
                     body=[
                         AssignNode(name="x", value=IntNode("0")),
                         WhileNode(
-                            condition=ComparisonNode(
+                            condition=LessThanNode(
                                 left=VarAccessNode("x"),
-                                op="mindre än",
                                 right=PropertyAccessNode(property_name="längd", target=VarAccessNode("lista"))
                             ),
                             body=[ReturnNode(value=BoolNode(True))]
@@ -276,9 +273,8 @@ om x är mindre än 5
                     params=["a", "b"],
                     body=[
                         PrintNode(
-                            value=ComparisonNode(
+                            value=LessThanNode(
                                 left=VarAccessNode("a"),
-                                op="mindre än",
                                 right=PropertyAccessNode(property_name="längd", target=VarAccessNode("b"))
                             )
                         )
@@ -447,9 +443,8 @@ skriv resultat"""
                     body=[
                         AssignNode(name="x", value=IntNode("0")),
                         WhileNode(
-                            condition=ComparisonNode(
+                            condition=LessThanNode(
                                 left=VarAccessNode("x"),
-                                op="mindre än",
                                 right=PropertyAccessNode(
                                     property_name="längd",
                                     target=VarAccessNode("helhet")
@@ -459,12 +454,11 @@ skriv resultat"""
                                 IfNode(
                                     conditions=[
                                         IfCondition(
-                                            test=ComparisonNode(
+                                            test=EqualNode(
                                                 left=ElementAccessNode(
                                                     index=VarAccessNode("x"),
                                                     target=VarAccessNode("helhet")
                                                 ),
-                                                op="lika med",
                                                 right=VarAccessNode("del")
                                             ),
                                             block=[ReturnNode(value=BoolNode(True))]
@@ -542,9 +536,8 @@ sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
                 value=FunctionDefNode(
                     params=["text_stycke"],
                     body=[
-                        ReturnNode(value=ComparisonNode(
+                        ReturnNode(value=EqualNode(
                             left=VarAccessNode("text_stycke"),
-                            op="lika med",
                             right=StringNode("Hiuh")
                         ))
                     ],

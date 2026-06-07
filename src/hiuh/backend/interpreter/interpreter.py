@@ -575,29 +575,26 @@ class Interpreter:
         # Raise the exception to instantly halt the current execution frame loop
         raise ReturnException(return_value)
 
-    def visit_ComparisonNode(self, node):
-        l = self.visit(node.left)
-        r = self.visit(node.right)
-        op = node.op.strip()
-        
-        # Strip leading "är " if present (är is syntactic sugar)
-        if op.startswith('är '):
-            op = op[3:]
+    def visit_EqualNode(self, node):
+        return self.visit(node.left) == self.visit(node.right)
 
-        if op == "i":
-            try:
-                return l in r
-            except TypeError:
-                return False
-        if op == "större än": return l > r
-        if op == "mindre än": return l < r
-        if op == "lika med": return l == r
-        if op == "större än eller lika med": return l >= r
-        if op == "mindre än eller lika med": return l <= r
-        if op == "och": return bool(l) and bool(r)
-        if op == "eller": return bool(l) or bool(r)
+    def visit_GreaterThanNode(self, node):
+        return self.visit(node.left) > self.visit(node.right)
 
-        return False
+    def visit_LessThanNode(self, node):
+        return self.visit(node.left) < self.visit(node.right)
+
+    def visit_GreaterThanOrEqualNode(self, node):
+        return self.visit(node.left) >= self.visit(node.right)
+
+    def visit_LessThanOrEqualNode(self, node):
+        return self.visit(node.left) <= self.visit(node.right)
+
+    def visit_AndNode(self, node):
+        return bool(self.visit(node.left)) and bool(self.visit(node.right))
+
+    def visit_OrNode(self, node):
+        return bool(self.visit(node.left)) or bool(self.visit(node.right))
 
     def visit_NotNode(self, node):
         val = self.visit(node.condition)

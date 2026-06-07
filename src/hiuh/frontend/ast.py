@@ -90,10 +90,42 @@ class NotNode(ASTNode):
         super().__init__(token.line if token else None, token.column if token else None)
         self.condition = condition
 
-class ComparisonNode(ASTNode):
-    def __init__(self, left, op, right, token=None):
+class EqualNode(ASTNode):
+    def __init__(self, left, right, token=None):
         super().__init__(token.line if token else None, token.column if token else None)
-        self.left, self.op, self.right = left, op, right
+        self.left, self.right = left, right
+
+class GreaterThanNode(ASTNode):
+    def __init__(self, left, right, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.left, self.right = left, right
+
+class LessThanNode(ASTNode):
+    def __init__(self, left, right, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.left, self.right = left, right
+
+class GreaterThanOrEqualNode(ASTNode):
+    def __init__(self, left, right, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.left, self.right = left, right
+
+class LessThanOrEqualNode(ASTNode):
+    def __init__(self, left, right, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.left, self.right = left, right
+
+class AndNode(ASTNode):
+    def __init__(self, left, right, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.left, self.right = left, right
+
+class OrNode(ASTNode):
+    def __init__(self, left, right, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.left, self.right = left, right
+
+ComparisonNodes = (EqualNode, GreaterThanNode, LessThanNode, GreaterThanOrEqualNode, LessThanOrEqualNode, AndNode, OrNode)
 
 class UnaryOpNode(ASTNode):
     def __init__(self, op: str, operand, token=None):

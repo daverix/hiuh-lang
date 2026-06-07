@@ -647,8 +647,9 @@ class Resolver:
         # but rather a comparison with property access as the right side
         # Only check for multi-word operators, not single-word 'i' or 'är'
         comparison_ops = [
+            'är inte lika med',
             'större än eller lika med', 'mindre än eller lika med',
-            'större än', 'mindre än', 'är inte', 'inte i',
+            'större än', 'mindre än', 'är inte',
             'lika med'
         ]
         for op in comparison_ops:
@@ -859,8 +860,11 @@ class Resolver:
         # Multi-word comparisons (precedence 3) - must be checked FIRST
         # to avoid splitting 'större än eller lika med' at 'eller'
         multi_word_ops = [
+            'är inte lika med',
+            'är större än eller lika med', 'är mindre än eller lika med',
+            'är större än', 'är mindre än', 'är inte', 'är lika med',
             'större än eller lika med', 'mindre än eller lika med',
-            'större än', 'mindre än', 'är inte', 'inte i',
+            'större än', 'mindre än',
             'lika med', 'innehåller',
         ]
         for op_str in multi_word_ops:
@@ -918,11 +922,12 @@ class Resolver:
                     # Resolve both sides to check their types
                     left_node = self._resolve_precedence(left_parts, token=node)
                     right_node = self._resolve_precedence(right_parts, token=node)
-                    # Only create ComparisonNode if both are booleans or comparisons
-                    left_is_bool_like = isinstance(left_node, (BoolNode, ComparisonNode))
-                    right_is_bool_like = isinstance(right_node, (BoolNode, ComparisonNode))
+                    # Only create AndNode or OrNode if both are booleans or comparisons
+                    left_is_bool_like = isinstance(left_node, (BoolNode, ComparisonNodes))
+                    right_is_bool_like = isinstance(right_node, (BoolNode, ComparisonNodes))
                     if left_is_bool_like and right_is_bool_like:
-                        return ComparisonNode(left_node, part, right_node, token=node)
+                        node_class = AndNode if part == 'och' else OrNode
+                        return node_class(left_node, right_node, token=node)
                     # Otherwise skip - let arithmetic operators handle it
                     return None
 
@@ -943,18 +948,6 @@ class Resolver:
 
     def _create_binary_expr(self, left_parts, op, right_parts, node):
         """Create a binary expression node from parts, handling precedence."""
-        # Define operator precedence (lower number = lower precedence)
-        precedence = {
-            'eller': 1, 'och': 1,
-            'är': 2, 'är inte': 2, 'i': 2, 'inte i': 2,
-            'större än': 2, 'mindre än': 2, 'större än eller lika med': 2, 'mindre än eller lika med': 2,
-            'plus': 3, 'minus': 3,
-            'gånger': 4, 'delat med': 4,
-        }
-
-        # Get precedence of current operator (default to 0 for unknown)
-        current_prec = precedence.get(op, 0)
-
         # Get the base variable name from left_parts (first token that looks like an identifier)
         # This is for the "is defined" check for comparison operators
         left_base = left_parts[0] if left_parts else ''
@@ -984,11 +977,26 @@ class Resolver:
             right_expr = self._resolve_precedence(right_parts, token=node)
             return arithmetic_ops[op](left_expr, right_expr, token=node)
 
-        # Boolean operators 'och' and 'eller' use ComparisonNode
+        comparison_ops = {
+            'lika med': EqualNode,
+            'är lika med': EqualNode,
+            'större än': GreaterThanNode,
+            'är större än': GreaterThanNode,
+            'mindre än': LessThanNode,
+            'är mindre än': LessThanNode,
+            'större än eller lika med': GreaterThanOrEqualNode,
+            'är större än eller lika med': GreaterThanOrEqualNode,
+            'mindre än eller lika med': LessThanOrEqualNode,
+            'är mindre än eller lika med': LessThanOrEqualNode,
+            'och': AndNode,
+            'eller': OrNode,
+        }
+
+        # Boolean operators 'och' and 'eller'
         if op in ['och', 'eller']:
             left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
             right_expr = self._resolve_precedence(right_parts, token=node)
-            return ComparisonNode(left_expr, op, right_expr, token=node)
+            return comparison_ops[op](left_expr, right_expr, token=node)
 
         # Infix functions create InfixCallNode (check if operator is defined as infix)
         # Check if this operator is an infix function definition
@@ -1034,7 +1042,10 @@ class Resolver:
                 
                 left_expr = ElementAccessNode(index=idx_node, target=target_node, token=node)
                 right_expr = self._resolve_precedence(right_parts, token=node)
-                result = ComparisonNode(left_expr, op, right_expr, token=node)
+                if op in ('är inte', 'är inte lika med'):
+                    result = NotNode(EqualNode(left_expr, right_expr, token=node), token=node)
+                else:
+                    result = comparison_ops[op](left_expr, right_expr, token=node)
                 self._original_parts[id(result)] = {
                     'left': original_left_parts,
                     'op': original_op,
@@ -1052,7 +1063,10 @@ class Resolver:
         
         right_expr = self._resolve_precedence(right_parts, token=node)
 
-        result = ComparisonNode(left_expr, op, right_expr, token=node)
+        if op in ('är inte', 'är inte lika med'):
+            result = NotNode(EqualNode(left_expr, right_expr, token=node), token=node)
+        else:
+            result = comparison_ops[op](left_expr, right_expr, token=node)
         # Store original parts in resolver for stringification
         self._original_parts[id(result)] = {
             'left': original_left_parts,
@@ -1062,8 +1076,25 @@ class Resolver:
         return result
 
     def _create_comparison_with_parts(self, left_expr, op, right_expr, token, original_parts):
-        """Create a ComparisonNode with original parts stored for stringification."""
-        result = ComparisonNode(left_expr, op, right_expr, token=token)
+        """Create a comparison node with original parts stored for stringification."""
+        if op in ('är inte', 'är inte lika med'):
+            result = NotNode(EqualNode(left_expr, right_expr, token=token), token=token)
+        else:
+            comparison_ops = {
+                'lika med': EqualNode,
+                'är lika med': EqualNode,
+                'större än': GreaterThanNode,
+                'är större än': GreaterThanNode,
+                'mindre än': LessThanNode,
+                'är mindre än': LessThanNode,
+                'större än eller lika med': GreaterThanOrEqualNode,
+                'är större än eller lika med': GreaterThanOrEqualNode,
+                'mindre än eller lika med': LessThanOrEqualNode,
+                'är mindre än eller lika med': LessThanOrEqualNode,
+                'och': AndNode,
+                'eller': OrNode,
+            }
+            result = comparison_ops[op](left_expr, right_expr, token=token)
         self._original_parts[id(result)] = original_parts
         return result
 
@@ -1097,7 +1128,7 @@ class Resolver:
                 if left_parts and right_parts:
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
-                    return ComparisonNode(left, op, right, token=token)
+                    return OrNode(left, right, token=token)
 
         # Level 2: 'och'
         for op in ['och']:
@@ -1108,7 +1139,7 @@ class Resolver:
                 if left_parts and right_parts:
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
-                    return ComparisonNode(left, op, right, token=token)
+                    return AndNode(left, right, token=token)
 
         # Check for property access: "X från Y" -> PropertyAccessNode
         # This should be checked before comparison operators
@@ -1119,9 +1150,10 @@ class Resolver:
             if left_parts and right_parts:
                 # Check if left_parts contains a comparison operator - if so, skip
                 comparison_ops = [
+                    'är inte lika med',
                     'större än eller lika med', 'mindre än eller lika med',
-                    'större än', 'mindre än', 'är inte', 'inte i',
-                    'lika med', 'är', 'i'
+                    'större än', 'mindre än', 'är inte',
+                    'lika med', 'är'
                 ]
                 has_comparison = False
                 for op in comparison_ops:
@@ -1132,6 +1164,24 @@ class Resolver:
                             break
                     if has_comparison:
                         break
+                
+                # Check if right_parts contains a comparison operator - if so, skip
+                # We exclude single-word 'är' because it can be a connector at the end of right_parts
+                if not has_comparison:
+                    right_comparison_ops = [
+                        'är inte lika med',
+                        'större än eller lika med', 'mindre än eller lika med',
+                        'större än', 'mindre än', 'är inte',
+                        'lika med', 'och', 'eller'
+                    ]
+                    for op in right_comparison_ops:
+                        op_tokens = op.split()
+                        for i in range(len(right_parts) - len(op_tokens) + 1):
+                            if right_parts[i:i+len(op_tokens)] == op_tokens:
+                                has_comparison = True
+                                break
+                        if has_comparison:
+                            break
                 
                 if not has_comparison:
                     prop_name = ' '.join(left_parts)
@@ -1150,10 +1200,14 @@ class Resolver:
                     
                     return PropertyAccessNode(property_name=prop_name, target=target_node, token=token)
 
-        # Level 3: comparisons (är, i, etc.)
+        # Level 3: comparisons (är, etc.)
         multi_word_ops = [
+            'är inte lika med',
+            'är större än eller lika med', 'är mindre än eller lika med',
+            'är större än', 'är mindre än', 'är inte', 'är lika med',
             'större än eller lika med', 'mindre än eller lika med',
-            'större än', 'mindre än', 'är inte', 'inte i',
+            'större än', 'mindre än',
+            'lika med',
         ]
         for op_str in multi_word_ops:
             op_tokens = op_str.split()
@@ -1164,7 +1218,22 @@ class Resolver:
                 if left_parts and right_parts:
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
-                    return ComparisonNode(left, op_str, right, token=token)
+                    if op_str in ('är inte', 'är inte lika med'):
+                        return NotNode(EqualNode(left, right, token=token), token=token)
+                    comparison_ops = {
+                        'lika med': EqualNode,
+                        'är lika med': EqualNode,
+                        'större än': GreaterThanNode,
+                        'är större än': GreaterThanNode,
+                        'mindre än': LessThanNode,
+                        'är mindre än': LessThanNode,
+                        'större än eller lika med': GreaterThanOrEqualNode,
+                        'är större än eller lika med': GreaterThanOrEqualNode,
+                        'mindre än eller lika med': LessThanOrEqualNode,
+                        'är mindre än eller lika med': LessThanOrEqualNode,
+                    }
+                    node_class = comparison_ops[op_str]
+                    return node_class(left, right, token=token)
 
         # Check for infix functions dynamically
         # Get all registered infix function names
@@ -1180,17 +1249,7 @@ class Resolver:
                     right = self._resolve_precedence(right_parts, token=token)
                     return InfixCallNode(left, op_str, right, token=token)
 
-        # Filter out 'är' when it appears with other words (part of a longer phrase)
-        # Only treat 'är' as comparison if it's standalone or followed by simple words
-        for op in ['i']:
-            if op in parts:
-                idx = parts.index(op)
-                left_parts = parts[:idx]
-                right_parts = parts[idx + 1:]
-                if left_parts and right_parts:
-                    left = self._resolve_precedence(left_parts, token=token)
-                    right = self._resolve_precedence(right_parts, token=token)
-                    return ComparisonNode(left, op, right, token=token)
+
 
         # Level 4: addition/subtraction (left-associative - find last operator)
         # Find the last occurrence of + or - for left-to-right grouping
@@ -1419,17 +1478,7 @@ class Resolver:
         return False
 
 
-    def visit_ComparisonNode(self, node):
-        op = node.op.strip() if hasattr(node, 'op') and node.op else ''
-
-        # Membership check (i) should NOT be stringified
-        if op == 'i':
-            left = self.visit(node.left)
-            right = self.visit(node.right)
-            if left is node.left and right is node.right:
-                return node
-            return ComparisonNode(left=left, right=right, op=op, token=node)
-
+    def _visit_comparison(self, node, op_str, node_class):
         left = node.left
         right = node.right
 
@@ -1453,7 +1502,7 @@ class Resolver:
             # Fallback: stringify using node values
             left_str = self._get_string_value(left)
             right_str = self._get_string_value(self.visit(right))
-            return StringNode(f"{left_str} {op} {right_str}".strip(), token=node)
+            return StringNode(f"{left_str} {op_str} {right_str}".strip(), token=node)
 
         # If right is unresolved and looks like an identifier (not a number), treat it as
         # a string literal and keep the comparison for evaluation
@@ -1462,10 +1511,9 @@ class Resolver:
         if right_unresolved:
             # Right is an unresolved identifier - treat as string literal
             # Keep comparison, but transform right to a StringNode
-            return ComparisonNode(
+            return node_class(
                 left=self.visit(left),
                 right=StringNode(right.name, token=right),
-                op=op,
                 token=node
             )
 
@@ -1476,7 +1524,36 @@ class Resolver:
         if new_left is left and new_right is right:
             return node
 
-        return ComparisonNode(left=new_left, right=new_right, op=op, token=node)
+        return node_class(left=new_left, right=new_right, token=node)
+
+    def visit_EqualNode(self, node):
+        return self._visit_comparison(node, 'lika med', EqualNode)
+
+    def visit_GreaterThanNode(self, node):
+        return self._visit_comparison(node, 'större än', GreaterThanNode)
+
+    def visit_LessThanNode(self, node):
+        return self._visit_comparison(node, 'mindre än', LessThanNode)
+
+    def visit_GreaterThanOrEqualNode(self, node):
+        return self._visit_comparison(node, 'större än eller lika med', GreaterThanOrEqualNode)
+
+    def visit_LessThanOrEqualNode(self, node):
+        return self._visit_comparison(node, 'mindre än eller lika med', LessThanOrEqualNode)
+
+    def visit_AndNode(self, node):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        if left is node.left and right is node.right:
+            return node
+        return AndNode(left=left, right=right, token=node)
+
+    def visit_OrNode(self, node):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        if left is node.left and right is node.right:
+            return node
+        return OrNode(left=left, right=right, token=node)
 
     # === Function nodes ===
 
