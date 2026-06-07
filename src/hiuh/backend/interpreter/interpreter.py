@@ -73,6 +73,10 @@ class Interpreter:
             for node in nodes:
                 res = self.visit(node)
             return res
+        except Exception as e:
+            if hasattr(e, '_hiuh_call_stack'):
+                self.print_hiuh_traceback(e._hiuh_call_stack, exception=e)
+            raise e
         finally:
             self.call_stack.pop()
 
@@ -90,26 +94,45 @@ class Interpreter:
         try:
             return visitor(node)
         except Exception as e:
-            # Catch errors anywhere in the execution tree and print the trace once
+            # Capture the call stack at the moment of the crash if not already captured
             if not isinstance(e, (ReturnException, BreakException, ContinueException)):
-                if not hasattr(e, '_hiuh_traceback_printed'):
-                    self.print_hiuh_traceback()
-                    e._hiuh_traceback_printed = True
+                if not hasattr(e, '_hiuh_call_stack'):
+                    e._hiuh_call_stack = list(self.call_stack)
             raise e
 
-    def print_hiuh_traceback(self):
+    def print_hiuh_traceback(self, call_stack=None, exception=None):
         """Prints a human-readable trace of the execution path when a crash happens."""
         import sys
+        if exception is not None:
+            print(f"\nFel: {exception}", file=sys.stderr)
+
         print("\n--- Spårningshistorik (Call Stack) ---", file=sys.stderr)
 
-        # Traverse frames from the first caller down to the execution crash line
-        for frame in self.call_stack:
+        stack = call_stack if call_stack is not None else self.call_stack
+        # Traverse frames in reverse (from deepest crash location up to the root caller)
+        for frame in reversed(stack):
             # Skip the dummy internal Python runner seed layer if it doesn't represent real code
             if frame["function"] == "<huvudprogram>" and frame["file"] == "run.py":
                 continue
 
-            col_info = f", Kolumn {frame['column']}" if "column" in frame else ""
-            print(f"  Fil: '{frame['file']}', Rad {frame['line']}{col_info}, i funktion: {frame['function']}", file=sys.stderr)
+            # Try to resolve module/file name to its path
+            file_name = frame["file"]
+            module_path = None
+            if self.modules and file_name in self.modules:
+                module_path = self.modules[file_name].path
+            elif self.module_registry and file_name in self.module_registry.modules:
+                module_path = self.module_registry.modules[file_name].path
+            
+            if module_path and module_path != "<in_memory>":
+                # Use absolute file:// URI format to ensure IDE hyperlink compatibility
+                try:
+                    from pathlib import Path
+                    file_name = Path(module_path).absolute().as_uri()
+                except (ValueError, ImportError):
+                    file_name = module_path
+
+            col_info = f":{frame['column']}" if "column" in frame else ""
+            print(f"{file_name}:{frame['line']}{col_info}: i funktion: {frame['function']}", file=sys.stderr)
 
         print("--------------------------------------\n", file=sys.stderr)
 
