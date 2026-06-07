@@ -55,16 +55,26 @@ class Interpreter:
 
         self.open_files = []
         self.call_stack = []
+        self.file_stack = ["main"]
         self.script_dir_stack = [os.getcwd()]
         self.env = self.globals
         self.modules = {}  # Populated by resolver
         self._module_exports = {}  # Cache for module export values
 
     def execute(self, nodes):
-        res = None
-        for node in nodes:
-            res = self.visit(node)
-        return res
+        self.call_stack.append({
+            "function": "<huvudprogram>",
+            "file": self.file_stack[-1],
+            "line": 1,
+            "column": 1
+        })
+        try:
+            res = None
+            for node in nodes:
+                res = self.visit(node)
+            return res
+        finally:
+            self.call_stack.pop()
 
     def visit(self, node):
         if node is None: return None
@@ -119,6 +129,13 @@ class Interpreter:
                 prev_env = self.env
                 module_env = Environment(prev_env)
                 self.env = module_env
+                self.file_stack.append(module.name)
+                self.call_stack.append({
+                    "function": f"<modul:{module.name}>",
+                    "file": module.name,
+                    "line": 1,
+                    "column": 1
+                })
                 try:
                     for stmt in module.ast:
                         if isinstance(stmt, ImportNode) and not getattr(stmt, 'resolved', False):
@@ -137,6 +154,8 @@ class Interpreter:
                     # Non-wildcard, no alias: only execute for side effects, no symbol export
                 finally:
                     self.env = prev_env
+                    self.call_stack.pop()
+                    self.file_stack.pop()
         # If not in registry, the import resolved to nothing (module has no exports)
         return None
 
@@ -510,6 +529,7 @@ class Interpreter:
                 return e.value
             finally:
                 self.env = prev_env
+        hiuh_func._file = self.file_stack[-1]
         return hiuh_func
 
     def visit_NamedArgNode(self, node):
@@ -527,7 +547,6 @@ class Interpreter:
                 args.append(self.visit(arg))
 
         func_name = str(node.name)
-        current_file = os.path.basename(self.script_dir_stack[-1])
 
         # Resolve function reference...
         func = None
@@ -564,9 +583,10 @@ class Interpreter:
 
         if func and (callable(func) or hasattr(func, 'body')):
             # --- PUSH FUNCTION FRAME ---
+            func_file = getattr(func, '_file', self.file_stack[-1])
             self.call_stack.append({
                 "function": func_name,
-                "file": current_file,
+                "file": func_file,
                 "line": getattr(node, 'line', self.call_stack[-1]["line"] if self.call_stack else 1),
                 "column": getattr(node, 'column', self.call_stack[-1]["column"] if self.call_stack else 1)
             })
