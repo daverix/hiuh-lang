@@ -95,6 +95,11 @@ class EqualNode(ASTNode):
         super().__init__(token.line if token else None, token.column if token else None)
         self.left, self.right = left, right
 
+class NotEqualNode(ASTNode):
+    def __init__(self, left, right, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.left, self.right = left, right
+
 class GreaterThanNode(ASTNode):
     def __init__(self, left, right, token=None):
         super().__init__(token.line if token else None, token.column if token else None)
@@ -125,7 +130,7 @@ class OrNode(ASTNode):
         super().__init__(token.line if token else None, token.column if token else None)
         self.left, self.right = left, right
 
-ComparisonNodes = (EqualNode, GreaterThanNode, LessThanNode, GreaterThanOrEqualNode, LessThanOrEqualNode, AndNode, OrNode)
+ComparisonNodes = (EqualNode, NotEqualNode, GreaterThanNode, LessThanNode, GreaterThanOrEqualNode, LessThanOrEqualNode, AndNode, OrNode)
 
 class UnaryOpNode(ASTNode):
     def __init__(self, op: str, operand, token=None):

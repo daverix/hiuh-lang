@@ -239,6 +239,36 @@ om x är mindre än 5
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_not_equal_comparison(self):
+        """Verify that 'är inte' and 'är inte lika med' compile directly to NotEqualNode."""
+        source = """
+sätt x till 10
+om x är inte 5
+    skriv japp
+om x är inte lika med 3
+    skriv japp2
+"""
+        expected = [
+            AssignNode(name="x", value=IntNode("10")),
+            IfNode(
+                conditions=[
+                    IfCondition(
+                        test=NotEqualNode(left=VarAccessNode("x"), right=IntNode("5")),
+                        block=[PrintNode(StringNode("japp"))]
+                    )
+                ]
+            ),
+            IfNode(
+                conditions=[
+                    IfCondition(
+                        test=NotEqualNode(left=VarAccessNode("x"), right=IntNode("3")),
+                        block=[PrintNode(StringNode("japp2"))]
+                    )
+                ]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
     def test_infix_function_body_property_access(self):
         """Verify that infix function bodies with property access are parsed correctly."""
         source = "sätt innehåller till infix grej med lista, värde\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"

@@ -978,6 +978,8 @@ class Resolver:
             return arithmetic_ops[op](left_expr, right_expr, token=node)
 
         comparison_ops = {
+            'är inte': NotEqualNode,
+            'är inte lika med': NotEqualNode,
             'lika med': EqualNode,
             'är lika med': EqualNode,
             'större än': GreaterThanNode,
@@ -1042,10 +1044,7 @@ class Resolver:
                 
                 left_expr = ElementAccessNode(index=idx_node, target=target_node, token=node)
                 right_expr = self._resolve_precedence(right_parts, token=node)
-                if op in ('är inte', 'är inte lika med'):
-                    result = NotNode(EqualNode(left_expr, right_expr, token=node), token=node)
-                else:
-                    result = comparison_ops[op](left_expr, right_expr, token=node)
+                result = comparison_ops[op](left_expr, right_expr, token=node)
                 self._original_parts[id(result)] = {
                     'left': original_left_parts,
                     'op': original_op,
@@ -1063,10 +1062,7 @@ class Resolver:
         
         right_expr = self._resolve_precedence(right_parts, token=node)
 
-        if op in ('är inte', 'är inte lika med'):
-            result = NotNode(EqualNode(left_expr, right_expr, token=node), token=node)
-        else:
-            result = comparison_ops[op](left_expr, right_expr, token=node)
+        result = comparison_ops[op](left_expr, right_expr, token=node)
         # Store original parts in resolver for stringification
         self._original_parts[id(result)] = {
             'left': original_left_parts,
@@ -1077,24 +1073,23 @@ class Resolver:
 
     def _create_comparison_with_parts(self, left_expr, op, right_expr, token, original_parts):
         """Create a comparison node with original parts stored for stringification."""
-        if op in ('är inte', 'är inte lika med'):
-            result = NotNode(EqualNode(left_expr, right_expr, token=token), token=token)
-        else:
-            comparison_ops = {
-                'lika med': EqualNode,
-                'är lika med': EqualNode,
-                'större än': GreaterThanNode,
-                'är större än': GreaterThanNode,
-                'mindre än': LessThanNode,
-                'är mindre än': LessThanNode,
-                'större än eller lika med': GreaterThanOrEqualNode,
-                'är större än eller lika med': GreaterThanOrEqualNode,
-                'mindre än eller lika med': LessThanOrEqualNode,
-                'är mindre än eller lika med': LessThanOrEqualNode,
-                'och': AndNode,
-                'eller': OrNode,
-            }
-            result = comparison_ops[op](left_expr, right_expr, token=token)
+        comparison_ops = {
+            'är inte': NotEqualNode,
+            'är inte lika med': NotEqualNode,
+            'lika med': EqualNode,
+            'är lika med': EqualNode,
+            'större än': GreaterThanNode,
+            'är större än': GreaterThanNode,
+            'mindre än': LessThanNode,
+            'är mindre än': LessThanNode,
+            'större än eller lika med': GreaterThanOrEqualNode,
+            'är större än eller lika med': GreaterThanOrEqualNode,
+            'mindre än eller lika med': LessThanOrEqualNode,
+            'är mindre än eller lika med': LessThanOrEqualNode,
+            'och': AndNode,
+            'eller': OrNode,
+        }
+        result = comparison_ops[op](left_expr, right_expr, token=token)
         self._original_parts[id(result)] = original_parts
         return result
 
@@ -1218,9 +1213,9 @@ class Resolver:
                 if left_parts and right_parts:
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
-                    if op_str in ('är inte', 'är inte lika med'):
-                        return NotNode(EqualNode(left, right, token=token), token=token)
                     comparison_ops = {
+                        'är inte': NotEqualNode,
+                        'är inte lika med': NotEqualNode,
                         'lika med': EqualNode,
                         'är lika med': EqualNode,
                         'större än': GreaterThanNode,
@@ -1232,6 +1227,7 @@ class Resolver:
                         'mindre än eller lika med': LessThanOrEqualNode,
                         'är mindre än eller lika med': LessThanOrEqualNode,
                     }
+                    return comparison_ops[op_str](left, right, token=token)
                     node_class = comparison_ops[op_str]
                     return node_class(left, right, token=token)
 

@@ -649,6 +649,9 @@ class Interpreter:
     def visit_EqualNode(self, node):
         return self.visit(node.left) == self.visit(node.right)
 
+    def visit_NotEqualNode(self, node):
+        return self.visit(node.left) != self.visit(node.right)
+
     def visit_GreaterThanNode(self, node):
         return self.visit(node.left) > self.visit(node.right)
 
