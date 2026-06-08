@@ -1,0 +1,285 @@
+använd tokeniserare
+använd listor
+
+. parser - parses tokens into AST node strings
+. Rule: function param names differ from calling variable names to avoid
+. the resolver's named-arg detection treating positional args as named.
+
+. === Token type aliases ===
+sätt T_PRINT till 1
+sätt T_SET till 2
+sätt T_TO till 3
+sätt T_WITH till 5
+sätt T_GIVE till 6
+sätt T_IMPORT till 16
+sätt T_CLOSE till 18
+sätt T_BREAK till 48
+sätt T_CONTINUE till 49
+sätt T_LITERAL_INT till 31
+sätt T_STRING till 35
+sätt T_LITERAL_TRUE till 33
+sätt T_LITERAL_FALSE till 34
+sätt T_IDENTIFIER till 36
+sätt T_NEWLINE till 37
+sätt T_INDENT till 38
+sätt T_DEDENT till 39
+
+. =============================================================
+. parsa(tokens) -> list of node strings
+. =============================================================
+
+sätt parsa till grej med tokens som lista
+    sätt resultat till lista
+    sätt pos till 0
+    sätt antal till längd från tokens
+
+    medan pos är mindre än antal
+        sätt t till element pos från tokens
+        sätt tt till tokentyp från t
+
+        om tt är lika med T_NEWLINE
+            öka pos med 1
+            fortsätt
+        om tt är lika med T_INDENT
+            öka pos med 1
+            fortsätt
+        om tt är lika med T_DEDENT
+            öka pos med 1
+            fortsätt
+
+        om tt är lika med T_SET
+            sätt r till parsa_satt med tokens, pos
+            lägg till element 0 från r i resultat
+            sätt pos till element 1 från r
+            fortsätt
+
+        om tt är lika med T_PRINT
+            sätt r till parsa_skriv med tokens, pos
+            lägg till element 0 från r i resultat
+            sätt pos till element 1 från r
+            fortsätt
+
+        om tt är lika med T_GIVE
+            sätt r till parsa_ge med tokens, pos
+            lägg till element 0 från r i resultat
+            sätt pos till element 1 från r
+            fortsätt
+
+        om tt är lika med T_BREAK
+            öka pos med 1
+            lägg till "BreakNode()" i resultat
+            fortsätt
+
+        om tt är lika med T_CONTINUE
+            öka pos med 1
+            lägg till "ContinueNode()" i resultat
+            fortsätt
+
+        om tt är lika med T_IMPORT
+            sätt r till parsa_importera med tokens, pos
+            lägg till element 0 från r i resultat
+            sätt pos till element 1 från r
+            fortsätt
+
+        om tt är lika med T_CLOSE
+            sätt r till parsa_stäng med tokens, pos
+            lägg till element 0 från r i resultat
+            sätt pos till element 1 från r
+            fortsätt
+
+        om tt är lika med T_IDENTIFIER
+            sätt tv till värde från t
+            om tv är lika med "öka"
+                sätt r till parsa_modifiera med tokens, pos, "AddAssignNode"
+                lägg till element 0 från r i resultat
+                sätt pos till element 1 från r
+                fortsätt
+            om tv är lika med "minska"
+                sätt r till parsa_modifiera med tokens, pos, "SubAssignNode"
+                lägg till element 0 från r i resultat
+                sätt pos till element 1 från r
+                fortsätt
+            om tv är lika med "gångra"
+                sätt r till parsa_modifiera med tokens, pos, "MultiplyAssignNode"
+                lägg till element 0 från r i resultat
+                sätt pos till element 1 från r
+                fortsätt
+            om tv är lika med "dela"
+                sätt r till parsa_modifiera med tokens, pos, "DivideAssignNode"
+                lägg till element 0 från r i resultat
+                sätt pos till element 1 från r
+                fortsätt
+
+        öka pos med 1
+
+    ge resultat
+
+. =============================================================
+. sätt <name> till <value>
+. =============================================================
+
+sätt parsa_satt till grej med tokens som lista, start_pos som heltal
+    sätt pos till start_pos plus 1
+
+    sätt r1 till samla_namn_med_pos med tokens, pos, T_TO
+    sätt pos till element 1 från r1
+    sätt namn till element 0 från r1
+
+    om pos är mindre än längd från tokens
+        sätt t till element pos från tokens
+        om tokentyp från t är lika med T_TO
+            öka pos med 1
+
+    sätt r2 till samla_uttryck med tokens, pos
+    sätt pos till element 1 från r2
+    sätt värde_str till element 0 från r2
+
+    ge lista med "AssignNode(" plus namn plus ", " plus värde_str plus ")", pos
+
+. =============================================================
+. skriv <value>
+. =============================================================
+
+sätt parsa_skriv till grej med tokens som lista, start_pos som heltal
+    sätt pos till start_pos plus 1
+
+    sätt r till samla_uttryck med tokens, pos
+    sätt pos till element 1 från r
+    sätt värde_str till element 0 från r
+
+    ge lista med "PrintNode(" plus värde_str plus ")", pos
+
+. =============================================================
+. ge <value>
+. =============================================================
+
+sätt parsa_ge till grej med tokens som lista, start_pos som heltal
+    sätt pos till start_pos plus 1
+
+    sätt r till samla_uttryck med tokens, pos
+    sätt pos till element 1 från r
+    sätt värde_str till element 0 från r
+
+    ge lista med "ReturnNode(" plus värde_str plus ")", pos
+
+. =============================================================
+. använd <module>
+. =============================================================
+
+sätt parsa_importera till grej med tokens som lista, start_pos som heltal
+    sätt pos till start_pos plus 1
+
+    sätt r till samla_tills_nyrad med tokens, pos
+    sätt pos till element 1 från r
+
+    ge lista med "ImportNode(" plus element 0 från r plus ")", pos
+
+. =============================================================
+. stäng <var>
+. =============================================================
+
+sätt parsa_stäng till grej med tokens som lista, start_pos som heltal
+    sätt pos till start_pos plus 1
+
+    sätt r till samla_tills_nyrad med tokens, pos
+    sätt pos till element 1 från r
+
+    ge lista med "CloseFileNode(" plus element 0 från r plus ")", pos
+
+. =============================================================
+. öka/minska/gångra/dela <target> med <value>
+. =============================================================
+
+sätt parsa_modifiera till grej med tokens som lista, start_pos som heltal, nodtyp_str som sträng
+    sätt pos till start_pos plus 1
+
+    sätt r1 till samla_namn_med_pos med tokens, pos, T_WITH
+    sätt pos till element 1 från r1
+    sätt mål till element 0 från r1
+
+    om pos är mindre än längd från tokens
+        sätt t till element pos från tokens
+        om tokentyp från t är lika med T_WITH
+            öka pos med 1
+
+    sätt r2 till samla_uttryck med tokens, pos
+    sätt pos till element 1 från r2
+    sätt värde_str till element 0 från r2
+
+    ge lista med nodtyp_str plus "(" plus mål plus ", " plus värde_str plus ")", pos
+
+. =============================================================
+. Helper: collect name tokens until stop_type or NEWLINE
+. =============================================================
+
+sätt samla_namn_med_pos till grej med tokens som lista, start_pos som heltal, stopp_typ som heltal
+    sätt delar till lista
+    sätt pos till start_pos
+    medan pos är mindre än längd från tokens
+        sätt t till element pos från tokens
+        sätt tt till tokentyp från t
+        om tt är lika med stopp_typ
+            bryt
+        om tt är lika med T_NEWLINE
+            bryt
+        lägg till värde från t i delar
+        öka pos med 1
+
+    sätt resultat till ""
+    för varje d i delar
+        om längd från resultat är större än 0
+            sätt resultat till resultat plus " "
+        sätt resultat till resultat plus d
+    ge lista med resultat, pos
+
+. =============================================================
+. Helper: collect tokens until NEWLINE, join as Expr(...)
+. =============================================================
+
+sätt samla_uttryck till grej med tokens som lista, start_pos som heltal
+    sätt delar till lista
+    sätt pos till start_pos
+    medan pos är mindre än längd från tokens
+        sätt t till element pos från tokens
+        sätt tt till tokentyp från t
+        om tt är lika med T_NEWLINE
+            bryt
+        om tt är lika med T_INDENT
+            bryt
+        om tt är lika med T_DEDENT
+            bryt
+        lägg till värde från t i delar
+        öka pos med 1
+
+    sätt resultat till ""
+    för varje d i delar
+        om längd från resultat är större än 0
+            sätt resultat till resultat plus " "
+        sätt resultat till resultat plus d
+    ge lista med "Expr(" plus resultat plus ")", pos
+
+. =============================================================
+. Helper: collect until NEWLINE, return joined string
+. =============================================================
+
+sätt samla_tills_nyrad till grej med tokens som lista, start_pos som heltal
+    sätt delar till lista
+    sätt pos till start_pos
+    medan pos är mindre än längd från tokens
+        sätt t till element pos från tokens
+        sätt tt till tokentyp från t
+        om tt är lika med T_NEWLINE
+            bryt
+        om tt är lika med T_INDENT
+            bryt
+        om tt är lika med T_DEDENT
+            bryt
+        lägg till värde från t i delar
+        öka pos med 1
+
+    sätt resultat till ""
+    för varje d i delar
+        om längd från resultat är större än 0
+            sätt resultat till resultat plus " "
+        sätt resultat till resultat plus d
+    ge lista med resultat, pos
