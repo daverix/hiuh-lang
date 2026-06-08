@@ -8,7 +8,8 @@ from hiuh.frontend.tokenizer import (
     TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
     TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COPY, TOKEN_OF,
-    TOKEN_FOR, TOKEN_EACH, TOKEN_FUNC
+    TOKEN_FOR, TOKEN_EACH, TOKEN_FUNC,
+    TOKEN_BREAK, TOKEN_CONTINUE
 )
 
 class Parser:
@@ -77,6 +78,12 @@ class Parser:
         if t.type == TOKEN_IF: return self.parse_if()
         if t.type == TOKEN_WHILE: return self.parse_while()
         if t.type == TOKEN_FOR: return self.parse_for_each()
+        if t.type == TOKEN_BREAK:
+            token = self.consume()
+            return BreakNode(token=token)
+        if t.type == TOKEN_CONTINUE:
+            token = self.consume()
+            return ContinueNode(token=token)
         if t.type == TOKEN_TYPE: return self.parse_type_def()
         if t.type == TOKEN_TRY: return self.parse_try_catch()
         if t.type == TOKEN_THROW:

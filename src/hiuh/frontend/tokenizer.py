@@ -47,6 +47,8 @@ TOKEN_OF = 44
 TOKEN_INFIX = 45
 TOKEN_FOR = 46  # för
 TOKEN_EACH = 47  # varje
+TOKEN_BREAK = 48  # bryt
+TOKEN_CONTINUE = 49  # fortsätt
 
 class Token:
     def __init__(self, type, value, line, column):
@@ -101,7 +103,9 @@ class Tokenizer:
             "av": TOKEN_OF,
             "infix": TOKEN_INFIX,
             "för": TOKEN_FOR,
-            "varje": TOKEN_EACH
+            "varje": TOKEN_EACH,
+            "bryt": TOKEN_BREAK,
+            "fortsätt": TOKEN_CONTINUE
         }
 
     def is_digit(self, char):

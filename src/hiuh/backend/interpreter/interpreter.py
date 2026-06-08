@@ -510,6 +510,8 @@ class Interpreter:
                 for s in node.body: self.visit(s)
             except BreakException:
                 break
+            except ContinueException:
+                continue
 
     def visit_ForEachNode(self, node):
         """Execute a for-each loop: 'för varje X i <iterable> ...'"""
@@ -529,6 +531,14 @@ class Interpreter:
                     self.visit(s)
             except BreakException:
                 break
+            except ContinueException:
+                continue
+
+    def visit_BreakNode(self, node):
+        raise BreakException()
+
+    def visit_ContinueNode(self, node):
+        raise ContinueException()
 
     # --- Functions ---
     def visit_FunctionDefNode(self, node):

@@ -1912,6 +1912,12 @@ class Resolver:
 
         return ForEachNode(variable=node.variable, iterable=iterable, body=body, token=node)
 
+    def visit_BreakNode(self, node):
+        return node
+
+    def visit_ContinueNode(self, node):
+        return node
+
     def visit_TryCatchNode(self, node):
         if node.error_var:
             self._add_local_var(self._current_module, node.error_var)

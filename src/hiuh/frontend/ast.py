@@ -197,6 +197,14 @@ class WhileNode(ASTNode):
         self.condition = condition
         self.body = body
 
+class BreakNode(ASTNode):
+    def __init__(self, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+
+class ContinueNode(ASTNode):
+    def __init__(self, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+
 # --- Functions and Types ---
 class FunctionDefNode(ASTNode):
     def __init__(self, params, body, line=None, column=None, is_infix=False, type_params=None):

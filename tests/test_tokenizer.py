@@ -11,7 +11,8 @@ from hiuh.frontend.tokenizer import (
     TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
     TOKEN_DEDENT, TOKEN_COMMA, TOKEN_INFIX,
-    TOKEN_FOR, TOKEN_EACH, TOKEN_OF
+    TOKEN_FOR, TOKEN_EACH, TOKEN_OF,
+    TOKEN_BREAK, TOKEN_CONTINUE
 )
 
 class TestHiuhReadmeSpecification(unittest.TestCase):
@@ -381,6 +382,70 @@ stäng fil"""
             Token(TOKEN_IDENTIFIER, "mitt", 3, 11),
             Token(TOKEN_IDENTIFIER, "index", 3, 16),
             Token(TOKEN_DEDENT, "", 4, 1)
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
+
+    def test_bryt_token(self):
+        """Verify 'bryt' tokenizes as TOKEN_BREAK."""
+        source = "medan sant\n    bryt"
+        expected = [
+            Token(TOKEN_WHILE, "medan", 1, 1),
+            Token(TOKEN_LITERAL_TRUE, "sant", 1, 7),
+            Token(TOKEN_NEWLINE, "\n", 1, 11),
+            Token(TOKEN_INDENT, "    ", 2, 1),
+            Token(TOKEN_BREAK, "bryt", 2, 5),
+            Token(TOKEN_DEDENT, "", 3, 1),
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
+
+    def test_fortsätt_token(self):
+        """Verify 'fortsätt' tokenizes as TOKEN_CONTINUE."""
+        source = "medan sant\n    fortsätt"
+        expected = [
+            Token(TOKEN_WHILE, "medan", 1, 1),
+            Token(TOKEN_LITERAL_TRUE, "sant", 1, 7),
+            Token(TOKEN_NEWLINE, "\n", 1, 11),
+            Token(TOKEN_INDENT, "    ", 2, 1),
+            Token(TOKEN_CONTINUE, "fortsätt", 2, 5),
+            Token(TOKEN_DEDENT, "", 3, 1),
+        ]
+        self.assertEqual(self.tokenizer.tokenize(source), expected)
+
+    def test_bryt_fortsätt_in_while_body(self):
+        """Verify bryt and fortsätt work together in a while loop body."""
+        source = (
+            "medan x är mindre än 10\n"
+            "    om x är lika med 5\n"
+            "        bryt\n"
+            "    annars\n"
+            "        fortsätt"
+        )
+        expected = [
+            Token(TOKEN_WHILE, "medan", 1, 1),
+            Token(TOKEN_IDENTIFIER, "x", 1, 7),
+            Token(TOKEN_OP_IS, "är", 1, 9),
+            Token(TOKEN_LESS, "mindre", 1, 12),
+            Token(TOKEN_THAN, "än", 1, 19),
+            Token(TOKEN_LITERAL_INT, "10", 1, 22),
+            Token(TOKEN_NEWLINE, "\n", 1, 24),
+            Token(TOKEN_INDENT, "    ", 2, 1),
+            Token(TOKEN_IF, "om", 2, 5),
+            Token(TOKEN_IDENTIFIER, "x", 2, 8),
+            Token(TOKEN_OP_IS, "är", 2, 10),
+            Token(TOKEN_EQUAL, "lika", 2, 13),
+            Token(TOKEN_WITH, "med", 2, 18),
+            Token(TOKEN_LITERAL_INT, "5", 2, 22),
+            Token(TOKEN_NEWLINE, "\n", 2, 23),
+            Token(TOKEN_INDENT, "        ", 3, 1),
+            Token(TOKEN_BREAK, "bryt", 3, 9),
+            Token(TOKEN_NEWLINE, "\n", 3, 13),
+            Token(TOKEN_DEDENT, "", 4, 1),
+            Token(TOKEN_ELSE, "annars", 4, 5),
+            Token(TOKEN_NEWLINE, "\n", 4, 11),
+            Token(TOKEN_INDENT, "        ", 5, 1),
+            Token(TOKEN_CONTINUE, "fortsätt", 5, 9),
+            Token(TOKEN_DEDENT, "", 6, 1),
+            Token(TOKEN_DEDENT, "", 6, 1),
         ]
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 

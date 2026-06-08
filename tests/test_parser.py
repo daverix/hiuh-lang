@@ -402,6 +402,56 @@ class TestHiuhParserRaw(unittest.TestCase):
             ]
             self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_bryt_statement(self):
+        """Verify 'bryt' parses to BreakNode."""
+        source = "medan sant\n    bryt"
+        expected = [
+            WhileNode(
+                condition=ExpressionPartsNode(parts=["sant"]),
+                body=[BreakNode()]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_fortsätt_statement(self):
+        """Verify 'fortsätt' parses to ContinueNode."""
+        source = "medan sant\n    fortsätt"
+        expected = [
+            WhileNode(
+                condition=ExpressionPartsNode(parts=["sant"]),
+                body=[ContinueNode()]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_bryt_in_nested_if(self):
+        """Verify bryt inside if inside while parses correctly."""
+        source = (
+            "medan x är mindre än 10\n"
+            "    om x är lika med 5\n"
+            "        bryt"
+        )
+        expected = [
+            WhileNode(
+                condition=ExpressionPartsNode(
+                    parts=["x", "är", "mindre", "än", "10"]
+                ),
+                body=[
+                    IfNode(
+                        conditions=[
+                            IfCondition(
+                                test=ExpressionPartsNode(
+                                    parts=["x", "är", "lika", "med", "5"]
+                                ),
+                                block=[BreakNode()]
+                            )
+                        ]
+                    )
+                ]
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 
 if __name__ == '__main__':
     unittest.main()
