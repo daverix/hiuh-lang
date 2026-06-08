@@ -867,31 +867,44 @@ class Resolver:
                     if known_param_names is not None:
                         break
 
-        # Parse arguments (handle commas and named args)
+        # Parse arguments: detect named vs positional.
+        # Named args are exactly 2 tokens (name value). If every arg follows
+        # this pattern and starts with a known name, treat all as named.
+        # Otherwise everything is positional.
         args = []
+        i = 0
+
+        all_named = known_param_names is not None and len(known_param_names) > 0
+        if all_named:
+            temp_i = 0
+            while temp_i < len(args_parts):
+                if args_parts[temp_i] == ',':
+                    temp_i += 1
+                    continue
+                start = temp_i
+                while temp_i < len(args_parts) and args_parts[temp_i] != ',':
+                    temp_i += 1
+                if temp_i - start != 2 or args_parts[start] not in known_param_names:
+                    all_named = False
+                    break
+            if not all_named:
+                known_param_names = None
+
         i = 0
         while i < len(args_parts):
             part = args_parts[i]
 
-            # Skip commas
             if part == ',':
                 i += 1
                 continue
 
-            # Check for named argument: identifier followed by value (not comma)
-            # Only if we know the param/field names AND the part matches one
-            # AND the next token is NOT a property-access keyword like 'från'
-            if (known_param_names and part in known_param_names
-                and i + 1 < len(args_parts) and args_parts[i + 1] != ','
-                and args_parts[i + 1] != 'från'):
-                next_part = args_parts[i + 1]
-                # Named argument: identifier followed by a value
-                value = self._part_to_node(next_part, node)
+            if all_named and part in known_param_names and i + 1 < len(args_parts):
+                value = self._part_to_node(args_parts[i + 1], node)
                 args.append(NamedArgNode(part, value, token=node))
                 i += 2
                 continue
 
-            # Otherwise, treat as a positional argument - collect all parts until next comma
+            # Positional argument
             arg_parts = [part]
             i += 1
             while i < len(args_parts) and args_parts[i] != ',':

@@ -975,6 +975,25 @@ sätt y till resten av ord delat med 2
             self.run_source(source_err2)
         self.assertIn("Kan inte utföra modulo", str(context.exception))
 
+    def test_arg_name_matches_param_name_still_positional(self):
+        """When a variable name matches a function param name, args stay positional.
+
+        Regression test: the resolver's named-arg detection must not treat
+        'my_func med tokens, 1' as a named arg just because 'tokens' matches
+        the parameter name 'tokens'.
+        """
+        source = """
+sätt my_func till grej med tokens som lista, pos som heltal
+    ge element pos från tokens
+
+sätt tokens till lista med a, b, c
+sätt resultat till my_func med tokens, 1
+skriv resultat
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "b")
+
 
 if __name__ == '__main__':
     unittest.main()
