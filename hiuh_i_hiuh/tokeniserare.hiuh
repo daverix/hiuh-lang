@@ -58,6 +58,11 @@ sätt TOKEN COMMA till 40
 sätt TOKEN EOF till 42
 sätt TOKEN COPY till 43
 sätt TOKEN OF till 44
+sätt TOKEN INFIX till 45
+sätt TOKEN FOR till 46
+sätt TOKEN EACH till 47
+sätt TOKEN BREAK till 48
+sätt TOKEN CONTINUE till 49
 
 . =============================================================
 . KEYWORD DICTIONARY SETUP
@@ -95,16 +100,22 @@ putta från nyckelord med "stäng", TOKEN CLOSE
 putta från nyckelord med "som", TOKEN AS
 putta från nyckelord med "kopia", TOKEN COPY
 putta från nyckelord med "av", TOKEN OF
+putta från nyckelord med "infix", TOKEN INFIX
+putta från nyckelord med "för", TOKEN FOR
+putta från nyckelord med "varje", TOKEN EACH
+putta från nyckelord med "bryt", TOKEN BREAK
+putta från nyckelord med "fortsätt", TOKEN CONTINUE
 
 . =============================================================
 . HELPER FUNCTIONS
 . =============================================================
 
 . A factory function to create a new token object
-sätt skapa_token till grej med tokentyp som heltal, värde som sträng, rad som heltal, kolumn som heltal
-    ge token med tokentyp, värde, rad, kolumn
+sätt skapa_token till grej med ttyp som heltal, val som sträng, row som heltal, col som heltal
+    ge token med ttyp, val, row, col
 
 sätt CITAT till 34 som tecken
+sätt KOMMA_TECKEN till 44 som tecken
 
 . =============================================================
 . MAIN TOKENIZER LOGIC
@@ -129,16 +140,18 @@ sätt tokenisera till grej med rader som lista
         sätt innehåll till delsträng med rad, indent, längd från rad minus indent
         
         om längd från innehåll är lika med 0
-            ge
+            fortsätt
 
         om element 0 från innehåll är lika med "."
-            ge
+            fortsätt
         
         . Compare with previous indentation level
         sätt sista_idx till längd från indent_stack minus 1
         sätt sista_indent till element sista_idx från indent_stack
         om indent är större än sista_indent
-            sätt ny_token till skapa_token med TOKEN INDENT, " ", rad_nummer, 1
+            sätt indent_text till " "
+            gångra indent_text med indent
+            sätt ny_token till skapa_token med TOKEN INDENT, indent_text, rad_nummer, 1
             lägg till ny_token i tokens
             lägg till indent i indent_stack
         annars om indent är mindre än sista_indent
@@ -160,7 +173,7 @@ sätt tokenisera till grej med rader som lista
             
             . Comma
             om tecken är lika med ","
-                sätt ny_token till skapa_token med TOKEN COMMA, ",", rad_nummer, indent plus pos plus 1
+                sätt ny_token till skapa_token med TOKEN COMMA, KOMMA_TECKEN, rad_nummer, indent plus pos plus 1
                 lägg till ny_token i tokens
                 öka pos med 1
                 fortsätt
@@ -198,8 +211,16 @@ sätt tokenisera till grej med rader som lista
                 medan pos är mindre än längd från innehåll
                     sätt siffra_tecken till element pos från innehåll
                     om siffra_tecken är lika med ","
-                        sätt har_komma till sant
-                        öka pos med 1
+                        . Only consume comma if followed by a digit (decimal separator)
+                        om pos plus 1 är mindre än längd från innehåll
+                            sätt nästa_siffra till element pos plus 1 från innehåll
+                            om är_siffra med nästa_siffra
+                                sätt har_komma till sant
+                                öka pos med 1
+                            annars
+                                bryt
+                        annars
+                            bryt
                     annars om är_siffra med siffra_tecken
                         öka pos med 1
                     annars
@@ -223,10 +244,11 @@ sätt tokenisera till grej med rader som lista
             
             sätt värde till delsträng med innehåll, start, pos minus start
 
-            . Check for boolean literals first
-            om värde är lika med "SANT"
+            . Check for boolean literals first (case-insensitive via versaler)
+            sätt versal_värde till versaler med värde
+            om versal_värde är lika med "SANT"
                 lägg till skapa_token med TOKEN LITERAL TRUE, värde, rad_nummer, indent plus start plus 1 i tokens
-            annars om värde är lika med "FALSKT"
+            annars om versal_värde är lika med "FALSKT"
                 lägg till skapa_token med TOKEN LITERAL FALSE, värde, rad_nummer, indent plus start plus 1 i tokens
             annars
                 . Check if it's a keyword

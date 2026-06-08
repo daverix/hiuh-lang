@@ -12,3 +12,16 @@ sätt delsträng till grej med text som sträng, start som heltal, längd som he
 sätt är_siffra till grej med tecken som sträng
     sätt kod till tecken som tal
     ge kod är större än eller lika med 48 och kod är mindre än eller lika med 57
+
+. Convert a string to uppercase (a-z → A-Z)
+sätt versaler till grej med text som sträng
+    sätt resultat till ""
+    sätt pos till 0
+    medan pos är mindre än längd från text
+        sätt tecken till element pos från text
+        sätt kod till tecken som tal
+        om kod är större än eller lika med 97 och kod är mindre än eller lika med 122
+            sätt tecken till kod minus 32 som tecken
+        sätt resultat till resultat plus tecken
+        öka pos med 1
+    ge resultat
