@@ -15,9 +15,12 @@ from hiuh.frontend.tokenizer import (
     TOKEN_BREAK, TOKEN_CONTINUE
 )
 
-class TestHiuhReadmeSpecification(unittest.TestCase):
-    def setUp(self):
-        self.tokenizer = Tokenizer()
+
+class _BaseTokenizerTests:
+    """Mixin with tokenizer tests. Subclasses mix with unittest.TestCase."""
+
+    def tokenize(self, source):
+        raise "needs to be overridden"
 
     def test_stdout_section(self):
         source = "skriv hejsan\nskriv ny rad\nskriv hoppsan"
@@ -32,7 +35,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_PRINT, "skriv", 3, 1),
             Token(TOKEN_IDENTIFIER, "hoppsan", 3, 7)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_variables_boolean_section(self):
         source = "sätt x till SANT\nsätt b till a större än 2"
@@ -50,7 +53,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_THAN, "än", 2, 22),
             Token(TOKEN_LITERAL_INT, "2", 2, 25)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_variables_math_section(self):
         source = "sätt c till b gånger b plus a"
@@ -64,7 +67,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_OP_ADD, "plus", 1, 24),
             Token(TOKEN_IDENTIFIER, "a", 1, 29)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_variables_float_section(self):
         source = "sätt y till 3,4"
@@ -74,7 +77,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_TO, "till", 1, 8),
             Token(TOKEN_LITERAL_FLOAT, "3,4", 1, 13)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_variables_list_section(self):
         source = "sätt min lista till lista med 1, 2, 3"
@@ -91,7 +94,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_COMMA, ",", 1, 35),
             Token(TOKEN_LITERAL_INT, "3", 1, 37)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_function_section(self):
         source = "sätt f till grej med a som heltal\n    ge a"
@@ -110,7 +113,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_IDENTIFIER, "a", 2, 8),
             Token(TOKEN_DEDENT, "", 3, 1)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_typ_section(self):
         source = "typ person med namn som sträng, ålder som heltal\nsätt ålder i person till 38"
@@ -133,7 +136,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_TO, "till", 2, 21),
             Token(TOKEN_LITERAL_INT, "38", 2, 26)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_if_statement_section(self):
         source = "om x är större än 2\n    skriv större\nannars\n    skriv mindre"
@@ -157,7 +160,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_LESS, "mindre", 4, 11),
             Token(TOKEN_DEDENT, "", 5, 1)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_stdin_section(self):
         source = "sätt t till nästa rad från inmatning"
@@ -170,7 +173,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_FROM, "från", 1, 23),
             Token(TOKEN_IDENTIFIER, "inmatning", 1, 28)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_error_handling_section(self):
         source = "försök\n    kasta fel\nfånga fel"
@@ -185,7 +188,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_CATCH, "fånga", 3, 1),
             Token(TOKEN_IDENTIFIER, "fel", 3, 7)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_comments_section(self):
         source = ". skriver\nskriv hej"
@@ -193,7 +196,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_PRINT, "skriv", 2, 1),
             Token(TOKEN_IDENTIFIER, "hej", 2, 7)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_multiple_indents_nested(self):
         source = "om SANT\n    skriv nivå 1\n    om SANT\n        skriv nivå 2"
@@ -216,12 +219,12 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_DEDENT, "", 5, 1),
             Token(TOKEN_DEDENT, "", 5, 1)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_tokenize_from_keyword(self):
         """Verify that 'från' is tokenized correctly."""
         source = "skriv märke från min bil"
-        tokens = self.tokenizer.tokenize(source)
+        tokens = self.tokenize(source)
         # Expected sequence: skriv, märke, från, min, bil
         # Check that 'från' is the 3rd token (index 2)
         self.assertEqual(tokens[2].type, TOKEN_FROM)
@@ -233,7 +236,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             "sätt element 0 i minlista till röd\n"
             "skriv element 0 från minlista"
         )
-        tokens = self.tokenizer.tokenize(source)
+        tokens = self.tokenize(source)
 
         # Expected types for the first line:
         # sätt (SET), element (ID), 0 (INT), i (ID), minlista (ID), till (TO), röd (ID)
@@ -325,7 +328,7 @@ stäng fil"""
             Token(TOKEN_IDENTIFIER, "fil", 13, 7)
         ]
 
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_infix_grej_tokens(self):
         """Verify tokenization of 'infix grej' syntax for infix function definition."""
@@ -347,7 +350,7 @@ stäng fil"""
             Token(TOKEN_AS, "som", 1, 70),
             Token(TOKEN_IDENTIFIER, "heltal", 1, 74)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_for_each_with_multipart_variable(self):
         """Verify tokenization of 'för varje' loop with multi-word variable name.
@@ -383,7 +386,7 @@ stäng fil"""
             Token(TOKEN_IDENTIFIER, "index", 3, 16),
             Token(TOKEN_DEDENT, "", 4, 1)
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_bryt_token(self):
         """Verify 'bryt' tokenizes as TOKEN_BREAK."""
@@ -396,7 +399,7 @@ stäng fil"""
             Token(TOKEN_BREAK, "bryt", 2, 5),
             Token(TOKEN_DEDENT, "", 3, 1),
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_fortsätt_token(self):
         """Verify 'fortsätt' tokenizes as TOKEN_CONTINUE."""
@@ -409,7 +412,7 @@ stäng fil"""
             Token(TOKEN_CONTINUE, "fortsätt", 2, 5),
             Token(TOKEN_DEDENT, "", 3, 1),
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
     def test_bryt_fortsätt_in_while_body(self):
         """Verify bryt and fortsätt work together in a while loop body."""
@@ -447,9 +450,9 @@ stäng fil"""
             Token(TOKEN_DEDENT, "", 6, 1),
             Token(TOKEN_DEDENT, "", 6, 1),
         ]
-        self.assertEqual(self.tokenizer.tokenize(source), expected)
+        self.assertEqual(self.tokenize(source), expected)
 
-    def test_ordlista_huruh_full_parse(self):
+    def test_ordlista_hiuh_full_parse(self):
         """Verify every token in ordlista.hiuh is parsed with correct type.
 
         This ensures it can be consumed by the compiler without issues.
@@ -534,10 +537,88 @@ stäng fil"""
             Token(TOKEN_NEWLINE, '\n', 11, 101),
         ]
 
-        actual = self.tokenizer.tokenize(source)
+        actual = self.tokenize(source)
         # Verify first N tokens (up through line 11).
         # Total token count varies with file changes; not asserted.
         self.assertEqual(actual[:len(expected)], expected)
+
+
+class TestHiuhTokenizer(_BaseTokenizerTests, unittest.TestCase):
+    """Tests using the hiuh tokeniserare (via interpreter).
+
+    Overrides tokenize() to run source through tokeniserare.hiuh.
+    All tests from _BaseTokenizerTests are inherited and run automatically.
+    """
+
+    def setUp(self):
+        self.tokenizer = Tokenizer()
+        import os
+        self._repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def tokenize(self, source):
+        """Tokenize via the hiuh tokeniserare interpreter."""
+        tuples = self._tokenize_via_hiuh(source)
+        result = []
+        for t, v, r, c in tuples:
+            # Hiuh stores NEWLINE value as literal \n, Python uses actual newline
+            if t == TOKEN_NEWLINE:
+                v = '\n'
+            result.append(Token(t, v, r, c))
+        return result
+
+    def _tokenize_via_hiuh(self, source):
+        """Run source through the hiuh tokeniserare, return list of (type, value)."""
+        import os
+        from hiuh.backend.interpreter.interpreter import Interpreter, ReturnException
+        from hiuh.frontend.module_registry import ModuleRegistry
+        from hiuh.frontend.resolver import Resolver
+        from hiuh.frontend.parser import Parser
+
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        lines = source.split('\n')
+        line_strings = ', '.join(f'"{line}"' for line in lines)
+
+        hiuh_source = (
+            'använd tokeniserare\n'
+            '\n'
+            f'sätt rader till lista med {line_strings}\n'
+            '\n'
+            'ge tokenisera med rader\n'
+        )
+
+        module_registry = ModuleRegistry(os.path.join(repo_root, "build", "symbols"))
+        resolver = Resolver(module_registry, os.path.join(repo_root, "hiuh_i_hiuh"))
+
+        tokens_py = self.tokenizer.tokenize(hiuh_source)
+        parser = Parser(tokens_py)
+        ast = parser.parse()
+
+        resolver.discover_modules_from_ast("main", ast, repo_root)
+        resolver.discover_imports("main")
+        resolver.resolve_all()
+        ast = resolver.get_ast("main")
+
+        interpreter = Interpreter(module_registry)
+        interpreter.modules = resolver.modules
+
+        try:
+            interpreter.execute(ast)
+        except ReturnException as e:
+            result = e.value
+            if isinstance(result, list):
+                return [(t.get('tokentyp', -1), str(t.get('värde', '')),
+                         t.get('rad', 0), t.get('kolumn', 0)) for t in result]
+        return []
+
+class TestPythonTokenizer(_BaseTokenizerTests, unittest.TestCase):
+    """Tests using the Python Tokenizer (default behavior)."""
+
+    def setUp(self):
+        self.tokenizer = Tokenizer()
+
+    def tokenize(self, source):
+        """Override in subclasses to inject a different tokenizer backend."""
+        return self.tokenizer.tokenize(source)
 
 
 if __name__ == '__main__':
