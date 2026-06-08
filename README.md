@@ -144,15 +144,16 @@ Note! The variable `min funktion` is called with parameters 1, 2, 3. `grej` defi
 
 ### set typ variable
 
-`typ` works like structs in other languages.
+`typ` works like structs in other languages. Define fields on separate indented lines
+after the `typ` declaration, each with a type annotation using `som`.
 
 ```
-typ person med namn, ålder
+typ person
+    namn som sträng
+    ålder som heltal
 
 sätt p till person med David, 37
 
-skriv Namn
-skriv ny rad
 skriv namn från p
 skriv ny rad
 skriv ålder från p
@@ -163,6 +164,23 @@ outputs:
 David
 37
 ```
+
+Fields are defined one per line inside the `typ` block. Each field name is
+followed by `som` and its type. Supported types include `heltal`, `sträng`,
+`flyttal`, `boolesk`, `lista`, `grej`, and any user-defined `typ`.
+
+**Generic types** use `av` to specify type parameters:
+
+```
+typ par av nyckeltyp, värdetyp
+    nyckel som nyckeltyp
+    värde som värdetyp
+
+typ ordlista av nyckeltyp, värdetyp
+    värden som lista av par av nyckeltyp, värdetyp
+```
+
+Type parameters declared after `av` can be used as types for the fields.
 
 To access the variables in a `typ`, use the `från` keyword followed by the variable name.
 
@@ -198,7 +216,9 @@ All three constructs (`typ`, `grej`, and `kopia av`) support **named arguments**
 **Named arguments for `typ` constructors:**
 
 ```
-typ person med namn, ålder
+typ person
+    namn som sträng
+    ålder som heltal
 
 . Using named arguments (any order)
 sätt p till person med ålder 37, namn David

@@ -116,25 +116,25 @@ class _BaseTokenizerTests:
         self.assertEqual(self.tokenize(source), expected)
 
     def test_typ_section(self):
-        source = "typ person med namn som sträng, ålder som heltal\nsätt ålder i person till 38"
+        source = "typ person\n    namn som sträng\n    ålder som heltal\nsätt ålder till 38"
         expected = [
             Token(TOKEN_TYPE, "typ", 1, 1),
             Token(TOKEN_IDENTIFIER, "person", 1, 5),
-            Token(TOKEN_WITH, "med", 1, 12),
-            Token(TOKEN_IDENTIFIER, "namn", 1, 16),
-            Token(TOKEN_AS, "som", 1, 21),
-            Token(TOKEN_IDENTIFIER, "sträng", 1, 25),
-            Token(TOKEN_COMMA, ",", 1, 31),
-            Token(TOKEN_IDENTIFIER, "ålder", 1, 33),
-            Token(TOKEN_AS, "som", 1, 39),
-            Token(TOKEN_IDENTIFIER, "heltal", 1, 43),
-            Token(TOKEN_NEWLINE, "\n", 1, 49),
-            Token(TOKEN_SET, "sätt", 2, 1),
-            Token(TOKEN_IDENTIFIER, "ålder", 2, 6),
-            Token(TOKEN_IDENTIFIER, "i", 2, 12),
-            Token(TOKEN_IDENTIFIER, "person", 2, 14),
-            Token(TOKEN_TO, "till", 2, 21),
-            Token(TOKEN_LITERAL_INT, "38", 2, 26)
+            Token(TOKEN_NEWLINE, "\n", 1, 11),
+            Token(TOKEN_INDENT, "    ", 2, 1),
+            Token(TOKEN_IDENTIFIER, "namn", 2, 5),
+            Token(TOKEN_AS, "som", 2, 10),
+            Token(TOKEN_IDENTIFIER, "sträng", 2, 14),
+            Token(TOKEN_NEWLINE, "\n", 2, 20),
+            Token(TOKEN_IDENTIFIER, "ålder", 3, 5),
+            Token(TOKEN_AS, "som", 3, 11),
+            Token(TOKEN_IDENTIFIER, "heltal", 3, 15),
+            Token(TOKEN_NEWLINE, "\n", 3, 21),
+            Token(TOKEN_DEDENT, "", 4, 1),
+            Token(TOKEN_SET, "sätt", 4, 1),
+            Token(TOKEN_IDENTIFIER, "ålder", 4, 6),
+            Token(TOKEN_TO, "till", 4, 12),
+            Token(TOKEN_LITERAL_INT, "38", 4, 17)
         ]
         self.assertEqual(self.tokenize(source), expected)
 

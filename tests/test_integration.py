@@ -566,7 +566,9 @@ för varje par i fruktpar
     def test_named_args_typ_constructor(self):
         """Test that typ constructors support named arguments in any order."""
         source = """
-typ person med namn som sträng, ålder som heltal
+typ person
+    namn som sträng
+    ålder som heltal
 sätt p till person med ålder 37, namn David
 skriv namn från p
 skriv ny rad
@@ -579,7 +581,9 @@ skriv ålder från p
     def test_named_args_typ_positional_still_works(self):
         """Test that typ constructors still support positional arguments."""
         source = """
-typ person med namn som sträng, ålder som heltal
+typ person
+    namn som sträng
+    ålder som heltal
 sätt p till person med Eva, 25
 skriv namn från p
 skriv ny rad
@@ -592,7 +596,9 @@ skriv ålder från p
     def test_named_args_kopia_av(self):
         """Test that kopia av supports named arguments."""
         source = """
-typ person med namn som sträng, ålder som heltal
+typ person
+    namn som sträng
+    ålder som heltal
 sätt p till person med David, 37
 sätt äldre till kopia av p med ålder 38
 skriv ålder från p
@@ -632,7 +638,9 @@ skriv resultat
     def test_named_args_multiple_updates_kopia_av(self):
         """Test that kopia av supports multiple named argument updates."""
         source = """
-typ person med namn som sträng, ålder som heltal
+typ person
+    namn som sträng
+    ålder som heltal
 sätt p till person med David, 37
 sätt uppdaterad till kopia av p med ålder 40, namn Eva
 skriv namn från uppdaterad
@@ -646,7 +654,9 @@ skriv ålder från uppdaterad
     def test_named_args_multiword_property_value(self):
         """Test named args with multi-word property names."""
         source = """
-typ bil med märke som sträng, modell som sträng
+typ bil
+    märke som sträng
+    modell som sträng
 sätt min bil till bil med modell V60, märke Volvo
 skriv märke från min bil
 skriv ny rad
