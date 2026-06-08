@@ -315,6 +315,12 @@ class CastNode(ASTNode):
         self.value = value
         self.target_type = target_type
 
+class TypeOfNode(ASTNode):
+    """typ av expression: returns the type name of a value as a string."""
+    def __init__(self, value, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.value = value
+
 class AppendNode(ASTNode):
     def __init__(self, value, target_list, token=None):
         super().__init__(token.line if token else None, token.column if token else None)

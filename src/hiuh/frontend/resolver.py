@@ -542,6 +542,13 @@ class Resolver:
                 target_type = ' '.join(target_parts)
                 return CastNode(value=value_node, target_type=target_type, token=node)
 
+        # Check for type query: "typ av X" -> TypeOfNode
+        if len(parts) >= 3 and parts[0] == 'typ' and parts[1] == 'av':
+            inner_parts = parts[2:]
+            inner_node = ExpressionPartsNode(inner_parts, token=node)
+            inner_result = self.visit(inner_node)
+            return TypeOfNode(inner_result, token=node)
+
         # Check for property access: "X från Y" -> VarAccessNode with target
         result = self._try_property_access(parts, node)
         if result:

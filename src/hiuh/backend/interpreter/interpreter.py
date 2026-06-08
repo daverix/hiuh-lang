@@ -864,9 +864,31 @@ class Interpreter:
             for name, value in kwargs.items():
                 if name in field_names:
                     result[name] = value
+            result['_typ'] = node.name  # tag with type name for typ av
             return result
         make_constructor._fields = all_fields
         self.env.define(node.name, make_constructor)
+
+    def visit_TypeOfNode(self, node):
+        """typ av X — returns the type name of X as a string."""
+        val = self.visit(node.value)
+        if isinstance(val, dict) and '_typ' in val:
+            return val['_typ']
+        if isinstance(val, bool):
+            return "boolesk"
+        if isinstance(val, str) and val in ("SANT", "FALSKT"):
+            return "boolesk"
+        if isinstance(val, int):
+            return "heltal"
+        if isinstance(val, float):
+            return "flyttal"
+        if isinstance(val, str):
+            return "sträng"
+        if isinstance(val, list):
+            return "lista"
+        if callable(val):
+            return "grej"
+        return "okänd"
 
     def visit_CopyWithPropNode(self, node):
         """Handle 'sätt X till kopia av Y med P V, P V, P V' pattern.
