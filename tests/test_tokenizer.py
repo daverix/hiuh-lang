@@ -12,7 +12,7 @@ from hiuh.frontend.tokenizer import (
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
     TOKEN_DEDENT, TOKEN_COMMA, TOKEN_INFIX,
     TOKEN_FOR, TOKEN_EACH, TOKEN_OF,
-    TOKEN_BREAK, TOKEN_CONTINUE
+    TOKEN_BREAK, TOKEN_CONTINUE, TOKEN_INHERITS
 )
 
 
@@ -449,6 +449,23 @@ stäng fil"""
             Token(TOKEN_CONTINUE, "fortsätt", 5, 9),
             Token(TOKEN_DEDENT, "", 6, 1),
             Token(TOKEN_DEDENT, "", 6, 1),
+        ]
+        self.assertEqual(self.tokenize(source), expected)
+
+    def test_ärver_keyword(self):
+        """Verify 'ärver' tokenizes as TOKEN_INHERITS."""
+        source = "typ IntNod ärver BasNod\n    värde som heltal"
+        expected = [
+            Token(TOKEN_TYPE, "typ", 1, 1),
+            Token(TOKEN_IDENTIFIER, "IntNod", 1, 5),
+            Token(TOKEN_INHERITS, "ärver", 1, 12),
+            Token(TOKEN_IDENTIFIER, "BasNod", 1, 18),
+            Token(TOKEN_NEWLINE, "\n", 1, 24),
+            Token(TOKEN_INDENT, "    ", 2, 1),
+            Token(TOKEN_IDENTIFIER, "värde", 2, 5),
+            Token(TOKEN_AS, "som", 2, 11),
+            Token(TOKEN_IDENTIFIER, "heltal", 2, 15),
+            Token(TOKEN_DEDENT, "", 3, 1),
         ]
         self.assertEqual(self.tokenize(source), expected)
 

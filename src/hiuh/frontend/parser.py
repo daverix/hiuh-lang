@@ -9,7 +9,7 @@ from hiuh.frontend.tokenizer import (
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
     TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COPY, TOKEN_OF,
     TOKEN_FOR, TOKEN_EACH, TOKEN_FUNC,
-    TOKEN_BREAK, TOKEN_CONTINUE
+    TOKEN_BREAK, TOKEN_CONTINUE, TOKEN_INHERITS
 )
 
 class Parser:
@@ -665,6 +665,25 @@ class Parser:
                 else:
                     break
 
+        # Optional inheritance: 'ärver ParentType av T1, T2'
+        parent_type = None
+        parent_type_params = []
+        if self.peek() and self.peek().type == TOKEN_INHERITS:
+            self.consume()  # consume 'ärver'
+            # Parse parent type name (one or more identifiers)
+            parent_parts = []
+            while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
+                parent_parts.append(self.consume().value)
+            parent_type = ' '.join(parent_parts)
+            if not parent_type:
+                raise SyntaxError(f"Förväntade typnamn efter 'ärver'")
+            # Optional parent type params: 'av T1, T2, ...'
+            # Handles nested generics: 'av par av K, V'
+            if self.peek() and self.peek().type == TOKEN_OF:
+                self.consume()
+                while self.peek() and self.peek().type in (TOKEN_IDENTIFIER, TOKEN_OF, TOKEN_COMMA):
+                    parent_type_params.append(self.consume().value)
+
         fields = []
         # Single-line form: 'med field1 som T1, field2 som T2'
         if self.peek() and self.peek().type == TOKEN_WITH:
@@ -675,7 +694,8 @@ class Parser:
             self.consume()  # consume newline
             fields = self._parse_type_def_body(type_params)
 
-        return TypeDefNode(name, fields, token=type_def_token, type_params=type_params)
+        return TypeDefNode(name, fields, token=type_def_token, type_params=type_params,
+                          parent_type=parent_type, parent_type_params=parent_type_params)
 
     def _parse_type_def_body(self, type_params):
         """Parse a multi-line typ body where each line is a field declaration.

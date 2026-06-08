@@ -831,19 +831,28 @@ class Interpreter:
             raise err
 
     def visit_TypeDefNode(self, node):
-        # Store constructor: takes field values and returns a dict with field names as keys
+        # Build ordered field list: parent fields first, then own fields
+        all_fields = list(node.fields)  # start with own fields
+        if node.parent_type:
+            # Resolve parent type from environment (should already be defined)
+            parent_cons = self.env.get(node.parent_type)
+            if parent_cons and hasattr(parent_cons, '_fields'):
+                # Prepend parent fields before child fields
+                all_fields = parent_cons._fields + all_fields
+
+        # Store constructor
         def make_constructor(*args, **kwargs):
             result = {}
-            for i, field in enumerate(node.fields):
-                # field may be a string (legacy) or (name, type) tuple
+            for i, field in enumerate(all_fields):
                 field_name = field if isinstance(field, str) else field[0]
                 result[field_name] = args[i] if i < len(args) else None
             # Handle named arguments
-            field_names = [f if isinstance(f, str) else f[0] for f in node.fields]
+            field_names = [f if isinstance(f, str) else f[0] for f in all_fields]
             for name, value in kwargs.items():
                 if name in field_names:
                     result[name] = value
             return result
+        make_constructor._fields = all_fields  # attach for inheritance use
         self.env.define(node.name, make_constructor)
 
     def visit_CopyWithPropNode(self, node):

@@ -182,6 +182,38 @@ typ ordlista av nyckeltyp, värdetyp
 
 Type parameters declared after `av` can be used as types for the fields.
 
+### Inheritance
+
+Use `ärver` to inherit fields from a parent type. Parent fields come first
+in the constructor:
+
+```
+typ fordon
+    hastighet som heltal
+
+typ bil ärver fordon
+    märke som sträng
+
+sätt min bil till bil med 120, Volvo
+skriv hastighet från min bil
+skriv ny rad
+skriv märke från min bil
+```
+
+outputs:
+```
+120
+Volvo
+```
+
+`bil` inherits `hastighet` from `fordon`, so `bil med 120, Volvo` sets
+`hastighet` first, then `märke`. Inheritance also works with generics:
+
+```
+typ ordlista av K, V ärver lista av par av K, V
+    extra_fält som heltal
+```
+
 To access the variables in a `typ`, use the `från` keyword followed by the variable name.
 
 **Types are immutable** - use `kopia av` to create a modified copy:

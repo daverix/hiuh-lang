@@ -231,5 +231,68 @@ sätt x till ny tom ordlista av sträng, heltal
         self.assertNodesEqual(self.parse_and_resolve(source), expected)
 
 
+class TestInheritanceParser(unittest.TestCase):
+    """Test parser for ärver (inheritance) syntax."""
+
+    def setUp(self):
+        self.tokenizer = Tokenizer()
+
+    def parse_source(self, source):
+        tokens = self.tokenizer.tokenize(source)
+        parser = Parser(tokens)
+        return parser.parse()
+
+    def strip_locations(self, node):
+        if isinstance(node, list):
+            return [self.strip_locations(child) for child in node]
+        if not hasattr(node, '__dict__'):
+            return node
+        result = {}
+        for key, value in node.__dict__.items():
+            if key in ('line', 'column', 'token'):
+                continue
+            result[key] = self.strip_locations(value)
+        return result
+
+    def assertNodesEqual(self, actual, expected):
+        self.assertEqual(self.strip_locations(actual), self.strip_locations(expected))
+
+    def test_simple_inheritance(self):
+        source = "typ IntNod ärver BasNod\n    värde som heltal"
+        expected = [
+            TypeDefNode(
+                name="IntNod",
+                fields=[("värde", "heltal")],
+                parent_type="BasNod",
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_inheritance_with_type_params(self):
+        source = "typ ordlista av K, V ärver lista av par av K, V\n    extra som heltal"
+        expected = [
+            TypeDefNode(
+                name="ordlista",
+                fields=[("extra", "heltal")],
+                type_params=["K", "V"],
+                parent_type="lista",
+                parent_type_params=["par", "av", "K", ",", "V"],
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_inheritance_without_generics(self):
+        source = "typ personbil ärver fordon\n    märke som sträng"
+        expected = [
+            TypeDefNode(
+                name="personbil",
+                fields=[("märke", "sträng")],
+                parent_type="fordon",
+                parent_type_params=[],
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+
 if __name__ == '__main__':
     unittest.main()
