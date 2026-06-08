@@ -831,28 +831,41 @@ class Interpreter:
             raise err
 
     def visit_TypeDefNode(self, node):
-        # Build ordered field list: parent fields first, then own fields
-        all_fields = list(node.fields)  # start with own fields
-        if node.parent_type:
-            # Resolve parent type from environment (should already be defined)
-            parent_cons = self.env.get(node.parent_type)
-            if parent_cons and hasattr(parent_cons, '_fields'):
-                # Prepend parent fields before child fields
-                all_fields = parent_cons._fields + all_fields
+        # Build ordered field list: all parent fields first, then own fields
+        all_fields = list(node.fields)
+        seen_fields = set()
+        if node.parent_types:
+            for parent_name, _parent_params in reversed(node.parent_types):
+                parent_cons = self.env.get(parent_name)
+                if parent_cons and hasattr(parent_cons, '_fields'):
+                    for f in parent_cons._fields:
+                        fname = f if isinstance(f, str) else f[0]
+                        if fname in seen_fields:
+                            raise Exception(
+                                f"Fältet '{fname}' finns i flera ärvda typer för '{node.name}'"
+                            )
+                        seen_fields.add(fname)
+                        all_fields.insert(0, f)
 
-        # Store constructor
+        # Check own fields don't collide with inherited
+        for f in node.fields:
+            fname = f if isinstance(f, str) else f[0]
+            if fname in seen_fields:
+                raise Exception(
+                    f"Fältet '{fname}' i '{node.name}' krockar med ärvt fält"
+                )
+
         def make_constructor(*args, **kwargs):
             result = {}
             for i, field in enumerate(all_fields):
                 field_name = field if isinstance(field, str) else field[0]
                 result[field_name] = args[i] if i < len(args) else None
-            # Handle named arguments
             field_names = [f if isinstance(f, str) else f[0] for f in all_fields]
             for name, value in kwargs.items():
                 if name in field_names:
                     result[name] = value
             return result
-        make_constructor._fields = all_fields  # attach for inheritance use
+        make_constructor._fields = all_fields
         self.env.define(node.name, make_constructor)
 
     def visit_CopyWithPropNode(self, node):

@@ -254,7 +254,7 @@ class InfixCallNode(ASTNode):
 
 class TypeDefNode(ASTNode):
     def __init__(self, name, fields, token=None, type_params=None,
-                 parent_type=None, parent_type_params=None):
+                 parent_types=None):
         super().__init__(token.line if token else None, token.column if token else None)
         self.name = name
         # fields is a list of either:
@@ -262,12 +262,10 @@ class TypeDefNode(ASTNode):
         # - (name, type) tuples (new typed syntax)
         self.fields = fields
         # type_params is a list of type parameter names (e.g. ['T', 'U'] for generics)
-        # If None, the type is not generic.
         self.type_params = type_params or []
-        # parent_type: name of the parent type (None if no inheritance)
-        self.parent_type = parent_type
-        # parent_type_params: type params for the parent (e.g. ['K', 'V'])
-        self.parent_type_params = parent_type_params or []
+        # parent_types: list of (name, type_params) tuples for inherited types
+        # e.g. [("fordon", []), ("lista av par", ["K", "V"])]
+        self.parent_types = parent_types or []
 
     def get_field_types(self):
         """Return a dict mapping field name -> type name (only for typed fields)."""

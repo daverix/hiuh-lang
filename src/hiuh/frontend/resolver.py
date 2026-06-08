@@ -1940,7 +1940,43 @@ class Resolver:
     def visit_TypeDefNode(self, node):
         if self._registering:
             self.module_registry.modules[self._current_module].add_symbol(node.name, "type")
-        return node  # No transformation needed
+        else:
+            # Check for field name collisions in inherited types
+            if node.parent_types:
+                seen = set()
+                for parent_name, _ in node.parent_types:
+                    parent_fields = self._get_type_fields(parent_name)
+                    for fname in parent_fields:
+                        if fname in seen:
+                            raise Exception(
+                                f"Fältet '{fname}' finns i flera ärvda typer för '{node.name}'"
+                            )
+                        seen.add(fname)
+                # Check own fields don't collide with inherited
+                for f in node.fields:
+                    fname = f if isinstance(f, str) else f[0]
+                    if fname in seen:
+                        raise Exception(
+                            f"Fältet '{fname}' i '{node.name}' krockar med ärvt fält"
+                        )
+        return node
+
+    def _get_type_fields(self, type_name):
+        """Return field names for a type, including inherited fields."""
+        for mod_info in self.modules.values():
+            if mod_info.ast:
+                for n in mod_info.ast:
+                    if hasattr(n, 'name') and n.name == type_name and hasattr(n, 'fields'):
+                        fields = list(n.get_field_names())
+                        # Recursively collect parent fields
+                        if n.parent_types:
+                            for pname, _ in n.parent_types:
+                                pfields = self._get_type_fields(pname)
+                                for pf in pfields:
+                                    if pf not in fields:
+                                        fields.insert(0, pf)
+                        return fields
+        return []
 
     def visit_CopyWithPropNode(self, node):
         """Handle CopyWithPropNode - register the target variable name."""

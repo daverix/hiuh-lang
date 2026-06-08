@@ -263,7 +263,7 @@ class TestInheritanceParser(unittest.TestCase):
             TypeDefNode(
                 name="IntNod",
                 fields=[("värde", "heltal")],
-                parent_type="BasNod",
+                parent_types=[("BasNod", [])],
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
@@ -275,8 +275,7 @@ class TestInheritanceParser(unittest.TestCase):
                 name="ordlista",
                 fields=[("extra", "heltal")],
                 type_params=["K", "V"],
-                parent_type="lista",
-                parent_type_params=["par", "av", "K", ",", "V"],
+                parent_types=[("lista", ["par", "av", "K", ",", "V"])],
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
@@ -287,11 +286,61 @@ class TestInheritanceParser(unittest.TestCase):
             TypeDefNode(
                 name="personbil",
                 fields=[("märke", "sträng")],
-                parent_type="fordon",
-                parent_type_params=[],
+                parent_types=[("fordon", [])],
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
+
+    def test_multiple_inheritance(self):
+        source = "typ bil ärver fordon, ägodel\n    märke som sträng"
+        expected = [
+            TypeDefNode(
+                name="bil",
+                fields=[("märke", "sträng")],
+                parent_types=[("fordon", []), ("ägodel", [])],
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+
+class TestInheritanceResolver(unittest.TestCase):
+    """Test resolver validates field collisions in inheritance."""
+
+    def setUp(self):
+        self.tokenizer = Tokenizer()
+
+    def parse_and_resolve(self, source):
+        tokens = self.tokenizer.tokenize(source)
+        parser = Parser(tokens)
+        ast = parser.parse()
+        mr = ModuleRegistry("/tmp/test_inherit_resolve")
+        resolver = Resolver(mr)
+        resolver.discover_modules_from_ast("main", ast, ".")
+        resolver.resolve_all()
+        return resolver.get_ast("main")
+
+    def test_field_collision_between_parents(self):
+        source = """typ A
+    x som heltal
+
+typ B
+    x som sträng
+
+typ C ärver A, B
+    y som heltal"""
+        with self.assertRaises(Exception) as ctx:
+            self.parse_and_resolve(source)
+        self.assertIn("x", str(ctx.exception))
+
+    def test_field_collision_with_own_field(self):
+        source = """typ A
+    x som heltal
+
+typ B ärver A
+    x som sträng"""
+        with self.assertRaises(Exception) as ctx:
+            self.parse_and_resolve(source)
+        self.assertIn("x", str(ctx.exception))
 
 
 if __name__ == '__main__':

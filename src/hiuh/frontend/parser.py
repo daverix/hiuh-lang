@@ -665,24 +665,27 @@ class Parser:
                 else:
                     break
 
-        # Optional inheritance: 'ärver ParentType av T1, T2'
-        parent_type = None
-        parent_type_params = []
+        # Optional inheritance: 'ärver Parent1 av T1, Parent2, ...'
+        parent_types = []
         if self.peek() and self.peek().type == TOKEN_INHERITS:
             self.consume()  # consume 'ärver'
-            # Parse parent type name (one or more identifiers)
-            parent_parts = []
-            while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                parent_parts.append(self.consume().value)
-            parent_type = ' '.join(parent_parts)
-            if not parent_type:
-                raise SyntaxError(f"Förväntade typnamn efter 'ärver'")
-            # Optional parent type params: 'av T1, T2, ...'
-            # Handles nested generics: 'av par av K, V'
-            if self.peek() and self.peek().type == TOKEN_OF:
-                self.consume()
-                while self.peek() and self.peek().type in (TOKEN_IDENTIFIER, TOKEN_OF, TOKEN_COMMA):
-                    parent_type_params.append(self.consume().value)
+            while True:
+                parent_parts = []
+                while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
+                    parent_parts.append(self.consume().value)
+                parent_name = ' '.join(parent_parts)
+                if not parent_name:
+                    raise SyntaxError(f"Förväntade typnamn efter 'ärver'")
+                parent_params = []
+                if self.peek() and self.peek().type == TOKEN_OF:
+                    self.consume()
+                    while self.peek() and self.peek().type in (TOKEN_IDENTIFIER, TOKEN_OF, TOKEN_COMMA):
+                        parent_params.append(self.consume().value)
+                parent_types.append((parent_name, parent_params))
+                if self.peek() and self.peek().type == TOKEN_COMMA:
+                    self.consume()
+                else:
+                    break
 
         fields = []
         # Single-line form: 'med field1 som T1, field2 som T2'
@@ -695,7 +698,7 @@ class Parser:
             fields = self._parse_type_def_body(type_params)
 
         return TypeDefNode(name, fields, token=type_def_token, type_params=type_params,
-                          parent_type=parent_type, parent_type_params=parent_type_params)
+                          parent_types=parent_types)
 
     def _parse_type_def_body(self, type_params):
         """Parse a multi-line typ body where each line is a field declaration.
