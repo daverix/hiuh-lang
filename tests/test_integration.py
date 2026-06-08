@@ -667,20 +667,25 @@ sätt tokens till tokenisera med rader
 
 för varje t i tokens
     skriv rad från t plus ":" plus tokentyp från t plus ":" plus värde från t
-
+    skriv ny rad
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
-            output = fake_out.getvalue().strip()
-            
-            # Token types (from tokeniserare.hiuh):
-            # TOKEN SET = 2, TOKEN TO = 3, TOKEN PRINT = 1
-            # TOKEN IDENTIFIER = 36, TOKEN LITERAL INT = 31, TOKEN NEWLINE = 37
-            # Verify we have tokens from both lines
-            self.assertIn("1:skriv", output)  # PRINT token for "skriv"
-            self.assertIn("2:skriv", output)  # PRINT token on line 2
-            self.assertIn("2:x", output)     # IDENTIFIER "x" on line 2
-            self.assertIn("31:42", output)    # LITERAL INT for "42"
+            output = fake_out.getvalue()
+
+            # Each token on its own line: rad:tokentyp:värde
+            # TOKEN SET=2, TOKEN TO=3, TOKEN PRINT=1,
+            # TOKEN IDENTIFIER=36, TOKEN LITERAL INT=31, TOKEN NEWLINE=37
+            expected = (
+                "1:2:sätt\n"
+                "1:36:x\n"
+                "1:3:till\n"
+                "1:31:42\n"
+                "1:37:\\n\n"   # NEWLINE token value is literal \n, plus ny rad
+                "2:1:skriv\n"
+                "2:36:x\n"
+            )
+            self.assertEqual(output, expected)
 
     def test_tokeniserare_tokenisera_with_indentation(self):
         """Verify that tokenisera correctly handles indentation tokens."""
