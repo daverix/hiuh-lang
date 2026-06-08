@@ -63,6 +63,7 @@ sätt TOKEN FOR till 46
 sätt TOKEN EACH till 47
 sätt TOKEN BREAK till 48
 sätt TOKEN CONTINUE till 49
+sätt TOKEN INHERITS till 50
 
 . =============================================================
 . KEYWORD DICTIONARY SETUP
@@ -105,6 +106,7 @@ putta från nyckelord med "för", TOKEN FOR
 putta från nyckelord med "varje", TOKEN EACH
 putta från nyckelord med "bryt", TOKEN BREAK
 putta från nyckelord med "fortsätt", TOKEN CONTINUE
+putta från nyckelord med "ärver", TOKEN INHERITS
 
 . =============================================================
 . HELPER FUNCTIONS
