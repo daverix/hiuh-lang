@@ -1,4 +1,9 @@
-"""Parser tests - tests raw parser output without resolver transformation."""
+"""Parser tests - tests raw parser output without resolver transformation.
+
+TestPythonParser: uses Python Tokenizer+Parser
+TestHiuhParser: uses hiuh tokeniserare+parser via interpreter
+"""
+import os
 import unittest
 
 from hiuh.frontend.ast import *
@@ -6,452 +11,399 @@ from hiuh.frontend.parser import Parser
 from hiuh.frontend.tokenizer import Tokenizer
 
 
-class TestHiuhParserRaw(unittest.TestCase):
-    """Test parser only - verifies raw AST output before resolver transformation."""
-    
-    def setUp(self):
-        self.tokenizer = Tokenizer()
+def _ast_to_string(node, indent=0):
+    """Convert an AST node to a canonical string for cross-backend comparison."""
+    if isinstance(node, list):
+        items = ", ".join(_ast_to_string(n, indent) for n in node)
+        return "[" + items + "]"
 
-    def parse_source(self, source):
-        """Parse source and return raw AST (no resolver)."""
-        tokens = self.tokenizer.tokenize(source)
-        parser = Parser(tokens)
-        return parser.parse()
+    if isinstance(node, ExpressionPartsNode):
+        return "Expr(" + " ".join(node.parts) + ")"
 
-    def strip_locations(self, node):
+    classname = type(node).__name__
+
+    if isinstance(node, (IntNode, FloatNode)):
+        return f"{classname}({node.value})"
+    if isinstance(node, StringNode):
+        return f"{classname}({repr(node.value)})"
+    if isinstance(node, BoolNode):
+        return f"{classname}({node.value})"
+    if isinstance(node, VarAccessNode):
+        return f"{classname}({node.name})"
+    if isinstance(node, (BreakNode, ContinueNode)):
+        return f"{classname}()"
+
+    if isinstance(node, PrintNode):
+        return f"{classname}({_ast_to_string(node.value)})"
+    if isinstance(node, ReturnNode):
+        return f"{classname}({_ast_to_string(node.value)})"
+    if isinstance(node, AssignNode):
+        return f"{classname}({node.name}, {_ast_to_string(node.value)})"
+    if isinstance(node, AddAssignNode):
+        return f"{classname}({node.target}, {_ast_to_string(node.value)})"
+    if isinstance(node, SubAssignNode):
+        return f"{classname}({node.target}, {_ast_to_string(node.value)})"
+    if isinstance(node, MultiplyAssignNode):
+        return f"{classname}({node.target}, {_ast_to_string(node.value)})"
+    if isinstance(node, DivideAssignNode):
+        return f"{classname}({node.target}, {_ast_to_string(node.value)})"
+    if isinstance(node, ImportNode):
+        return f"{classname}({node.module_name})"
+    if isinstance(node, CloseFileNode):
+        return f"{classname}({node.target_var})"
+
+    if isinstance(node, WhileNode):
+        cond = _ast_to_string(node.condition)
+        body = _ast_to_string(node.body)
+        return f"{classname}({cond}, {body})"
+    if isinstance(node, ForEachNode):
+        var = node.variable
+        it = _ast_to_string(node.iterable)
+        body = _ast_to_string(node.body)
+        return f"{classname}({var}, {it}, {body})"
+
+    if isinstance(node, IfNode):
+        conds = ", ".join(
+            f"IfCond({_ast_to_string(c.test)}, {_ast_to_string(c.block)})"
+            for c in node.conditions
+        )
+        if node.else_block:
+            conds += ", Else(" + _ast_to_string(node.else_block) + ")"
+        return f"IfNode({conds})"
+
+    if isinstance(node, TryCatchNode):
+        parts = [f"Try({_ast_to_string(node.try_block)})"]
+        if node.catch_block:
+            parts.append(f"Catch({node.error_var}, {_ast_to_string(node.catch_block)})")
+        if node.finally_block:
+            parts.append(f"Finally({_ast_to_string(node.finally_block)})")
+        return "TryCatchNode(" + ", ".join(parts) + ")"
+
+    if isinstance(node, UnaryOpNode):
+        return f"UnaryOpNode({node.op}, {_ast_to_string(node.operand)})"
+    if isinstance(node, FunctionDefNode):
+        params = str(node.params)
+        body = _ast_to_string(node.body)
+        infix = ", infix=True" if getattr(node, 'is_infix', False) else ""
+        return f"{classname}({params}, {body}{infix})"
+    if isinstance(node, ElementAssignNode):
+        return f"{classname}({_ast_to_string(node.index)}, {node.target}, {_ast_to_string(node.value)})"
+
+    # Generic fallback
+    return f"{classname}(...)" 
+
+
+class _StringWrapper:
+    """Wraps a string so it can be compared with AST nodes via _ast_to_string."""
+    def __init__(self, value):
+        self.value = value
+
+    def __repr__(self):
+        return self.value
+
+
+class _BaseParserTests:
+    """Mixin with parser tests. Subclasses provide parse(source)."""
+
+    def parse(self, source):
+        raise NotImplementedError
+
+    def assertParseEqual(self, source, expected_ast_nodes):
+        """Assert parse(source) matches expected AST nodes.
+
+        expected_ast_nodes can be a list of AST nodes (Python backend)
+        or a list of _StringWrapper (Hiuh backend).
+        """
+        actual = self.parse(source)
+        if isinstance(actual, list) and actual and isinstance(actual[0], _StringWrapper):
+            # Hiuh backend: compare strings
+            actual_strs = [w.value for w in actual]
+            expected_strs = [_ast_to_string(n) for n in expected_ast_nodes]
+            self.assertEqual(actual_strs, expected_strs)
+        else:
+            # Python backend: compare AST objects (strip locations)
+            actual_stripped = self._strip_locations(actual)
+            expected_stripped = self._strip_locations(expected_ast_nodes)
+            self.assertEqual(actual_stripped, expected_stripped)
+
+    def _strip_locations(self, node):
         if isinstance(node, list):
-            return [self.strip_locations(child) for child in node]
-
+            return [self._strip_locations(child) for child in node]
         if not hasattr(node, '__dict__'):
             return node
-
         result = {}
         for key, value in node.__dict__.items():
             if key in ('line', 'column', 'token'):
                 continue
-            result[key] = self.strip_locations(value)
+            result[key] = self._strip_locations(value)
         return result
 
-    def assertNodesEqual(self, actual, expected):
-        actual_stripped = self.strip_locations(actual)
-        expected_stripped = self.strip_locations(expected)
-        self.assertEqual(actual_stripped, expected_stripped)
+    def assertEqual(self, a, b, msg=None):
+        # Make assertEqual available (from TestCase via mixin)
+        raise NotImplementedError("subclass must provide assertEqual")
+
+    # === Test cases ===
 
     def test_simple_print(self):
-        """Verify that 'skriv hej' creates a PrintNode."""
         source = "skriv hej"
-        expected = [
-            PrintNode(value=ExpressionPartsNode(parts=["hej"]))
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        expected = [PrintNode(value=ExpressionPartsNode(parts=["hej"]))]
+        self.assertParseEqual(source, expected)
+
+    def test_return_statement(self):
+        source = "ge 42"
+        expected = [ReturnNode(value=ExpressionPartsNode(parts=["42"]))]
+        self.assertParseEqual(source, expected)
 
     def test_variable_assignment(self):
-        """Verify that 'sätt x till 5' creates an AssignNode."""
         source = "sätt x till 5"
-        expected = [
-            AssignNode(
-                name="x",
-                value=ExpressionPartsNode(parts=["5"])
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        expected = [AssignNode(name="x", value=ExpressionPartsNode(parts=["5"]))]
+        self.assertParseEqual(source, expected)
 
     def test_string_assignment(self):
-        """Verify that string assignments work."""
         source = "sätt meddelande till hej världen"
-        expected = [
-            AssignNode(
-                name="meddelande",
-                value=ExpressionPartsNode(parts=["hej", "världen"])
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        expected = [AssignNode(name="meddelande", value=ExpressionPartsNode(parts=["hej", "världen"]))]
+        self.assertParseEqual(source, expected)
 
-    def test_if_statement(self):
-        """Verify that if statements are parsed correctly."""
-        source = "om x är 5\n    skriv japp"
+    def test_indentation_dedent(self):
+        source = "sätt x till 1\nsätt y till 2"
         expected = [
-            IfNode(
-                conditions=[
-                    IfCondition(
-                        test=ExpressionPartsNode(parts=["x", "är", "5"]),
-                        block=[PrintNode(value=ExpressionPartsNode(parts=["japp"]))]
-                    )
-                ]
-            )
+            AssignNode(name="x", value=ExpressionPartsNode(parts=["1"])),
+            AssignNode(name="y", value=ExpressionPartsNode(parts=["2"])),
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertParseEqual(source, expected)
 
-    def test_if_else_statement(self):
-        """Verify that if-else statements are parsed correctly."""
-        source = "om x är 5\n    skriv japp\nannars\n    skriv nej"
-        expected = [
-            IfNode(
-                conditions=[
-                    IfCondition(
-                        test=ExpressionPartsNode(parts=["x", "är", "5"]),
-                        block=[PrintNode(value=ExpressionPartsNode(parts=["japp"]))]
-                    )
-                ],
-                else_block=[PrintNode(value=ExpressionPartsNode(parts=["nej"]))]
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+    def test_import_statement(self):
+        source = "använd listor"
+        expected = [ImportNode(module_name="listor", import_all=True, resolved=False)]
+        self.assertParseEqual(source, expected)
 
     def test_while_loop(self):
-        """Verify that while loops are parsed correctly."""
         source = "medan x är mindre än 10\n    sätt x till x plus 1"
         expected = [
             WhileNode(
                 condition=ExpressionPartsNode(parts=["x", "är", "mindre", "än", "10"]),
-                body=[
-                    AssignNode(
-                        name="x",
-                        value=ExpressionPartsNode(parts=["x", "plus", "1"])
-                    )
-                ]
+                body=[AssignNode(name="x", value=ExpressionPartsNode(parts=["x", "plus", "1"]))],
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
-
-    def test_for_each_loop(self):
-        """Verify that for-each loops are parsed correctly with multi-word variable.
-        
-        The variable name is joined into a single string.
-        Expression parts remain as separate tokens.
-        """
-        source = "sätt min lista till lista med a, b, c\nför varje mitt index i min lista\n    skriv mitt index"
-        expected = [
-            AssignNode(
-                name="min lista",
-                value=ExpressionPartsNode(parts=["lista", "med", "a", ",", "b", ",", "c"])
-            ),
-            ForEachNode(
-                variable="mitt index",
-                iterable=ExpressionPartsNode(parts=["min", "lista"]),
-                body=[
-                    PrintNode(value=ExpressionPartsNode(parts=["mitt", "index"]))
-                ]
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
-
-    def test_function_definition(self):
-        """Verify that function definitions are parsed correctly."""
-        source = "sätt foo till grej med a som heltal, b som heltal\n    ge a plus b"
-        expected = [
-            AssignNode(
-                name="foo",
-                value=FunctionDefNode(
-                    params=[("a", "heltal"), ("b", "heltal")],
-                    body=[
-                        ReturnNode(value=ExpressionPartsNode(parts=["a", "plus", "b"]))
-                    ]
-                )
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
-
-    def test_function_call(self):
-        """Verify that function calls are parsed correctly."""
-        source = "sätt resultat till foo med5, 3"
-        expected = [
-            AssignNode(
-                name="resultat",
-                value=ExpressionPartsNode(parts=["foo", "med5", ",", "3"])
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
-
-    def test_return_statement(self):
-        """Verify that return statements are parsed correctly."""
-        source = "ge 42"
-        expected = [
-            ReturnNode(value=ExpressionPartsNode(parts=["42"]))
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
-
-    def test_boolean_literals(self):
-        """Verify that boolean literals are recognized."""
-        source = "om sant\n    skriv det stämmer"
-        expected = [
-            IfNode(
-                conditions=[
-                    IfCondition(
-                        test=ExpressionPartsNode(parts=["sant"]),
-                        block=[PrintNode(value=ExpressionPartsNode(parts=["det", "stämmer"]))]
-                    )
-                ]
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertParseEqual(source, expected)
 
     def test_nested_expressions(self):
-        """Verify that nested expressions are preserved."""
         source = "sätt resultat till a plus b gånger c"
-        expected = [
-            AssignNode(
-                name="resultat",
-                value=ExpressionPartsNode(parts=["a", "plus", "b", "gånger", "c"])
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
-
-    def test_list_creation(self):
-        """Verify that list creation is parsed correctly."""
-        source = "sätt nums till lista med 1, 2, 3"
-        expected = [
-            AssignNode(
-                name="nums",
-                value=ExpressionPartsNode(parts=["lista", "med", "1", ",", "2", ",", "3"])
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        expected = [AssignNode(name="resultat", value=ExpressionPartsNode(parts=["a", "plus", "b", "gånger", "c"]))]
+        self.assertParseEqual(source, expected)
 
     def test_comparison_operators(self):
-        """Verify that comparison operators are preserved."""
         source = "om x är större än y\n    skriv större"
         expected = [
             IfNode(
                 conditions=[
                     IfCondition(
                         test=ExpressionPartsNode(parts=["x", "är", "större", "än", "y"]),
-                        block=[PrintNode(value=ExpressionPartsNode(parts=["större"]))]
+                        block=[PrintNode(value=ExpressionPartsNode(parts=["större"]))],
                     )
                 ]
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertParseEqual(source, expected)
+
+    def test_boolean_literals(self):
+        source = "om sant\n    skriv det stämmer"
+        expected = [
+            IfNode(
+                conditions=[
+                    IfCondition(
+                        test=ExpressionPartsNode(parts=["sant"]),
+                        block=[PrintNode(value=ExpressionPartsNode(parts=["det", "stämmer"]))],
+                    )
+                ]
+            )
+        ]
+        self.assertParseEqual(source, expected)
 
     def test_negation(self):
-        """Verify that negation 'inte' is preserved."""
         source = "om inte x\n    skriv falskt"
         expected = [
             IfNode(
                 conditions=[
                     IfCondition(
                         test=ExpressionPartsNode(parts=["inte", "x"]),
-                        block=[PrintNode(value=ExpressionPartsNode(parts=["falskt"]))]
+                        block=[PrintNode(value=ExpressionPartsNode(parts=["falskt"]))],
                     )
                 ]
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertParseEqual(source, expected)
 
     def test_type_cast_som(self):
-        """Verify that type cast 'som' is preserved."""
         source = "sätt x till 5 som text"
-        expected = [
-            AssignNode(
-                name="x",
-                value=ExpressionPartsNode(parts=["5", "som", "text"])
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        expected = [AssignNode(name="x", value=ExpressionPartsNode(parts=["5", "som", "text"]))]
+        self.assertParseEqual(source, expected)
 
     def test_property_access_från(self):
-        """Verify that property access 'från' is preserved."""
         source = "skriv längd från lista"
-        expected = [
-            PrintNode(
-                value=ExpressionPartsNode(parts=["längd", "från", "lista"])
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        expected = [PrintNode(value=ExpressionPartsNode(parts=["längd", "från", "lista"]))]
+        self.assertParseEqual(source, expected)
 
     def test_element_access(self):
-        """Verify that element access is preserved."""
         source = "skriv element 0 från lista"
-        expected = [
-            PrintNode(
-                value=ExpressionPartsNode(parts=["element", "0", "från", "lista"])
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        expected = [PrintNode(value=ExpressionPartsNode(parts=["element", "0", "från", "lista"]))]
+        self.assertParseEqual(source, expected)
 
-    def test_infix_function_definition(self):
-        """Verify that infix function definition is parsed correctly."""
-        source = "sätt är del av till infix grej med del som heltal, helhet som lista av heltal\n    ge falskt"
+    def test_file_operations(self):
+        source = "stäng fil"
+        expected = [CloseFileNode(target_var="fil")]
+        self.assertParseEqual(source, expected)
+
+    def test_named_arguments(self):
+        source = "sätt resultat till foo med a 5, b 3"
+        expected = [AssignNode(name="resultat", value=ExpressionPartsNode(parts=["foo", "med", "a", "5", ",", "b", "3"]))]
+        self.assertParseEqual(source, expected)
+
+    def test_increment_statement(self):
+        source = "öka x med 5"
+        expected = [AddAssignNode(target="x", value=ExpressionPartsNode(parts=["5"]))]
+        self.assertParseEqual(source, expected)
+
+    def test_decrement_statement(self):
+        source = "minska x med 10"
+        expected = [SubAssignNode(target="x", value=ExpressionPartsNode(parts=["10"]))]
+        self.assertParseEqual(source, expected)
+
+    def test_multiply_assign_statements(self):
+        source = "gångra x med 3"
+        expected = [MultiplyAssignNode(target="x", value=ExpressionPartsNode(parts=["3"]))]
+        self.assertParseEqual(source, expected)
+
+    def test_divide_assign_statements(self):
+        source = "dela x med 2"
+        expected = [DivideAssignNode(target="x", value=ExpressionPartsNode(parts=["2"]))]
+        self.assertParseEqual(source, expected)
+
+    def test_bryt_statement(self):
+        source = "medan sant\n    bryt"
+        expected = [WhileNode(condition=ExpressionPartsNode(parts=["sant"]), body=[BreakNode()])]
+        self.assertParseEqual(source, expected)
+
+    def test_fortsätt_statement(self):
+        source = "medan sant\n    fortsätt"
+        expected = [WhileNode(condition=ExpressionPartsNode(parts=["sant"]), body=[ContinueNode()])]
+        self.assertParseEqual(source, expected)
+
+    def test_list_creation(self):
+        source = "sätt nums till lista med 1, 2, 3"
+        expected = [AssignNode(name="nums", value=ExpressionPartsNode(parts=["lista", "med", "1", ",", "2", ",", "3"]))]
+        self.assertParseEqual(source, expected)
+
+    def test_function_definition(self):
+        source = "sätt foo till grej med a som heltal, b som heltal\n    ge a plus b"
         expected = [
             AssignNode(
-                name="är del av",
+                name="foo",
                 value=FunctionDefNode(
-                    params=[("del", "heltal"), ("helhet", "lista av heltal")],
-                    body=[ReturnNode(value=ExpressionPartsNode(parts=["falskt"]))],
-                    is_infix=True
-                )
+                    params=[("a", "heltal"), ("b", "heltal")],
+                    body=[ReturnNode(value=ExpressionPartsNode(parts=["a", "plus", "b"]))],
+                ),
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertParseEqual(source, expected)
 
-    def test_infix_function_call(self):
-        """Verify that infix function call is preserved as ExpressionPartsNode."""
-        source = "om a är del av b\n    skriv ja"
+    def test_if_statement(self):
+        source = "om x är 5\n    skriv japp"
         expected = [
             IfNode(
                 conditions=[
                     IfCondition(
-                        test=ExpressionPartsNode(parts=["a", "är", "del", "av", "b"]),
-                        block=[PrintNode(value=ExpressionPartsNode(parts=["ja"]))]
+                        test=ExpressionPartsNode(parts=["x", "är", "5"]),
+                        block=[PrintNode(value=ExpressionPartsNode(parts=["japp"]))],
                     )
                 ]
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertParseEqual(source, expected)
 
-    def test_try_catch(self):
-        """Verify that try-catch is parsed correctly."""
-        source = "försök\n    kasta fel\nfånga fel\n    skriv fel"
+    def test_if_else_statement(self):
+        source = "om x är 5\n    skriv japp\nannars\n    skriv nej"
         expected = [
-            TryCatchNode(
-                try_block=[UnaryOpNode(op="kasta", operand=ExpressionPartsNode(parts=["fel"]))],
-                error_var="fel",
-                catch_block=[PrintNode(value=ExpressionPartsNode(parts=["fel"]))]
+            IfNode(
+                conditions=[
+                    IfCondition(
+                        test=ExpressionPartsNode(parts=["x", "är", "5"]),
+                        block=[PrintNode(value=ExpressionPartsNode(parts=["japp"]))],
+                    )
+                ],
+                else_block=[PrintNode(value=ExpressionPartsNode(parts=["nej"]))],
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertParseEqual(source, expected)
 
-    def test_try_finally(self):
-        """Verify that try-finally is parsed correctly."""
-        source = "försök\n    skriv hej\nslutligen\n    skriv hejdå"
-        expected = [
-            TryCatchNode(
-                try_block=[PrintNode(value=ExpressionPartsNode(parts=["hej"]))],
-                error_var=None,
-                catch_block=None,
-                finally_block=[PrintNode(value=ExpressionPartsNode(parts=["hejdå"]))]
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
 
-    def test_file_operations(self):
-        """Verify that file operations are parsed correctly."""
-        source = "stäng fil"
-        expected = [
-            CloseFileNode(target_var="fil")
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+class TestPythonParser(_BaseParserTests, unittest.TestCase):
+    """Parser tests using the Python Tokenizer+Parser."""
 
-    def test_named_arguments(self):
-        """Verify that named arguments are preserved as ExpressionPartsNode."""
-        source = "sätt resultat till foo med a 5, b 3"
-        expected = [
-            AssignNode(
-                name="resultat",
-                value=ExpressionPartsNode(parts=["foo", "med", "a", "5", ",", "b", "3"])
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+    def setUp(self):
+        self.tokenizer = Tokenizer()
 
-    def test_import_statement(self):
-        """Verify that import statements are parsed correctly."""
-        source = "använd listor"
-        expected = [
-            ImportNode(module_name="listor", import_all=True, resolved=False)
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+    def parse(self, source):
+        tokens = self.tokenizer.tokenize(source)
+        parser = Parser(tokens)
+        return parser.parse()
 
-    def test_indentation_dedent(self):
-        """Verify that indentation and dedentation are handled correctly."""
-        source = "sätt x till 1\nsätt y till 2"
-        expected = [
-            AssignNode(name="x", value=ExpressionPartsNode(parts=["1"])),
-            AssignNode(name="y", value=ExpressionPartsNode(parts=["2"]))
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+    def assertEqual(self, a, b, msg=None):
+        unittest.TestCase.assertEqual(self, a, b, msg)
 
-    def test_increment_statement(self):
-        """Verify that 'öka x med 5' parses to AddAssignNode."""
-        source = "öka x med 5"
-        expected = [
-            AddAssignNode(target="x", value=ExpressionPartsNode(parts=["5"]))
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
 
-    def test_decrement_statement(self):
-        """Verify that 'minska x med 10' parses to SubAssignNode."""
-        source = "minska x med 10"
-        expected = [
-            SubAssignNode(target="x", value=ExpressionPartsNode(parts=["10"]))
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+class TestHiuhParser(_BaseParserTests, unittest.TestCase):
+    """Parser tests using the hiuh tokeniserare+parser."""
 
-    def test_increment_multi_word_variable(self):
-        """Verify that 'öka min hälsa med 1,5' parses to AddAssignNode with multi-word target."""
-        source = "öka min hälsa med 1,5"
-        expected = [
-            AddAssignNode(target="min hälsa", value=ExpressionPartsNode(parts=["1,5"]))
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+    def setUp(self):
+        self.tokenizer = Tokenizer()
+        self._repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    def test_multiply_assign_statements(self):
-        """Verify that both multiplicera and gångra parse to MultiplyAssignNode."""
-        for kw in ["multiplicera", "gångra"]:
-            source = f"{kw} x med 3"
-            expected = [
-                MultiplyAssignNode(target="x", value=ExpressionPartsNode(parts=["3"]))
-            ]
-            self.assertNodesEqual(self.parse_source(source), expected)
+    def parse(self, source):
+        """Run source through hiuh tokeniserare then parser, return _StringWrapper list."""
+        from hiuh.backend.interpreter.interpreter import Interpreter, ReturnException
+        from hiuh.frontend.module_registry import ModuleRegistry
+        from hiuh.frontend.resolver import Resolver
 
-    def test_divide_assign_statements(self):
-        """Verify that both dividera and dela parse to DivideAssignNode."""
-        for kw in ["dividera", "dela"]:
-            source = f"{kw} x med 2"
-            expected = [
-                DivideAssignNode(target="x", value=ExpressionPartsNode(parts=["2"]))
-            ]
-            self.assertNodesEqual(self.parse_source(source), expected)
+        lines = source.split("\n")
+        line_strings = ", ".join(f'"{line}"' for line in lines)
 
-    def test_bryt_statement(self):
-        """Verify 'bryt' parses to BreakNode."""
-        source = "medan sant\n    bryt"
-        expected = [
-            WhileNode(
-                condition=ExpressionPartsNode(parts=["sant"]),
-                body=[BreakNode()]
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
-
-    def test_fortsätt_statement(self):
-        """Verify 'fortsätt' parses to ContinueNode."""
-        source = "medan sant\n    fortsätt"
-        expected = [
-            WhileNode(
-                condition=ExpressionPartsNode(parts=["sant"]),
-                body=[ContinueNode()]
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
-
-    def test_bryt_in_nested_if(self):
-        """Verify bryt inside if inside while parses correctly."""
-        source = (
-            "medan x är mindre än 10\n"
-            "    om x är lika med 5\n"
-            "        bryt"
+        hiuh_source = (
+            "använd parser\n"
+            "använd tokeniserare\n"
+            "\n"
+            f"sätt källkod till lista med {line_strings}\n"
+            "\n"
+            "sätt tokens till tokenisera med källkod\n"
+            "sätt ast till parsa med tokens\n"
+            "ge ast\n"
         )
-        expected = [
-            WhileNode(
-                condition=ExpressionPartsNode(
-                    parts=["x", "är", "mindre", "än", "10"]
-                ),
-                body=[
-                    IfNode(
-                        conditions=[
-                            IfCondition(
-                                test=ExpressionPartsNode(
-                                    parts=["x", "är", "lika", "med", "5"]
-                                ),
-                                block=[BreakNode()]
-                            )
-                        ]
-                    )
-                ]
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+
+        mr = ModuleRegistry("/tmp/parser_hiuh_test")
+        resolver = Resolver(mr, os.path.join(self._repo_root, "hiuh_i_hiuh"))
+
+        tokens_py = self.tokenizer.tokenize(hiuh_source)
+        parser = Parser(tokens_py)
+        ast = parser.parse()
+
+        resolver.discover_modules_from_ast("main", ast, self._repo_root)
+        resolver.discover_imports("main")
+        resolver.resolve_all()
+        ast = resolver.get_ast("main")
+
+        interp = Interpreter(mr)
+        interp.modules = resolver.modules
+        try:
+            interp.execute(ast)
+        except ReturnException as e:
+            result = e.value
+            if isinstance(result, list):
+                return [_StringWrapper(s) for s in result]
+        return []
+
+    def assertEqual(self, a, b, msg=None):
+        unittest.TestCase.assertEqual(self, a, b, msg)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

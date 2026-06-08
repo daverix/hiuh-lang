@@ -1,0 +1,116 @@
+. ast.hiuh - AST node types mirroring ast.py
+. All nodes inherit from BasNod which has a nodtyp discriminator.
+
+. === Node type constants ===
+sätt N_INT till 1
+sätt N_FLOAT till 2
+sätt N_STRÄNG till 3
+sätt N_BOOL till 4
+sätt N_VAR till 5
+sätt N_ELEMENT till 6
+sätt N_EGENSKAP till 7
+sätt N_ADD till 8
+sätt N_SUB till 9
+sätt N_MUL till 10
+sätt N_DIV till 11
+sätt N_MOD till 12
+sätt N_LIKA_MED till 13
+sätt N_INTE_LIKA till 14
+sätt N_STÖRRE_ÄN till 15
+sätt N_MINDRE_ÄN till 16
+sätt N_STÖRRE_LIKA till 17
+sätt N_MINDRE_LIKA till 18
+sätt N_OCH till 19
+sätt N_ELLER till 20
+sätt N_INTE till 21
+sätt N_TILLDELA till 22
+sätt N_ÖKA till 23
+sätt N_MINSKA till 24
+sätt N_GÅNGRA till 25
+sätt N_DELA till 26
+sätt N_SKRIV till 27
+sätt N_OM till 28
+sätt N_OM_VILLKOR till 29
+sätt N_MEDAN till 30
+sätt N_FÖR_VARJE till 31
+sätt N_FUNKTIONS_DEF till 32
+sätt N_FUNKTIONS_ANROP till 33
+sätt N_RETUR till 34
+sätt N_BRYT till 35
+sätt N_FORTSÄTT till 36
+sätt N_FÖRSÖK till 37
+sätt N_IMPORTERA till 38
+sätt N_ELEMENT_TILLDELA till 39
+sätt N_INFIX_ANROP till 40
+
+. === Base node type ===
+typ BasNod
+    nodtyp som heltal
+
+. === Value nodes ===
+typ IntNod ärver BasNod
+    värde som heltal
+
+typ FloatNod ärver BasNod
+    värde som flyttal
+
+typ SträngNod ärver BasNod
+    värde som sträng
+
+typ BoolNod ärver BasNod
+    boolvärde som heltal
+
+typ VarNod ärver BasNod
+    namn som sträng
+
+. === Expression nodes ===
+typ BinärNod ärver BasNod
+    vänster_nod som heltal
+    höger_nod som heltal
+
+typ InteNod ärver BasNod
+    villkor_nod som heltal
+
+. === Statement nodes ===
+typ TilldelaNod ärver BasNod
+    namn som sträng
+    värde_nod som heltal
+
+typ SkrivNod ärver BasNod
+    värde_nod som heltal
+
+typ ReturNod ärver BasNod
+    värde_nod som heltal
+
+typ BrytNod ärver BasNod
+
+typ FortsättNod ärver BasNod
+
+typ MedanNod ärver BasNod
+    villkor_nod som heltal
+    kropp_noder_start som heltal
+    kropp_noder_slut som heltal
+
+typ OmNod ärver BasNod
+    villkor_nod som heltal
+    block_noder_start som heltal
+    block_noder_slut som heltal
+    annars_noder_start som heltal
+    annars_noder_slut som heltal
+
+. === Function nodes ===
+typ FunktionsDefNod ärver BasNod
+    parametrar_start som heltal
+    parametrar_slut som heltal
+    kropp_noder_start som heltal
+    kropp_noder_slut som heltal
+    är_infix som heltal
+
+typ FunktionsAnropNod ärver BasNod
+    namn som sträng
+    argument_start som heltal
+    argument_slut som heltal
+
+. === Misc ===
+typ ImporteraNod ärver BasNod
+    modul_namn som sträng
