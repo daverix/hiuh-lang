@@ -5,7 +5,11 @@ använd texter
 . tokeniserare - tokenizer for hiuh language
 
 . A type to represent a single token
-typ token med tokentyp, värde, rad, kolumn
+typ token
+    tokentyp som heltal
+    värde som sträng
+    rad som heltal
+    kolumn som heltal
 
 . =============================================================
 . TOKEN TYPE CONSTANTS
@@ -97,7 +101,7 @@ putta från nyckelord med "av", TOKEN OF
 . =============================================================
 
 . A factory function to create a new token object
-sätt skapa_token till grej med tokentyp, värde, rad, kolumn
+sätt skapa_token till grej med tokentyp som heltal, värde som sträng, rad som heltal, kolumn som heltal
     ge token med tokentyp, värde, rad, kolumn
 
 sätt CITAT till 34 som tecken
@@ -107,7 +111,7 @@ sätt CITAT till 34 som tecken
 . =============================================================
 
 . The main tokenizer function, takes a list of strings (lines of code)
-sätt tokenisera till grej med rader
+sätt tokenisera till grej med rader som lista
     sätt tokens till lista
     sätt indent_stack till lista med 0
     sätt rad_nummer till 0
@@ -122,22 +126,27 @@ sätt tokenisera till grej med rader
         medan indent är mindre än längd från rad och element indent från rad är lika med " "
             öka indent med 1
 
-        sätt innehåll till delsträng från rad med indent
+        sätt innehåll till delsträng med rad, indent, längd från rad minus indent
         
-        om längd från innehåll är lika med 0 eller första från innehåll är lika med "."
-            ge . Skip empty lines and comments
+        om längd från innehåll är lika med 0
+            ge
+
+        om element 0 från innehåll är lika med "."
+            ge
         
         . Compare with previous indentation level
-        sätt sista_indent till sista från indent_stack
+        sätt sista_idx till längd från indent_stack minus 1
+        sätt sista_indent till element sista_idx från indent_stack
         om indent är större än sista_indent
             sätt ny_token till skapa_token med TOKEN INDENT, " ", rad_nummer, 1
             lägg till ny_token i tokens
             lägg till indent i indent_stack
         annars om indent är mindre än sista_indent
-            medan indent är mindre än sista från indent_stack
-                ta bort sista från indent_stack
+            medan indent är mindre än element sista_idx från indent_stack
+                ta bort element sista_idx från indent_stack
                 sätt ny_token till skapa_token med TOKEN DEDENT, "", rad_nummer, 1
                 lägg till ny_token i tokens
+                sätt sista_idx till längd från indent_stack minus 1
         
         . --- Step 3: Tokenize the line content ---
         sätt pos till 0
@@ -166,7 +175,7 @@ sätt tokenisera till grej med rader
                 om pos är lika med längd från innehåll
                     kasta "Oavslutad textsträng på rad " plus rad_nummer
                 
-                sätt värde till delsträng från innehåll med start plus 1, pos minus start minus 1
+                sätt värde till delsträng med innehåll, start plus 1, pos minus start minus 1
                 öka pos med 1 . skip closing quote
                 lägg till skapa_token med TOKEN STRING, värde, rad_nummer, indent plus start plus 1 i tokens
                 fortsätt
@@ -176,7 +185,13 @@ sätt tokenisera till grej med rader
             om pos plus 1 är mindre än längd från innehåll
                 sätt nästa_tecken till element pos plus 1 från innehåll
             
-            om är_siffra med tecken eller (tecken är lika med "-" och är_siffra med nästa_tecken)
+            sätt är_siff till falskt
+            om är_siffra med tecken
+                sätt är_siff till sant
+            annars om tecken är lika med "-" och är_siffra med nästa_tecken
+                sätt är_siff till sant
+
+            om är_siff
                 sätt start till pos
                 sätt har_komma till falskt
                 öka pos med 1
@@ -190,7 +205,7 @@ sätt tokenisera till grej med rader
                     annars
                         bryt . break the loop
                 
-                sätt värde till delsträng från innehåll med start, pos minus start
+                sätt värde till delsträng med innehåll, start, pos minus start
                 sätt tokentyp till TOKEN LITERAL INT
                 om har_komma
                     sätt tokentyp till TOKEN LITERAL FLOAT
@@ -206,8 +221,8 @@ sätt tokenisera till grej med rader
                     bryt
                 öka pos med 1
             
-            sätt värde till delsträng från innehåll med start, pos minus start
-            
+            sätt värde till delsträng med innehåll, start, pos minus start
+
             . Check for boolean literals first
             om värde är lika med "SANT"
                 lägg till skapa_token med TOKEN LITERAL TRUE, värde, rad_nummer, indent plus start plus 1 i tokens
@@ -228,7 +243,8 @@ sätt tokenisera till grej med rader
 
     . --- Step 5: Final Dedents ---
     medan längd från indent_stack är större än 1
-        ta bort sista från indent_stack
+        sätt sista_idx till längd från indent_stack minus 1
+        ta bort element sista_idx från indent_stack
         lägg till skapa_token med TOKEN DEDENT, "", längd från rader plus 1, 1 i tokens
         
     ge tokens

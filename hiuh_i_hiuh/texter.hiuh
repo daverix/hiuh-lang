@@ -1,5 +1,5 @@
 . Helper function to get substring
-sätt delsträng till grej med text, start, längd
+sätt delsträng till grej med text som sträng, start som heltal, längd som heltal
     sätt resultat till ""
     sätt pos till start
     sätt slut till start plus längd
@@ -9,6 +9,6 @@ sätt delsträng till grej med text, start, längd
     ge resultat
 
 . Helper to check if a character is a numeric digit
-sätt är_siffra till grej med tecken
+sätt är_siffra till grej med tecken som sträng
     sätt kod till tecken som tal
     ge kod är större än eller lika med 48 och kod är mindre än eller lika med 57

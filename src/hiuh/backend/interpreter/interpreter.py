@@ -535,11 +535,14 @@ class Interpreter:
         closure = self.env
         def hiuh_func(*args, **kwargs):
             call_env = Environment(closure)
-            for n, v in zip(node.params, args):
-                call_env.define(n, v)
+            # node.params may contain strings (legacy) or (name, type) tuples
+            for p, v in zip(node.params, args):
+                name = p if isinstance(p, str) else p[0]
+                call_env.define(name, v)
             # Handle named arguments
+            param_names = [p if isinstance(p, str) else p[0] for p in node.params]
             for name, value in kwargs.items():
-                if name in node.params:
+                if name in param_names:
                     call_env.define(name, value)
 
             prev_env = self.env
@@ -822,11 +825,13 @@ class Interpreter:
         def make_constructor(*args, **kwargs):
             result = {}
             for i, field in enumerate(node.fields):
-                field_name = field.strip()
+                # field may be a string (legacy) or (name, type) tuple
+                field_name = field if isinstance(field, str) else field[0]
                 result[field_name] = args[i] if i < len(args) else None
             # Handle named arguments
+            field_names = [f if isinstance(f, str) else f[0] for f in node.fields]
             for name, value in kwargs.items():
-                if name in node.fields:
+                if name in field_names:
                     result[name] = value
             return result
         self.env.define(node.name, make_constructor)

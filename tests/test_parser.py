@@ -138,12 +138,12 @@ class TestHiuhParserRaw(unittest.TestCase):
 
     def test_function_definition(self):
         """Verify that function definitions are parsed correctly."""
-        source = "sätt foo till grej med a, b\n    ge a plus b"
+        source = "sätt foo till grej med a som heltal, b som heltal\n    ge a plus b"
         expected = [
             AssignNode(
                 name="foo",
                 value=FunctionDefNode(
-                    params=["a", "b"],
+                    params=[("a", "heltal"), ("b", "heltal")],
                     body=[
                         ReturnNode(value=ExpressionPartsNode(parts=["a", "plus", "b"]))
                     ]
@@ -261,22 +261,22 @@ class TestHiuhParserRaw(unittest.TestCase):
 
     def test_element_access(self):
         """Verify that element access is preserved."""
-        source = "skriv element0 från lista"
+        source = "skriv element 0 från lista"
         expected = [
             PrintNode(
-                value=ExpressionPartsNode(parts=["element0", "från", "lista"])
+                value=ExpressionPartsNode(parts=["element", "0", "från", "lista"])
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_infix_function_definition(self):
         """Verify that infix function definition is parsed correctly."""
-        source = "sätt är del av till infix grej med del, helhet\n    ge falskt"
+        source = "sätt är del av till infix grej med del som heltal, helhet som lista av heltal\n    ge falskt"
         expected = [
             AssignNode(
                 name="är del av",
                 value=FunctionDefNode(
-                    params=["del", "helhet"],
+                    params=[("del", "heltal"), ("helhet", "lista av heltal")],
                     body=[ReturnNode(value=ExpressionPartsNode(parts=["falskt"]))],
                     is_infix=True
                 )

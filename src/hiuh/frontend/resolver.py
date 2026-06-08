@@ -547,6 +547,11 @@ class Resolver:
         if result:
             return self.visit(result)
 
+        # Check for generic function call/instantiation: "fn av T1, T2, ..."
+        result = self._try_generic_call(parts, node)
+        if result:
+            return self.visit(result)
+
         # Check for function call with "med" separator: "fn med arg1, arg2, ..."
         result = self._try_function_call(parts, node)
         if result:
@@ -558,7 +563,11 @@ class Resolver:
             return self.visit(result)
 
         # No special pattern - treat as string
-        return self.visit(StringNode(' '.join(parts), token=node))
+        joined = ' '.join(parts)
+        # Clean up comma spacing: "a , b" -> "a, b"
+        while ' ,' in joined:
+            joined = joined.replace(' ,', ',')
+        return self.visit(StringNode(joined, token=node))
 
     def _part_to_node(self, s, token):
         """Convert a string to the appropriate AST node."""
@@ -825,6 +834,32 @@ class Resolver:
         if not self._is_defined(fn_name, self._current_module):
             return None
 
+        # Check if this function has known parameter names (for named-arg detection)
+        known_param_names = None
+        symbol = self.module_registry.resolve_symbol(fn_name, self._current_module)
+        if symbol and symbol.type == 'func' and symbol.signature and symbol.signature.params:
+            known_param_names = set()
+            for p in symbol.signature.params:
+                if isinstance(p, tuple):
+                    known_param_names.add(p[0])
+                else:
+                    known_param_names.add(p)
+        elif symbol and symbol.type == 'type':
+            # Type constructor: get field names
+            for mod_info in self.modules.values():
+                if mod_info.ast:
+                    for n in mod_info.ast:
+                        if hasattr(n, 'name') and n.name == fn_name and hasattr(n, 'fields'):
+                            known_param_names = set()
+                            for f in n.fields:
+                                if isinstance(f, tuple):
+                                    known_param_names.add(f[0])
+                                else:
+                                    known_param_names.add(f)
+                            break
+                    if known_param_names is not None:
+                        break
+
         # Parse arguments (handle commas and named args)
         args = []
         i = 0
@@ -837,26 +872,70 @@ class Resolver:
                 continue
 
             # Check for named argument: identifier followed by value (not comma)
-            # This pattern is: identifier value or identifier, value
-            if i + 1 < len(args_parts) and args_parts[i + 1] != ',':
+            # Only if we know the param/field names AND the part matches one
+            # AND the next token is NOT a property-access keyword like 'från'
+            if (known_param_names and part in known_param_names
+                and i + 1 < len(args_parts) and args_parts[i + 1] != ','
+                and args_parts[i + 1] != 'från'):
                 next_part = args_parts[i + 1]
                 # Named argument: identifier followed by a value
-                # The identifier should look like a name (alphanumeric)
-                if part.replace(' ', '').isalnum():
-                    value = self._part_to_node(next_part, node)
-                    args.append(NamedArgNode(part, value, token=node))
-                    i += 2
-                    continue
+                value = self._part_to_node(next_part, node)
+                args.append(NamedArgNode(part, value, token=node))
+                i += 2
+                continue
 
-            # Regular positional argument - collect until comma
-            current_arg = [part]
+            # Otherwise, treat as a positional argument - collect all parts until next comma
+            arg_parts = [part]
             i += 1
             while i < len(args_parts) and args_parts[i] != ',':
-                current_arg.append(args_parts[i])
+                arg_parts.append(args_parts[i])
                 i += 1
-            args.append(ExpressionPartsNode(current_arg, token=node))
+            args.append(ExpressionPartsNode(arg_parts, token=node))
 
         return FunctionCallNode(fn_name, args, token=node)
+
+    def _try_generic_call(self, parts, node):
+        """Try to parse as generic function call: 'fn av T1, T2' -> FunctionCallNode(fn, []).
+        
+        Type parameters are compile-time only. At runtime, we just call the base function
+        with no arguments.
+        """
+        if 'av' not in parts:
+            return None
+
+        # Find the first 'av' separator
+        av_idx = parts.index('av')
+        fn_parts = parts[:av_idx]
+        fn_name = ' '.join(fn_parts)
+
+        if not fn_parts:
+            return None
+
+        if not self._is_defined(fn_name, self._current_module):
+            return None
+
+        # The rest after 'av' should be type params (identifiers and commas)
+        type_parts = parts[av_idx + 1:]
+        for p in type_parts:
+            if p != ',' and not (p.replace(' ', '').isalpha() or self._is_defined(p, self._current_module)):
+                # Not a valid type identifier pattern
+                return None
+
+        # Check if fn_name is a function or type - it should be callable
+        symbol = self.module_registry.resolve_symbol(fn_name, self._current_module)
+        is_callable = symbol and symbol.type in ('func', 'type')
+        
+        # Also check if it's a defined local variable/function in AST
+        if not is_callable:
+            if self._is_local_var(fn_name):
+                is_callable = True
+            elif self._is_builtin_function(fn_name):
+                is_callable = True
+
+        if is_callable:
+            return FunctionCallNode(fn_name, [], token=node)
+
+        return None
 
     def _try_operator(self, parts, node):
         """Try to parse as operator expression (arithmetic or comparison).
@@ -1557,14 +1636,22 @@ class Resolver:
     # === Function nodes ===
 
     def visit_FunctionDefNode(self, node):
-        # Collect params as local vars
+        # Collect params as local vars (handle both string and tuple params)
         for p in node.params:
-            self._add_local_var(self._current_module, p)
+            name = p if isinstance(p, str) else p[0]
+            self._add_local_var(self._current_module, name)
 
         body = self._visit_nodes(node.body)
         if body is node.body:
             return node
-        return FunctionDefNode(params=node.params, body=body, line=node.line, column=node.column, is_infix=getattr(node, 'is_infix', False))
+        return FunctionDefNode(
+            params=node.params,
+            body=body,
+            line=node.line,
+            column=node.column,
+            is_infix=getattr(node, 'is_infix', False),
+            type_params=getattr(node, 'type_params', []),
+        )
 
     def visit_FunctionCallNode(self, node):
         callee_name = node.name if isinstance(node.name, str) else getattr(node.name, 'name', None)

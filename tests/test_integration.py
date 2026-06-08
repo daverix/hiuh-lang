@@ -67,7 +67,7 @@ annars
     def test_function_definition_and_call(self):
         """Tests function scope and return values."""
         source = """
-sätt hälsa till grej med namn
+sätt hälsa till grej med namn som sträng
     ge hej plus mellanrum plus namn
 
 sätt meddelande till hälsa med Hiuh
@@ -100,7 +100,10 @@ fånga meddelande
     def test_custom_type_bil(self):
         """Tests dynamic type definition and field access for a 'bil' type."""
         source = """
-typ bil med märke, modell, år
+typ bil
+    märke som sträng
+    modell som sträng
+    år som heltal
 sätt min bil till bil med Volvo, V60, 2020
 sätt uppdaterad bil till kopia av min bil med år 2024
 
@@ -312,7 +315,7 @@ för varje mitt index i min lista
         # Create a helper module that exposes a function
         with open(module_filename, "w", encoding="utf-8") as f:
             f.write("""
-sätt hälsa till grej med namn
+sätt hälsa till grej med namn som sträng
     ge Hej plus mellanrum plus namn
         """)
 
@@ -342,7 +345,7 @@ skriv hälsa med David
             f.write("""
 sätt meddelande till Hej fràn Hiuh
 sätt faktor till 10
-sätt hälsa till grej med namn
+sätt hälsa till grej med namn som sträng
     ge Hej plus mellanrum plus namn
 """)
 
@@ -396,7 +399,7 @@ använd modul_b
         os.makedirs(dir_name, exist_ok=True)
         with open(module_filename, "w", encoding="utf-8") as f:
             f.write("""
-sätt addera till grej med a, b
+sätt addera till grej med a som heltal, b som heltal
     ge a plus b
         """)
 
@@ -517,7 +520,7 @@ skriv genererat_dubbelcitat plus Hej plus genererat_mellanslag plus Världen plu
 använd listor
 
 . 1. Create a callback utility function to search for a specific name target
-sätt matchar_hiuh till grej med text_stycke
+sätt matchar_hiuh till grej med text_stycke som sträng
     ge text_stycke lika med Hiuh
 
 . 2. Initialize a flat sample list dataset
@@ -563,7 +566,7 @@ för varje par i fruktpar
     def test_named_args_typ_constructor(self):
         """Test that typ constructors support named arguments in any order."""
         source = """
-typ person med namn, ålder
+typ person med namn som sträng, ålder som heltal
 sätt p till person med ålder 37, namn David
 skriv namn från p
 skriv ny rad
@@ -576,7 +579,7 @@ skriv ålder från p
     def test_named_args_typ_positional_still_works(self):
         """Test that typ constructors still support positional arguments."""
         source = """
-typ person med namn, ålder
+typ person med namn som sträng, ålder som heltal
 sätt p till person med Eva, 25
 skriv namn från p
 skriv ny rad
@@ -589,7 +592,7 @@ skriv ålder från p
     def test_named_args_kopia_av(self):
         """Test that kopia av supports named arguments."""
         source = """
-typ person med namn, ålder
+typ person med namn som sträng, ålder som heltal
 sätt p till person med David, 37
 sätt äldre till kopia av p med ålder 38
 skriv ålder från p
@@ -603,7 +606,7 @@ skriv ålder från äldre
     def test_named_args_grej_function(self):
         """Test that grej functions support named arguments."""
         source = """
-sätt add till grej med a, b
+sätt add till grej med a som heltal, b som heltal
     ge a plus b
 
 sätt resultat till add med a 5, b 3
@@ -616,7 +619,7 @@ skriv resultat
     def test_named_args_grej_positional_still_works(self):
         """Test that grej functions still support positional arguments."""
         source = """
-sätt add till grej med x, y
+sätt add till grej med x som heltal, y som heltal
     ge x minus y
 
 sätt resultat till add med 10, 3
@@ -629,7 +632,7 @@ skriv resultat
     def test_named_args_multiple_updates_kopia_av(self):
         """Test that kopia av supports multiple named argument updates."""
         source = """
-typ person med namn, ålder
+typ person med namn som sträng, ålder som heltal
 sätt p till person med David, 37
 sätt uppdaterad till kopia av p med ålder 40, namn Eva
 skriv namn från uppdaterad
@@ -643,7 +646,7 @@ skriv ålder från uppdaterad
     def test_named_args_multiword_property_value(self):
         """Test named args with multi-word property names."""
         source = """
-typ bil med märke, modell
+typ bil med märke som sträng, modell som sträng
 sätt min bil till bil med modell V60, märke Volvo
 skriv märke från min bil
 skriv ny rad
@@ -706,7 +709,7 @@ skriv indent_count
     def test_delstrang_function_call(self):
         """Verify that delsträng can be defined and called with text, start, length."""
         source = """
-sätt delsträng till grej med text, start, längd
+sätt delsträng till grej med text som sträng, start som heltal, längd som heltal
     sätt resultat till ""
     sätt pos till start
     sätt slut till start plus längd
@@ -752,7 +755,7 @@ skriv finns druva
         """Verify that custom infix functions can be defined and used."""
         source = """
 . Define a custom infix function 'är del av'
-sätt är del av till infix grej med del, helhet
+sätt är del av till infix grej med del som heltal, helhet som lista
     sätt x till 0
     medan x är mindre än längd från helhet
         om element x från helhet är lika med del
@@ -804,7 +807,7 @@ skriv element 1 från saker
     def test_element_assign_in_function(self):
         """Verify that element assignment works inside a function."""
         source = """
-sätt uppdatera till grej med lst, idx, värde
+sätt uppdatera till grej med lst som lista, idx som heltal, värde som heltal
     sätt element idx i lst till värde
     ge element idx från lst
 

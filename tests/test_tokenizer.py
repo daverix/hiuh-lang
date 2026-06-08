@@ -11,7 +11,7 @@ from hiuh.frontend.tokenizer import (
     TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
     TOKEN_DEDENT, TOKEN_COMMA, TOKEN_INFIX,
-    TOKEN_FOR, TOKEN_EACH
+    TOKEN_FOR, TOKEN_EACH, TOKEN_OF
 )
 
 class TestHiuhReadmeSpecification(unittest.TestCase):
@@ -93,7 +93,7 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 
     def test_function_section(self):
-        source = "sätt f till grej med a\n    ge a"
+        source = "sätt f till grej med a som heltal\n    ge a"
         expected = [
             Token(TOKEN_SET, "sätt", 1, 1),
             Token(TOKEN_IDENTIFIER, "f", 1, 6),
@@ -101,7 +101,9 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
             Token(TOKEN_FUNC, "grej", 1, 13),
             Token(TOKEN_WITH, "med", 1, 18),
             Token(TOKEN_IDENTIFIER, "a", 1, 22),
-            Token(TOKEN_NEWLINE, "\n", 1, 23),
+            Token(TOKEN_AS, "som", 1, 24),
+            Token(TOKEN_IDENTIFIER, "heltal", 1, 28),
+            Token(TOKEN_NEWLINE, "\n", 1, 34),
             Token(TOKEN_INDENT, "    ", 2, 1),
             Token(TOKEN_GIVE, "ge", 2, 5),
             Token(TOKEN_IDENTIFIER, "a", 2, 8),
@@ -110,15 +112,19 @@ class TestHiuhReadmeSpecification(unittest.TestCase):
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 
     def test_typ_section(self):
-        source = "typ person med namn, ålder\nsätt ålder i person till 38"
+        source = "typ person med namn som sträng, ålder som heltal\nsätt ålder i person till 38"
         expected = [
             Token(TOKEN_TYPE, "typ", 1, 1),
             Token(TOKEN_IDENTIFIER, "person", 1, 5),
             Token(TOKEN_WITH, "med", 1, 12),
             Token(TOKEN_IDENTIFIER, "namn", 1, 16),
-            Token(TOKEN_COMMA, ",", 1, 20),
-            Token(TOKEN_IDENTIFIER, "ålder", 1, 22),
-            Token(TOKEN_NEWLINE, "\n", 1, 27),
+            Token(TOKEN_AS, "som", 1, 21),
+            Token(TOKEN_IDENTIFIER, "sträng", 1, 25),
+            Token(TOKEN_COMMA, ",", 1, 31),
+            Token(TOKEN_IDENTIFIER, "ålder", 1, 33),
+            Token(TOKEN_AS, "som", 1, 39),
+            Token(TOKEN_IDENTIFIER, "heltal", 1, 43),
+            Token(TOKEN_NEWLINE, "\n", 1, 49),
             Token(TOKEN_SET, "sätt", 2, 1),
             Token(TOKEN_IDENTIFIER, "ålder", 2, 6),
             Token(TOKEN_IDENTIFIER, "i", 2, 12),
@@ -322,7 +328,7 @@ stäng fil"""
 
     def test_infix_grej_tokens(self):
         """Verify tokenization of 'infix grej' syntax for infix function definition."""
-        source = "sätt innehåller till infix grej med lista, värde"
+        source = "sätt innehåller till infix grej med lista som lista av heltal, värde som heltal"
         expected = [
             Token(TOKEN_SET, "sätt", 1, 1),
             Token(TOKEN_IDENTIFIER, "innehåller", 1, 6),
@@ -331,8 +337,14 @@ stäng fil"""
             Token(TOKEN_FUNC, "grej", 1, 28),
             Token(TOKEN_WITH, "med", 1, 33),
             Token(TOKEN_IDENTIFIER, "lista", 1, 37),
-            Token(TOKEN_COMMA, ",", 1, 42),
-            Token(TOKEN_IDENTIFIER, "värde", 1, 44)
+            Token(TOKEN_AS, "som", 1, 43),
+            Token(TOKEN_IDENTIFIER, "lista", 1, 47),
+            Token(TOKEN_OF, "av", 1, 53),
+            Token(TOKEN_IDENTIFIER, "heltal", 1, 56),
+            Token(TOKEN_COMMA, ",", 1, 62),
+            Token(TOKEN_IDENTIFIER, "värde", 1, 64),
+            Token(TOKEN_AS, "som", 1, 70),
+            Token(TOKEN_IDENTIFIER, "heltal", 1, 74)
         ]
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 

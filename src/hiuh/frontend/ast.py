@@ -199,11 +199,30 @@ class WhileNode(ASTNode):
 
 # --- Functions and Types ---
 class FunctionDefNode(ASTNode):
-    def __init__(self, params, body, line=None, column=None, is_infix=False):
+    def __init__(self, params, body, line=None, column=None, is_infix=False, type_params=None):
         super().__init__(line, column)
+        # params is a list of either:
+        # - strings (legacy untyped syntax)
+        # - (name, type) tuples (new typed syntax)
         self.params = params
         self.body = body
         self.is_infix = is_infix
+        # type_params is a list of type parameter names (e.g. ['K', 'V'] for generics)
+        # If None or empty, the function is not generic.
+        self.type_params = type_params or []
+
+    def get_param_types(self):
+        """Return a dict mapping param name -> type name (only for typed params)."""
+        result = {}
+        for p in self.params:
+            if isinstance(p, tuple):
+                name, type_name = p
+                result[name] = type_name
+        return result
+
+    def get_param_names(self):
+        """Return a list of just the parameter names."""
+        return [p if isinstance(p, str) else p[0] for p in self.params]
 
 class FunctionCallNode(ASTNode):
     def __init__(self, name, args, token=None):
@@ -226,10 +245,29 @@ class InfixCallNode(ASTNode):
         self.right = right
 
 class TypeDefNode(ASTNode):
-    def __init__(self, name, fields, token=None):
+    def __init__(self, name, fields, token=None, type_params=None):
         super().__init__(token.line if token else None, token.column if token else None)
         self.name = name
+        # fields is a list of either:
+        # - strings (legacy untyped syntax)
+        # - (name, type) tuples (new typed syntax)
         self.fields = fields
+        # type_params is a list of type parameter names (e.g. ['T', 'U'] for generics)
+        # If None, the type is not generic.
+        self.type_params = type_params or []
+
+    def get_field_types(self):
+        """Return a dict mapping field name -> type name (only for typed fields)."""
+        result = {}
+        for f in self.fields:
+            if isinstance(f, tuple):
+                name, type_name = f
+                result[name] = type_name
+        return result
+
+    def get_field_names(self):
+        """Return a list of just the field names."""
+        return [f if isinstance(f, str) else f[0] for f in self.fields]
 
 class ReturnNode(ASTNode):
     def __init__(self, value, token=None):

@@ -8,7 +8,7 @@ from hiuh.frontend.tokenizer import (
     TOKEN_LITERAL_FLOAT, TOKEN_LITERAL_TRUE, TOKEN_LITERAL_FALSE,
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
     TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COPY, TOKEN_OF,
-    TOKEN_FOR, TOKEN_EACH
+    TOKEN_FOR, TOKEN_EACH, TOKEN_FUNC
 )
 
 class Parser:
@@ -304,26 +304,26 @@ class Parser:
                 self.consume()  # consume 'infix'
                 is_infix = True
             self.consume()  # consume 'grej'
-            
+
+            # Handle type parameters: 'grej av T1, T2'
+            type_params = []
+            if self.peek() and self.peek().type == TOKEN_OF:
+                self.consume()  # consume 'av'
+                while self.peek() and self.peek().type in (TOKEN_IDENTIFIER, TOKEN_FUNC, TOKEN_COMMA):
+                    if self.peek().type == TOKEN_COMMA:
+                        self.consume()
+                    else:
+                        type_params.append(self.consume().value)
+
             # Grej functions can have params (with 'med') or no params (just 'grej')
             params = []
             if self.peek() and self.peek().type == TOKEN_WITH:
                 self.consume()  # consume 'med'
-                # Parse parameters
-                while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                    param_parts = []
-                    while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in [',']:
-                        param_parts.append(self.consume().value)
-                    if param_parts:
-                        params.append(' '.join(param_parts))
-                    if self.peek() and self.peek().value == ',':
-                        self.consume()  # consume comma
-                    else:
-                        break
-            
+                params = self._parse_typed_params()
+
             # Parse body (indented block)
-            body = self.parse_block(params=params)
-            func_def = FunctionDefNode(params, body, line=assign_token.line, column=assign_token.column, is_infix=is_infix)
+            body = self.parse_block(params=self._extract_param_names(params))
+            func_def = FunctionDefNode(params, body, line=assign_token.line, column=assign_token.column, is_infix=is_infix, type_params=type_params)
             return AssignNode(name, func_def, target_type=None, token=assign_token)
         
         # Check for 'kopia av' pattern
@@ -421,6 +421,12 @@ class Parser:
                     break
                 name_parts.append(self.consume().value)
             name = " ".join(name_parts)
+            # Strip optional type arguments: 'fn av T1, T2 med args' -> 'fn med args'
+            if self.peek() and self.peek().type == TOKEN_OF:
+                self.consume()  # consume 'av'
+                # Consume type arguments until we hit 'med' or other
+                while self.peek() and self.peek().type in (TOKEN_IDENTIFIER, TOKEN_FUNC, TOKEN_COMMA):
+                    self.consume()
             if self.peek() and self.peek().type == TOKEN_WITH:
                 self.consume()
                 args = self._parse_function_call_args()
@@ -578,14 +584,157 @@ class Parser:
 
         return TryCatchNode(try_b, err_var, catch_b, finally_b, token=try_token)
 
+    def _parse_typed_params(self):
+        """Parse a comma-separated list of typed parameters after 'med'.
+        
+        Each parameter must have a type annotation: 'name som typ'.
+        Type can be a generic type: 'lista av heltal', 'ordlista av sträng, heltal'.
+        Returns a list of (name, type) tuples.
+        """
+        params = []
+        while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
+            param_parts = []
+            while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in [',']:
+                param_parts.append(self.consume().value)
+            if param_parts:
+                param_name = ' '.join(param_parts)
+                # Required type annotation
+                if self.peek() and self.peek().type == TOKEN_AS:
+                    self.consume()  # consume 'som'
+                    # Parse type: greedy consumption until param-separator comma or end.
+                    # Handles nested generics like 'lista av par av K, V'.
+                    type_parts = []
+                    while self.peek() and self.peek().type in (TOKEN_IDENTIFIER, TOKEN_FUNC, TOKEN_OF, TOKEN_COMMA):
+                        if self.peek().type == TOKEN_COMMA:
+                            # Is this comma a parameter separator?
+                            # Pattern: comma + IDENTIFIER + som = new parameter.
+                            next_tok = self.peek(1)
+                            after_next = self.peek(2)
+                            if (next_tok and next_tok.type == TOKEN_IDENTIFIER
+                                    and after_next and after_next.type == TOKEN_AS):
+                                break  # end of type, comma separates params
+                            # Comma is part of the type (generic args) - consume it
+                            type_parts.append(self.consume().value)
+                        else:
+                            type_parts.append(self.consume().value)
+                    if type_parts:
+                        param_type = ' '.join(type_parts)
+                        # Clean up comma spacing: 'a , b' -> 'a, b'
+                        while ' ,' in param_type:
+                            param_type = param_type.replace(' ,', ',')
+                        params.append((param_name, param_type))
+                    else:
+                        raise Exception(
+                            f"Parametern/fältet '{param_name}' har en tom typ efter 'som'."
+                        )
+                else:
+                    raise Exception(
+                        f"Parametern/fältet '{param_name}' saknar typannotering. "
+                        f"Använd syntaxen: 'namn som typ' (t.ex. 'text som sträng', 'start som heltal')"
+                    )
+            if self.peek() and self.peek().value == ',':
+                self.consume()  # consume comma
+            else:
+                break
+        return params
+
+    def _extract_param_names(self, params):
+        """Extract just the names from a list of params (which may be tuples or strings)."""
+        return [p if isinstance(p, str) else p[0] for p in params]
+
     def parse_type_def(self):
         type_def_token = self.consume(TOKEN_TYPE)
         name = self.consume(TOKEN_IDENTIFIER).value
+
+        # Optional generic type parameters: 'av T1, T2, ...'
+        type_params = []
+        if self.peek() and self.peek().type == TOKEN_OF:
+            self.consume()  # consume 'av'
+            # Parse type parameter names (just identifiers, no type annotation)
+            while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
+                type_params.append(self.consume().value)
+                if self.peek() and self.peek().type == TOKEN_COMMA:
+                    self.consume()  # consume comma
+                else:
+                    break
+
         fields = []
+        # Single-line form: 'med field1 som T1, field2 som T2'
         if self.peek() and self.peek().type == TOKEN_WITH:
             self.consume()
-            while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
-                fields.append(self.consume().value)
-                if self.peek() and self.peek().type == TOKEN_COMMA: self.consume()
-                else: break
-        return TypeDefNode(name, fields, token=type_def_token)
+            fields = self._parse_typed_params()
+        # Multi-line form: fields defined in an indented block
+        elif self.peek() and self.peek().type == TOKEN_NEWLINE:
+            self.consume()  # consume newline
+            fields = self._parse_type_def_body(type_params)
+
+        return TypeDefNode(name, fields, token=type_def_token, type_params=type_params)
+
+    def _parse_type_def_body(self, type_params):
+        """Parse a multi-line typ body where each line is a field declaration.
+
+        Each field must be a 'name som typ' declaration.
+        The type can reference the type_params (e.g. K, V) declared in the typ.
+        """
+        fields = []
+        # Expect INDENT
+        if not (self.peek() and self.peek().type == TOKEN_INDENT):
+            return fields
+        self.consume()  # consume INDENT
+
+        while self.peek() and self.peek().type != TOKEN_DEDENT:
+            if self.peek().type == TOKEN_NEWLINE:
+                self.consume()  # skip blank lines
+                continue
+
+            # Each line must start with an identifier (the field name)
+            if not (self.peek() and self.peek().type == TOKEN_IDENTIFIER):
+                raise Exception(
+                    f"Typfält måste vara en variabeldeklaration: 'namn som typ'. "
+                    f"Hittade: {self.peek().value if self.peek() else 'slut på fil'}"
+                )
+
+            field_name = self.consume().value
+            # Required type annotation
+            if self.peek() and self.peek().type == TOKEN_AS:
+                self.consume()  # consume 'som'
+                # Parse the type: consume everything until newline, dedent, or comma
+                # Generic args can be on the same line, separated by commas
+                type_parts = []
+                while self.peek() and self.peek().type not in (TOKEN_NEWLINE, TOKEN_DEDENT):
+                    if self.peek().type in (TOKEN_IDENTIFIER, TOKEN_FUNC, TOKEN_OF, TOKEN_COMMA):
+                        type_parts.append(self.consume().value)
+                    else:
+                        break
+                if not type_parts:
+                    raise Exception(
+                        f"Typfältet '{field_name}' har en tom typ efter 'som'."
+                    )
+                field_type = ' '.join(type_parts).replace(' ,', ',').replace(', ', ', ').replace(',,', ',')
+                # Clean up: remove trailing commas
+                field_type = field_type.strip().rstrip(',').strip()
+                fields.append((field_name, field_type))
+            else:
+                raise Exception(
+                    f"Typfältet '{field_name}' saknar typannotering. "
+                    f"Använd syntaxen: 'namn som typ' (t.ex. 'värde som heltal')"
+                )
+
+            # Skip any comma (in case generic args were on same line)
+            if self.peek() and self.peek().type == TOKEN_COMMA:
+                self.consume()
+
+            # Expect NEWLINE at end of field declaration
+            if self.peek() and self.peek().type == TOKEN_NEWLINE:
+                self.consume()
+            elif self.peek() and self.peek().type == TOKEN_DEDENT:
+                break
+            else:
+                raise Exception(
+                    f"Förväntade ny rad efter typfältet '{field_name}'."
+                )
+
+        if self.peek() and self.peek().type == TOKEN_DEDENT:
+            self.consume()  # consume DEDENT
+
+        return fields
