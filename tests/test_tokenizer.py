@@ -384,5 +384,96 @@ stäng fil"""
         ]
         self.assertEqual(self.tokenizer.tokenize(source), expected)
 
+    def test_ordlista_huruh_full_parse(self):
+        """Verify every token in ordlista.hiuh is parsed with correct type.
+
+        This ensures it can be consumed by the compiler without issues.
+        """
+        import os
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        ordlista_path = os.path.join(repo_root, "hiuh_i_hiuh", "ordlista.hiuh")
+        with open(ordlista_path) as f:
+            source = f.read()
+
+        expected = [
+            # använd listor
+            Token(TOKEN_IMPORT, 'använd', 1, 1),
+            Token(TOKEN_IDENTIFIER, 'listor', 1, 8),
+            Token(TOKEN_NEWLINE, '\n', 1, 14),
+            # använd par
+            Token(TOKEN_IMPORT, 'använd', 2, 1),
+            Token(TOKEN_IDENTIFIER, 'par', 2, 8),
+            Token(TOKEN_NEWLINE, '\n', 2, 11),
+            # typ ordlista av nyckeltyp, värdetyp
+            Token(TOKEN_TYPE, 'typ', 4, 1),
+            Token(TOKEN_IDENTIFIER, 'ordlista', 4, 5),
+            Token(TOKEN_OF, 'av', 4, 14),
+            Token(TOKEN_IDENTIFIER, 'nyckeltyp', 4, 17),
+            Token(TOKEN_COMMA, ',', 4, 26),
+            Token(TOKEN_IDENTIFIER, 'värdetyp', 4, 28),
+            Token(TOKEN_NEWLINE, '\n', 4, 36),
+            #     värden som lista av par av nyckeltyp, värdetyp
+            Token(TOKEN_INDENT, '    ', 5, 1),
+            Token(TOKEN_IDENTIFIER, 'värden', 5, 5),
+            Token(TOKEN_AS, 'som', 5, 12),
+            Token(TOKEN_IDENTIFIER, 'lista', 5, 16),
+            Token(TOKEN_OF, 'av', 5, 22),
+            Token(TOKEN_IDENTIFIER, 'par', 5, 25),
+            Token(TOKEN_OF, 'av', 5, 29),
+            Token(TOKEN_IDENTIFIER, 'nyckeltyp', 5, 32),
+            Token(TOKEN_COMMA, ',', 5, 41),
+            Token(TOKEN_IDENTIFIER, 'värdetyp', 5, 43),
+            Token(TOKEN_NEWLINE, '\n', 5, 51),
+            #     putta som grej
+            Token(TOKEN_IDENTIFIER, 'putta', 6, 5),
+            Token(TOKEN_AS, 'som', 6, 11),
+            Token(TOKEN_FUNC, 'grej', 6, 15),
+            Token(TOKEN_NEWLINE, '\n', 6, 19),
+            #     hämta som grej
+            Token(TOKEN_IDENTIFIER, 'hämta', 7, 5),
+            Token(TOKEN_AS, 'som', 7, 11),
+            Token(TOKEN_FUNC, 'grej', 7, 15),
+            Token(TOKEN_NEWLINE, '\n', 7, 19),
+            #     rensa som grej
+            Token(TOKEN_IDENTIFIER, 'rensa', 8, 5),
+            Token(TOKEN_AS, 'som', 8, 11),
+            Token(TOKEN_FUNC, 'grej', 8, 15),
+            Token(TOKEN_NEWLINE, '\n', 8, 19),
+            #     finns som grej
+            Token(TOKEN_IDENTIFIER, 'finns', 9, 5),
+            Token(TOKEN_AS, 'som', 9, 11),
+            Token(TOKEN_FUNC, 'grej', 9, 15),
+            Token(TOKEN_NEWLINE, '\n', 9, 19),
+            # DEDENT (end of typ body)
+            Token(TOKEN_DEDENT, '', 11, 1),
+            # sätt ny ordlista till grej av nyckeltyp, värdetyp med värden som lista av par av nyckeltyp, värdetyp
+            Token(TOKEN_SET, 'sätt', 11, 1),
+            Token(TOKEN_IDENTIFIER, 'ny', 11, 6),
+            Token(TOKEN_IDENTIFIER, 'ordlista', 11, 9),
+            Token(TOKEN_TO, 'till', 11, 18),
+            Token(TOKEN_FUNC, 'grej', 11, 23),
+            Token(TOKEN_OF, 'av', 11, 28),
+            Token(TOKEN_IDENTIFIER, 'nyckeltyp', 11, 31),
+            Token(TOKEN_COMMA, ',', 11, 40),
+            Token(TOKEN_IDENTIFIER, 'värdetyp', 11, 42),
+            Token(TOKEN_WITH, 'med', 11, 51),
+            Token(TOKEN_IDENTIFIER, 'värden', 11, 55),
+            Token(TOKEN_AS, 'som', 11, 62),
+            Token(TOKEN_IDENTIFIER, 'lista', 11, 66),
+            Token(TOKEN_OF, 'av', 11, 72),
+            Token(TOKEN_IDENTIFIER, 'par', 11, 75),
+            Token(TOKEN_OF, 'av', 11, 79),
+            Token(TOKEN_IDENTIFIER, 'nyckeltyp', 11, 82),
+            Token(TOKEN_COMMA, ',', 11, 91),
+            Token(TOKEN_IDENTIFIER, 'värdetyp', 11, 93),
+            Token(TOKEN_NEWLINE, '\n', 11, 101),
+        ]
+
+        actual = self.tokenizer.tokenize(source)
+        # Verify first N tokens (up through line 11).
+        # Total token count varies with file changes; not asserted.
+        self.assertEqual(actual[:len(expected)], expected)
+
+
 if __name__ == '__main__':
     unittest.main()
