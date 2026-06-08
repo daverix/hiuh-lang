@@ -53,10 +53,19 @@ class TestGenericParser(unittest.TestCase):
 
     def test_typ_with_nested_generic_field_type(self):
         """Field type with nested generics: lista av par av K, V."""
-        source = """typ ordlista av nyckeltyp, värdetyp
+        source = """typ par av K, V
+    nyckel som K
+    värde som V
+
+typ ordlista av nyckeltyp, värdetyp
     värden som lista av par av nyckeltyp, värdetyp
     putta som grej"""
         expected = [
+            TypeDefNode(
+                name="par",
+                fields=[("nyckel", "K"), ("värde", "V")],
+                type_params=["K", "V"]
+            ),
             TypeDefNode(
                 name="ordlista",
                 fields=[
@@ -115,8 +124,17 @@ class TestGenericParser(unittest.TestCase):
 
     def test_lista_av_nested_type(self):
         """sätt x till lista av par av K, V."""
-        source = "sätt x till lista av par av K, V"
+        source = """typ par av K, V
+    nyckel som K
+    värde som V
+
+sätt x till lista av par av K, V"""
         expected = [
+            TypeDefNode(
+                name="par",
+                fields=[("nyckel", "K"), ("värde", "V")],
+                type_params=["K", "V"]
+            ),
             AssignNode(
                 name="x",
                 value=ExpressionPartsNode(parts=["lista", "av", "par", "av", "K", ",", "V"])
@@ -184,8 +202,17 @@ class TestGenericResolver(unittest.TestCase):
 
     def test_lista_av_nested_generics_resolves_to_lista_call(self):
         """lista av par av K, V -> FunctionCallNode('lista', [])."""
-        source = "sätt x till lista av par av K, V"
+        source = """typ par av K, V
+    nyckel som K
+    värde som V
+
+sätt x till lista av par av K, V"""
         expected = [
+            TypeDefNode(
+                name="par",
+                fields=[("nyckel", "K"), ("värde", "V")],
+                type_params=["K", "V"]
+            ),
             AssignNode(
                 name="x",
                 value=FunctionCallNode(name="lista", args=[])
