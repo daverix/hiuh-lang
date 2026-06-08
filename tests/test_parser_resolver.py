@@ -997,5 +997,30 @@ sätt nästa_tecken till element pos plus 1 från innehåll
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_lista_no_type_fails(self):
+        """lista without type should raise an error."""
+        source = "sätt x till lista"
+        with self.assertRaises(Exception) as ctx:
+            self.parse_source(source)
+        self.assertIn("okänd_typ", str(ctx.exception))
+
+    def test_lista_av_unknown_type_fails(self):
+        """lista av okänd_typ should raise an error."""
+        source = "sätt x till lista av okänd_typ"
+        with self.assertRaises(Exception) as ctx:
+            self.parse_source(source)
+        self.assertIn("okänd_typ", str(ctx.exception))
+
+    def test_lista_av_known_type_passes(self):
+        """lista av heltal should resolve to FunctionCallNode."""
+        source = "sätt x till lista av heltal"
+        expected = [
+            AssignNode(
+                name="x",
+                value=FunctionCallNode(name="lista", args=[])
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 if __name__ == '__main__':
     unittest.main()
