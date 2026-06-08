@@ -80,13 +80,13 @@ typ ordlista av nyckeltyp, värdetyp
     def test_generic_function_def(self):
         """sätt fn till grej av T1, T2 (no params)."""
         source = """sätt make till grej av K, V
-    ge lista"""
+    ge lista av heltal"""
         expected = [
             AssignNode(
                 name="make",
                 value=FunctionDefNode(
                     params=[],
-                    body=[ReturnNode(value=ExpressionPartsNode(parts=["lista"]))],
+                    body=[ReturnNode(value=ExpressionPartsNode(parts=["lista", "av", "heltal"]))],
                     is_infix=False,
                     type_params=["K", "V"]
                 )
@@ -236,7 +236,7 @@ sätt x till lista av par av K, V"""
         """ny tom ordlista is defined -> FunctionCallNode('ny tom ordlista', [])."""
         source = """
 sätt ny tom ordlista till grej
-    ge lista
+    ge lista av heltal
 
 sätt x till ny tom ordlista av sträng, heltal
 """

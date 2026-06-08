@@ -124,9 +124,9 @@ sätt KOMMA_TECKEN till 44 som tecken
 . =============================================================
 
 . The main tokenizer function, takes a list of strings (lines of code)
-sätt tokenisera till grej med rader som lista
-    sätt tokens till lista
-    sätt indent_stack till lista med 0
+sätt tokenisera till grej med rader som lista av sträng
+    sätt tokens till lista av token
+    sätt indent_stack till lista av heltal med 0
     sätt rad_nummer till 0
 
     . Process each line using a for-each loop from the 'listor' module

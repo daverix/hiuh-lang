@@ -305,12 +305,12 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_body_property_access(self):
         """Verify that infix function bodies with property access are parsed correctly."""
-        source = "sätt innehåller till infix grej med lista som lista, värde som heltal\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"
+        source = "sätt innehåller till infix grej med lista som lista av heltal, värde som heltal\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"
         expected = [
             AssignNode(
                 name="innehåller",
                 value=FunctionDefNode(
-                    params=[('lista', 'lista'), ('värde', 'heltal')],
+                    params=[('lista', 'lista av heltal'), ('värde', 'heltal')],
                     body=[
                         AssignNode(name="x", value=IntNode("0")),
                         WhileNode(
@@ -351,12 +351,12 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_custom_definition(self):
         """Verify that custom infix function 'är del av' is defined correctly."""
-        source = "sätt är del av till infix grej med del som heltal, helhet som lista\n    sätt x till 0\n    ge FALSKT"
+        source = "sätt är del av till infix grej med del som heltal, helhet som lista av heltal\n    sätt x till 0\n    ge FALSKT"
         expected = [
             AssignNode(
                 name="är del av",
                 value=FunctionDefNode(
-                    params=[('del', 'heltal'), ('helhet', 'lista')],
+                    params=[('del', 'heltal'), ('helhet', 'lista av heltal')],
                     body=[
                         AssignNode(name="x", value=IntNode("0")),
                         ReturnNode(value=BoolNode(False))
@@ -369,12 +369,12 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_call_in_comparison(self):
         """Verify that infix function call in comparison is parsed correctly."""
-        source = "sätt är del av till infix grej med del som heltal, helhet som lista\n    ge FALSKT\nom grön är del av färger\n    skriv Hittat"
+        source = "sätt är del av till infix grej med del som heltal, helhet som lista av heltal\n    ge FALSKT\nom grön är del av färger\n    skriv Hittat"
         expected = [
             AssignNode(
                 name="är del av",
                 value=FunctionDefNode(
-                    params=[('del', 'heltal'), ('helhet', 'lista')],
+                    params=[('del', 'heltal'), ('helhet', 'lista av heltal')],
                     body=[ReturnNode(value=BoolNode(False))],
                     is_infix=True
                 )
@@ -484,7 +484,7 @@ slutligen
     def test_infix_funktion_custom_definition(self):
         """Verify that custom infix function 'är del av' is defined and used correctly."""
         source = """
-sätt är del av till infix grej med del som heltal, helhet som lista
+sätt är del av till infix grej med del som heltal, helhet som lista av heltal
     sätt x till 0
     medan x är mindre än längd från helhet
         om element x från helhet är lika med del
@@ -503,7 +503,7 @@ skriv resultat"""
             AssignNode(
                 name="är del av",
                 value=FunctionDefNode(
-                    params=[('del', 'heltal'), ('helhet', 'lista')],
+                    params=[('del', 'heltal'), ('helhet', 'lista av heltal')],
                     body=[
                         AssignNode(name="x", value=IntNode("0")),
                         WhileNode(
@@ -806,7 +806,7 @@ sätt element x i lista till hello
     def test_element_assign_in_function(self):
         """Verify that element assignment works inside a function."""
         source = """
-sätt uppdatera till grej med lst som lista
+sätt uppdatera till grej med lst som lista av heltal
     sätt element 0 i lst till 100
     ge element 0 från lst
         """
@@ -814,7 +814,7 @@ sätt uppdatera till grej med lst som lista
             AssignNode(
                 name="uppdatera",
                 value=FunctionDefNode(
-                    params=[('lst', 'lista')],
+                    params=[('lst', 'lista av heltal')],
                     body=[
                         ElementAssignNode(
                             index=IntNode("0"),
@@ -840,7 +840,7 @@ sätt uppdatera till grej med lst som lista
         NOT: längd från (värden minus 1)
         """
         source = """
-sätt värden till lista
+sätt värden till lista av heltal
 sätt x till längd från värden minus 1
 """
         expected = [

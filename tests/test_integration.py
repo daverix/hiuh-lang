@@ -770,7 +770,7 @@ skriv finns druva
         """Verify that custom infix functions can be defined and used."""
         source = """
 . Define a custom infix function 'är del av'
-sätt är del av till infix grej med del som heltal, helhet som lista
+sätt är del av till infix grej med del som heltal, helhet som lista av heltal
     sätt x till 0
     medan x är mindre än längd från helhet
         om element x från helhet är lika med del
@@ -822,7 +822,7 @@ skriv element 1 från saker
     def test_element_assign_in_function(self):
         """Verify that element assignment works inside a function."""
         source = """
-sätt uppdatera till grej med lst som lista, idx som heltal, värde som heltal
+sätt uppdatera till grej med lst som lista av heltal, idx som heltal, värde som heltal
     sätt element idx i lst till värde
     ge element idx från lst
 
@@ -983,7 +983,7 @@ sätt y till resten av ord delat med 2
         the parameter name 'tokens'.
         """
         source = """
-sätt my_func till grej med tokens som lista, pos som heltal
+sätt my_func till grej med tokens som lista av heltal, pos som heltal
     ge element pos från tokens
 
 sätt tokens till lista med a, b, c

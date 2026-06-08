@@ -6,7 +6,7 @@ sätt utdata till källkod plus .tokens
 
 . Läs källkodsfilen
 öppna källkod för läsning som fil
-sätt rader till lista
+sätt rader till lista av sträng
 medan inte i slutet från fil
     sätt rad till nästa rad från fil
     lägg till rad i rader

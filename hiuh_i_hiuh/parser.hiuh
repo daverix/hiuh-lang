@@ -28,8 +28,8 @@ sätt T_DEDENT till 39
 . parsa(tokens) -> list of node strings
 . =============================================================
 
-sätt parsa till grej med tokens som lista
-    sätt resultat till lista
+sätt parsa till grej med tokens som lista av token
+    sätt resultat till lista av sträng
     sätt pos till 0
     sätt antal till längd från tokens
 
@@ -118,7 +118,7 @@ sätt parsa till grej med tokens som lista
 . sätt <name> till <value>
 . =============================================================
 
-sätt parsa_satt till grej med tokens som lista, start_pos som heltal
+sätt parsa_satt till grej med tokens som lista av token, start_pos som heltal
     sätt pos till start_pos plus 1
 
     sätt r1 till samla_namn_med_pos med tokens, pos, T_TO
@@ -140,7 +140,7 @@ sätt parsa_satt till grej med tokens som lista, start_pos som heltal
 . skriv <value>
 . =============================================================
 
-sätt parsa_skriv till grej med tokens som lista, start_pos som heltal
+sätt parsa_skriv till grej med tokens som lista av token, start_pos som heltal
     sätt pos till start_pos plus 1
 
     sätt r till samla_uttryck med tokens, pos
@@ -153,7 +153,7 @@ sätt parsa_skriv till grej med tokens som lista, start_pos som heltal
 . ge <value>
 . =============================================================
 
-sätt parsa_ge till grej med tokens som lista, start_pos som heltal
+sätt parsa_ge till grej med tokens som lista av token, start_pos som heltal
     sätt pos till start_pos plus 1
 
     sätt r till samla_uttryck med tokens, pos
@@ -166,7 +166,7 @@ sätt parsa_ge till grej med tokens som lista, start_pos som heltal
 . använd <module>
 . =============================================================
 
-sätt parsa_importera till grej med tokens som lista, start_pos som heltal
+sätt parsa_importera till grej med tokens som lista av token, start_pos som heltal
     sätt pos till start_pos plus 1
 
     sätt r till samla_tills_nyrad med tokens, pos
@@ -178,7 +178,7 @@ sätt parsa_importera till grej med tokens som lista, start_pos som heltal
 . stäng <var>
 . =============================================================
 
-sätt parsa_stäng till grej med tokens som lista, start_pos som heltal
+sätt parsa_stäng till grej med tokens som lista av token, start_pos som heltal
     sätt pos till start_pos plus 1
 
     sätt r till samla_tills_nyrad med tokens, pos
@@ -190,7 +190,7 @@ sätt parsa_stäng till grej med tokens som lista, start_pos som heltal
 . öka/minska/gångra/dela <target> med <value>
 . =============================================================
 
-sätt parsa_modifiera till grej med tokens som lista, start_pos som heltal, nodtyp_str som sträng
+sätt parsa_modifiera till grej med tokens som lista av token, start_pos som heltal, nodtyp_str som sträng
     sätt pos till start_pos plus 1
 
     sätt r1 till samla_namn_med_pos med tokens, pos, T_WITH
@@ -212,8 +212,8 @@ sätt parsa_modifiera till grej med tokens som lista, start_pos som heltal, nodt
 . Helper: collect name tokens until stop_type or NEWLINE
 . =============================================================
 
-sätt samla_namn_med_pos till grej med tokens som lista, start_pos som heltal, stopp_typ som heltal
-    sätt delar till lista
+sätt samla_namn_med_pos till grej med tokens som lista av token, start_pos som heltal, stopp_typ som heltal
+    sätt delar till lista av sträng
     sätt pos till start_pos
     medan pos är mindre än längd från tokens
         sätt t till element pos från tokens
@@ -236,8 +236,8 @@ sätt samla_namn_med_pos till grej med tokens som lista, start_pos som heltal, s
 . Helper: collect tokens until NEWLINE, join as Expr(...)
 . =============================================================
 
-sätt samla_uttryck till grej med tokens som lista, start_pos som heltal
-    sätt delar till lista
+sätt samla_uttryck till grej med tokens som lista av token, start_pos som heltal
+    sätt delar till lista av sträng
     sätt pos till start_pos
     medan pos är mindre än längd från tokens
         sätt t till element pos från tokens
@@ -262,8 +262,8 @@ sätt samla_uttryck till grej med tokens som lista, start_pos som heltal
 . Helper: collect until NEWLINE, return joined string
 . =============================================================
 
-sätt samla_tills_nyrad till grej med tokens som lista, start_pos som heltal
-    sätt delar till lista
+sätt samla_tills_nyrad till grej med tokens som lista av token, start_pos som heltal
+    sätt delar till lista av sträng
     sätt pos till start_pos
     medan pos är mindre än längd från tokens
         sätt t till element pos från tokens

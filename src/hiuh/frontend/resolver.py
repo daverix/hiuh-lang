@@ -606,6 +606,12 @@ class Resolver:
                         is_builtin = True
             
             if is_builtin:
+                # Some builtins require generic type params (e.g., lista av heltal)
+                if s in self._get_generic_required():
+                    raise Exception(
+                        f"okänd_typ: '{s}' kräver en typ-parameter. "
+                        f"Använd '{s} av <typ>' (t.ex. '{s} av heltal')"
+                    )
                 return FunctionCallNode(s, [], token=token)
             
             # Check if it's a user-defined function with no required parameters
@@ -836,6 +842,31 @@ class Resolver:
 
         med_idx = parts.index('med')
         fn_name = ' '.join(parts[:med_idx])
+
+        # Strip generic type params: 'lista av heltal med ...' -> fn_name='lista'
+        if 'av' in parts[:med_idx]:
+            av_pos = parts.index('av')
+            if av_pos < med_idx:
+                base_fn = ' '.join(parts[:av_pos])
+                # Only strip if the base function is known (not modulo 'resten av x')
+                if self._is_defined(base_fn, self._current_module):
+                    type_parts = parts[av_pos + 1:med_idx]
+                    known_types = self._get_all_known_types()
+                    nesting = 0
+                    for p in type_parts:
+                        if p == ',':
+                            continue
+                        if p == 'av':
+                            nesting += 1
+                            continue
+                        if nesting > 0:
+                            continue
+                        if p not in known_types:
+                            raise Exception(
+                                f"Okänd typ '{p}' i '{base_fn} av ...'"
+                            )
+                    fn_name = base_fn
+
         args_parts = parts[med_idx + 1:]
 
         if not self._is_defined(fn_name, self._current_module):
@@ -914,17 +945,46 @@ class Resolver:
 
         return FunctionCallNode(fn_name, args, token=node)
 
+    def _get_all_known_types(self):
+        """Return set of all known type names (built-in + user-defined + type params)."""
+        types = {"heltal", "sträng", "flyttal", "boolesk", "lista", "grej",
+                 "text", "tecken", "tal"}
+        # Add user-defined types from all modules
+        for mod_info in self.modules.values():
+            if mod_info.ast:
+                for n in mod_info.ast:
+                    if hasattr(n, 'name') and hasattr(n, 'fields'):
+                        types.add(n.name)
+                    # Also add type params declared on generic types
+                    if hasattr(n, 'type_params'):
+                        for tp in (n.type_params or []):
+                            types.add(tp)
+                # Also add type params from generic function definitions
+                for n in mod_info.ast:
+                    if isinstance(n, AssignNode) and isinstance(n.value, FunctionDefNode):
+                        for tp in (n.value.type_params or []):
+                            types.add(tp)
+        return types
+
+    def _get_generic_required(self):
+        """Return set of built-in functions that require type params via 'av'."""
+        return {"lista"}
+
     def _try_generic_call(self, parts, node):
         """Try to parse as generic function call: 'fn av T1, T2' -> FunctionCallNode(fn, []).
         
         Type parameters are compile-time only. At runtime, we just call the base function
-        with no arguments.
+        with no arguments. Validates that type params refer to known types.
         """
         if 'av' not in parts:
             return None
 
-        # Find the first 'av' separator
+        # If there's a 'med' after 'av', let _try_function_call handle the whole
+        # expression so that 'lista av heltal med 1, 2' parses correctly.
         av_idx = parts.index('av')
+        if 'med' in parts and parts.index('med') > av_idx:
+            return None
+
         fn_parts = parts[:av_idx]
         fn_name = ' '.join(fn_parts)
 
@@ -934,18 +994,29 @@ class Resolver:
         if not self._is_defined(fn_name, self._current_module):
             return None
 
-        # The rest after 'av' should be type params (identifiers and commas)
+        # The rest after 'av' should be type params, stopping at 'med' or other keywords.
         type_parts = parts[av_idx + 1:]
+        # Truncate at 'med' — anything after is function call args, not type params
+        if 'med' in type_parts:
+            type_parts = type_parts[:type_parts.index('med')]
+        known_types = self._get_all_known_types()
+        nesting = 0
         for p in type_parts:
-            if p != ',' and not (p.replace(' ', '').isalpha() or self._is_defined(p, self._current_module)):
-                # Not a valid type identifier pattern
-                return None
+            if p == ',':
+                continue
+            if p == 'av':
+                nesting += 1
+                continue
+            if nesting > 0:
+                continue
+            if p not in known_types:
+                raise Exception(
+                    f"Okänd typ '{p}' i '{fn_name} av ...'"
+                )
 
-        # Check if fn_name is a function or type - it should be callable
+        # Check if fn_name is callable
         symbol = self.module_registry.resolve_symbol(fn_name, self._current_module)
         is_callable = symbol and symbol.type in ('func', 'type')
-        
-        # Also check if it's a defined local variable/function in AST
         if not is_callable:
             if self._is_local_var(fn_name):
                 is_callable = True
@@ -1658,7 +1729,11 @@ class Resolver:
     def visit_FunctionDefNode(self, node):
         # Collect params as local vars (handle both string and tuple params)
         for p in node.params:
-            name = p if isinstance(p, str) else p[0]
+            if isinstance(p, tuple):
+                name, type_str = p
+                self._validate_type_annotation(type_str, f"parametern '{name}'")
+            else:
+                name = p
             self._add_local_var(self._current_module, name)
 
         body = self._visit_nodes(node.body)
@@ -1979,10 +2054,59 @@ class Resolver:
                         raise Exception(
                             f"Fältet '{fname}' i '{node.name}' krockar med ärvt fält"
                         )
+            # Validate field type annotations
+            for f in node.fields:
+                if isinstance(f, tuple):
+                    self._validate_type_annotation(f[1], f"fältet '{f[0]}' i '{node.name}'")
         return node
+
+    def _validate_type_annotation(self, type_str, context):
+        """Validate a type annotation string like 'lista' or 'lista av heltal'."""
+        if not type_str:
+            return
+        parts = type_str.split()
+        base_type = parts[0].rstrip(',')
+        # Check if base type requires generics
+        if base_type in self._get_generic_required():
+            if 'av' not in parts:
+                raise Exception(
+                    f"okänd_typ: '{base_type}' i {context} saknar typ-parameter. "
+                    f"Använd '{base_type} av <typ>' (t.ex. '{base_type} av heltal')"
+                )
+        # Validate type params after 'av'
+        if 'av' in parts:
+            av_idx = parts.index('av')
+            known_types = self._get_all_known_types()
+            nesting = 0
+            for p in parts[av_idx + 1:]:
+                p = p.rstrip(',')
+                if not p:
+                    continue
+                if p == 'av':
+                    nesting += 1
+                    continue
+                if nesting > 0:
+                    continue
+                if p not in known_types:
+                    raise Exception(
+                        f"Okänd typ '{p}' i {context} ({type_str})"
+                    )
 
     def _get_type_fields(self, type_name):
         """Return field names for a type, including inherited fields."""
+        # Check built-in types first
+        builtins = {
+            "lista": [],
+            "sträng": [],
+            "heltal": [],
+            "flyttal": [],
+            "boolesk": [],
+            "grej": [],
+            "text": [],
+        }
+        if type_name in builtins:
+            return list(builtins[type_name])
+
         for mod_info in self.modules.values():
             if mod_info.ast:
                 for n in mod_info.ast:

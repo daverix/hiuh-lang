@@ -1,11 +1,11 @@
 
-sätt innehåller till infix grej med värden som lista, värde som heltal
+sätt innehåller till infix grej med värden som lista av heltal, värde som heltal
     för varje v i värden
         om v är lika med värde
             ge SANT
     ge FALSKT
 
-sätt index på första matchande till grej med värden som lista, anrop som grej
+sätt index på första matchande till grej med värden som lista av heltal, anrop som grej
     sätt x till 0
     medan x är mindre än längd från värden
         om anrop med element x från värden
@@ -15,7 +15,7 @@ sätt index på första matchande till grej med värden som lista, anrop som gre
 
     ge -1
 
-sätt första matchande till grej med värden som lista, anrop som grej
+sätt första matchande till grej med värden som lista av heltal, anrop som grej
     sätt x till index på första matchande med värden, anrop
     om x lika med -1
         kasta värdet finns inte!
