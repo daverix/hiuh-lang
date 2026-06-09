@@ -338,7 +338,7 @@ skriv hälsa med David
 
     def test_module_wildcard_import(self):
         """Tests that 'använd modul' (without 'som') imports all variables directly."""
-        module_filename = "verktyg.hiuh"
+        module_filename = "test.hiuh"
 
         # Create a module that exposes multiple variables
         with open(module_filename, "w", encoding="utf-8") as f:
@@ -352,7 +352,7 @@ sätt hälsa till grej med namn som sträng
         try:
             # Wildcard import: all variables are available directly (no 'som')
             source = """
-använd verktyg
+använd test
 skriv meddelande
 skriv faktor
 sätt hälsning till hälsa med Världen

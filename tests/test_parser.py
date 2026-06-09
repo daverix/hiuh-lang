@@ -101,7 +101,6 @@ class _StringWrapper:
     def __repr__(self):
         return self.value
 
-
 class _BaseParserTests:
     """Mixin with parser tests. Subclasses provide parse(source)."""
 
@@ -369,6 +368,9 @@ class TestHiuhParser(_BaseParserTests, unittest.TestCase):
         line_strings = ", ".join(f'"{line}"' for line in lines)
 
         hiuh_source = (
+            "sätt formatera till grej med noder som lista av sträng\n"
+            "    ge noder\n"
+            "\n"
             "använd parser\n"
             "använd tokeniserare\n"
             "\n"
@@ -376,7 +378,7 @@ class TestHiuhParser(_BaseParserTests, unittest.TestCase):
             "\n"
             "sätt tokens till tokenisera med källkod\n"
             "sätt ast till parsa med tokens\n"
-            "ge ast\n"
+            "ge formatera med ast\n"
         )
 
         mr = ModuleRegistry("/tmp/parser_hiuh_test")
