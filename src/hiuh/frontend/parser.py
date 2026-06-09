@@ -331,35 +331,32 @@ class Parser:
         # Check for function definition: "sätt x till grej med a, b"
         # Check by value since 'grej' can have different token types
         is_grej = self.peek() and self.peek().value == 'grej'
-        is_infix_grej = (
-            self.peek() and self.peek().value == 'infix'
-            and self.peek(1) and self.peek(1).value == 'grej'
+        is_infixgrej = (
+            self.peek() and self.peek().value == 'infixgrej'
         )
-        is_verb_grej = (
-            self.peek() and self.peek().value == 'verb'
-            and self.peek(1) and self.peek(1).value == 'grej'
+        is_verbgrej = (
+            self.peek() and self.peek().value == 'verbgrej'
         )
-        is_skicka_grej = (
-            self.peek() and self.peek().value == 'skicka'
-            and self.peek(1) and self.peek(1).value == 'grej'
+        is_skickagrej = (
+            self.peek() and self.peek().value == 'skickagrej'
         )
-        is_hämta_grej = (
-            self.peek() and self.peek().value == 'hämta'
-            and self.peek(1) and self.peek(1).value == 'grej'
+        is_hämtagrej = (
+            self.peek() and self.peek().value == 'hämtagrej'
         )
         
-        if is_grej or is_infix_grej or is_verb_grej or is_skicka_grej or is_hämta_grej:
+        if is_grej or is_infixgrej or is_verbgrej or is_skickagrej or is_hämtagrej:
             is_infix = False
-            if is_infix_grej:
-                self.consume()  # consume 'infix'
+            if is_infixgrej:
+                self.consume()  # consume 'infixgrej'
                 is_infix = True
-            elif is_verb_grej:
-                self.consume()  # consume 'verb'
-            elif is_skicka_grej:
-                self.consume()  # consume 'skicka'
-            elif is_hämta_grej:
-                self.consume()  # consume 'hämta'
-            self.consume()  # consume 'grej'
+            elif is_verbgrej:
+                self.consume()  # consume 'verbgrej'
+            elif is_skickagrej:
+                self.consume()  # consume 'skickagrej'
+            elif is_hämtagrej:
+                self.consume()  # consume 'hämtagrej'
+            if is_grej:
+                self.consume()  # consume 'grej'
 
             # Handle type parameters: 'grej av T1, T2'
             type_params = []
@@ -380,15 +377,15 @@ class Parser:
             # Parse body (indented block)
             body = self.parse_block(params=self._extract_param_names(params))
             func_def = FunctionDefNode(params, body, line=assign_token.line, column=assign_token.column, is_infix=is_infix, type_params=type_params)
-            if is_infix_grej:
+            if is_infixgrej:
                 func_def.kind = 'infix'
-            if is_verb_grej:
+            if is_verbgrej:
                 func_def.kind = 'verb'
                 self.verb_functions.add(name)
-            if is_skicka_grej:
+            if is_skickagrej:
                 func_def.kind = 'skicka'
                 self.skicka_functions.add(name)
-            if is_hämta_grej:
+            if is_hämtagrej:
                 func_def.kind = 'hämta'
                 self.hämta_functions.add(name)
             return AssignNode(name, func_def, target_type=None, token=assign_token)

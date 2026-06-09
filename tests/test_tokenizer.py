@@ -331,24 +331,23 @@ stäng fil"""
         self.assertEqual(self.tokenize(source), expected)
 
     def test_infix_grej_tokens(self):
-        """Verify tokenization of 'infix grej' syntax for infix function definition."""
-        source = "sätt innehåller till infix grej med lista som lista av heltal, värde som heltal"
+        """Verify tokenization of 'infixgrej' syntax for infix function definition."""
+        source = "sätt innehåller till infixgrej med lista som lista av heltal, värde som heltal"
         expected = [
             Token(TOKEN_SET, "sätt", 1, 1),
             Token(TOKEN_IDENTIFIER, "innehåller", 1, 6),
             Token(TOKEN_TO, "till", 1, 17),
-            Token(TOKEN_INFIX, "infix", 1, 22),
-            Token(TOKEN_FUNC, "grej", 1, 28),
-            Token(TOKEN_WITH, "med", 1, 33),
-            Token(TOKEN_IDENTIFIER, "lista", 1, 37),
-            Token(TOKEN_AS, "som", 1, 43),
-            Token(TOKEN_IDENTIFIER, "lista", 1, 47),
-            Token(TOKEN_OF, "av", 1, 53),
-            Token(TOKEN_IDENTIFIER, "heltal", 1, 56),
-            Token(TOKEN_COMMA, ",", 1, 62),
-            Token(TOKEN_IDENTIFIER, "värde", 1, 64),
-            Token(TOKEN_AS, "som", 1, 70),
-            Token(TOKEN_IDENTIFIER, "heltal", 1, 74)
+            Token(TOKEN_IDENTIFIER, "infixgrej", 1, 22),
+            Token(TOKEN_WITH, "med", 1, 32),
+            Token(TOKEN_IDENTIFIER, "lista", 1, 36),
+            Token(TOKEN_AS, "som", 1, 42),
+            Token(TOKEN_IDENTIFIER, "lista", 1, 46),
+            Token(TOKEN_OF, "av", 1, 52),
+            Token(TOKEN_IDENTIFIER, "heltal", 1, 55),
+            Token(TOKEN_COMMA, ",", 1, 61),
+            Token(TOKEN_IDENTIFIER, "värde", 1, 63),
+            Token(TOKEN_AS, "som", 1, 69),
+            Token(TOKEN_IDENTIFIER, "heltal", 1, 73)
         ]
         self.assertEqual(self.tokenize(source), expected)
 

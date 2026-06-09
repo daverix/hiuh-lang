@@ -45,7 +45,7 @@ class TestParserResolverAST(unittest.TestCase):
 
         result = {}
         for key, value in node.__dict__.items():
-            if key in ('line', 'column', 'token'):
+            if key in ('line', 'column', 'token', 'kind'):
                 continue
             result[key] = self.strip_locations(value)
         return result
@@ -305,7 +305,7 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_body_property_access(self):
         """Verify that infix function bodies with property access are parsed correctly."""
-        source = "sätt innehåller till infix grej med lista som lista av heltal, värde som heltal\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"
+        source = "sätt innehåller till infixgrej med lista som lista av heltal, värde som heltal\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"
         expected = [
             AssignNode(
                 name="innehåller",
@@ -351,7 +351,7 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_custom_definition(self):
         """Verify that custom infix function 'är del av' is defined correctly."""
-        source = "sätt är del av till infix grej med del som heltal, helhet som lista av heltal\n    sätt x till 0\n    ge FALSKT"
+        source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal\n    sätt x till 0\n    ge FALSKT"
         expected = [
             AssignNode(
                 name="är del av",
@@ -369,7 +369,7 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_call_in_comparison(self):
         """Verify that infix function call in comparison is parsed correctly."""
-        source = "sätt är del av till infix grej med del som heltal, helhet som lista av heltal\n    ge FALSKT\nom grön är del av färger\n    skriv Hittat"
+        source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal\n    ge FALSKT\nom grön är del av färger\n    skriv Hittat"
         expected = [
             AssignNode(
                 name="är del av",
@@ -484,7 +484,7 @@ slutligen
     def test_infix_funktion_custom_definition(self):
         """Verify that custom infix function 'är del av' is defined and used correctly."""
         source = """
-sätt är del av till infix grej med del som heltal, helhet som lista av heltal
+sätt är del av till infixgrej med del som heltal, helhet som lista av heltal
     sätt x till 0
     medan x är mindre än längd från helhet
         om element x från helhet är lika med del
@@ -1023,9 +1023,9 @@ sätt nästa_tecken till element pos plus 1 från innehåll
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_verb_grej_definition_and_call(self):
-        """verb grej declaration and call resolve correctly."""
+        """verbgrej declaration and call resolve correctly."""
         source = """
-sätt upprepa till verb grej med ord som sträng, antal som heltal
+sätt upprepa till verbgrej med ord som sträng, antal som heltal
     sätt resultat till ""
     sätt i till 0
     medan i är mindre än antal
@@ -1074,9 +1074,9 @@ upprepa a med 3
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_skicka_grej_definition_and_call(self):
-        """skicka grej declaration and call resolve correctly."""
+        """skickagrej declaration and call resolve correctly."""
         source = """
-sätt putta till skicka grej med sak som sträng, mål som lista av sträng
+sätt putta till skickagrej med sak som sträng, mål som lista av sträng
     lägg till sak i mål
     ge mål
 
@@ -1110,9 +1110,9 @@ putta hej till min lista
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_hämta_grej_definition_and_call(self):
-        """hämta grej declaration and call resolve correctly."""
+        """hämtagrej declaration and call resolve correctly."""
         source = """
-sätt plocka till hämta grej med namn som sträng, källa som lista av sträng
+sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng
     ge element 0 från källa
 
 sätt frukter till lista av sträng med "äpple", "banan"

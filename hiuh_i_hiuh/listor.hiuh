@@ -1,5 +1,5 @@
 
-sätt innehåller till infix grej med värden som lista av heltal, värde som heltal
+sätt innehåller till infixgrej med värden som lista av heltal, värde som heltal
     för varje v i värden
         om v är lika med värde
             ge SANT

@@ -976,7 +976,7 @@ class Resolver:
         return {"lista"}
 
     def _function_has_kind(self, fn_name, kind):
-        """Check if a function is defined with the given kind (e.g., 'hämta', 'skicka', 'verb')."""
+        """Check if a function is defined with the given kind (e.g., 'hämtagrej', 'skickagrej', 'verbgrej')."""
         for mod_info in self.modules.values():
             if mod_info.ast:
                 for n in mod_info.ast:
@@ -997,7 +997,7 @@ class Resolver:
         fn_name = parts[0]
         if not self._is_defined(fn_name, self._current_module):
             return None
-        # Only match if fn is declared as 'hämta grej'
+        # Only match if fn is declared as 'hämtagrej'
         if not self._function_has_kind(fn_name, 'hämta'):
             return None
         # Split: fn is parts[0], thing is parts[1:från_idx], source is parts[från_idx+1:]
@@ -1810,6 +1810,7 @@ class Resolver:
             column=node.column,
             is_infix=getattr(node, 'is_infix', False),
             type_params=getattr(node, 'type_params', []),
+            kind=getattr(node, 'kind', None),
         )
 
     def visit_FunctionCallNode(self, node):

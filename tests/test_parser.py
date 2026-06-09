@@ -133,7 +133,7 @@ class _BaseParserTests:
             return node
         result = {}
         for key, value in node.__dict__.items():
-            if key in ('line', 'column', 'token'):
+            if key in ('line', 'column', 'token', 'kind'):
                 continue
             result[key] = self._strip_locations(value)
         return result

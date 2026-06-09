@@ -770,7 +770,7 @@ skriv finns druva
         """Verify that custom infix functions can be defined and used."""
         source = """
 . Define a custom infix function 'är del av'
-sätt är del av till infix grej med del som heltal, helhet som lista av heltal
+sätt är del av till infixgrej med del som heltal, helhet som lista av heltal
     sätt x till 0
     medan x är mindre än längd från helhet
         om element x från helhet är lika med del
@@ -995,9 +995,9 @@ skriv resultat
             self.assertEqual(fake_out.getvalue().strip(), "b")
 
     def test_verb_grej_user_defined(self):
-        """User-defined verb grej function works at runtime."""
+        """User-defined verbgrej function works at runtime."""
         source = """
-sätt upprepa till verb grej med ord som sträng, antal som heltal
+sätt upprepa till verbgrej med ord som sträng, antal som heltal
     sätt resultat till ""
     sätt i till 0
     medan i är mindre än antal
@@ -1014,9 +1014,9 @@ skriv a
             self.assertEqual(fake_out.getvalue().strip(), "hejhejhej")
 
     def test_skicka_grej_user_defined(self):
-        """User-defined skicka grej function works at runtime."""
+        """User-defined skickagrej function works at runtime."""
         source = """
-sätt putta till skicka grej med sak som sträng, mål som lista av sträng
+sätt putta till skickagrej med sak som sträng, mål som lista av sträng
     lägg till sak i mål
     ge mål
 
@@ -1031,9 +1031,9 @@ skriv element 1 från min lista
             self.assertEqual(fake_out.getvalue().strip(), "hejdå")
 
     def test_hämta_grej_user_defined(self):
-        """User-defined hämta grej function works at runtime."""
+        """User-defined hämtagrej function works at runtime."""
         source = """
-sätt plocka till hämta grej med namn som sträng, källa som lista av sträng
+sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng
     ge element 0 från källa
 
 sätt frukter till lista av sträng med äpple, banan, citron

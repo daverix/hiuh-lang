@@ -241,13 +241,13 @@ sätt p till person med David, 37
 sätt uppdaterad person till kopia av p med namn Eva, ålder 38
 ```
 
-### verb grej
+### verbgrej
 
-`verb grej` defines a function called with the pattern `verb target med args`.
+`verbgrej` defines a function called with the pattern `verb target med args`.
 The target is reassigned to the function's return value.
 
 ```
-sätt upprepa till verb grej med ord som sträng, antal som heltal
+sätt upprepa till verbgrej med ord som sträng, antal som heltal
     sätt resultat till ""
     sätt i till 0
     medan i är mindre än antal
@@ -267,13 +267,13 @@ hejhejhej
 
 The built-in verbs `öka`, `minska`, `gångra`, and `dela` use this pattern.
 
-### skicka grej
+### skickagrej
 
-`skicka grej` defines a function called with the pattern `verb thing till target`.
+`skickagrej` defines a function called with the pattern `verb thing till target`.
 The target is reassigned to the function's return value.
 
 ```
-sätt putta till skicka grej med sak som sträng, mål som lista av sträng
+sätt putta till skickagrej med sak som sträng, mål som lista av sträng
     lägg till sak i mål
     ge mål
 
@@ -289,13 +289,13 @@ outputs:
 hejdå
 ```
 
-### hämta grej
+### hämtagrej
 
-`hämta grej` defines a function called with `verb thing från source`. Returns a value
+`hämtagrej` defines a function called with `verb thing från source`. Returns a value
 without assigning — the call site uses `sätt resultat till ...` or passes it directly.
 
 ```
-sätt plocka till hämta grej med namn som sträng, källa som lista av sträng
+sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng
     ge element 0 från källa
 
 sätt frukter till lista av sträng med äpple, banan, citron

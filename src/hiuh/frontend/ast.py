@@ -207,14 +207,13 @@ class ContinueNode(ASTNode):
 
 # --- Functions and Types ---
 class FunctionDefNode(ASTNode):
-    def __init__(self, params, body, line=None, column=None, is_infix=False, type_params=None):
+    def __init__(self, params, body, line=None, column=None, is_infix=False, type_params=None, kind=None):
         super().__init__(line, column)
         self.params = params
         self.body = body
         self.is_infix = is_infix
         self.type_params = type_params or []
-        # kind: 'grej', 'infix', or 'verb' — for user-defined function categories
-        self.kind = 'infix' if is_infix else 'grej'
+        self.kind = kind if kind is not None else ('infix' if is_infix else 'grej')
 
     def get_param_types(self):
         """Return a dict mapping param name -> type name (only for typed params)."""
