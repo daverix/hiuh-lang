@@ -1,5 +1,5 @@
 . Helper function to get substring
-sätt delsträng till grej med text som sträng, start som heltal, längd som heltal
+sätt delsträng till grej med text som sträng, start som heltal, längd som heltal returnera sträng
     sätt resultat till ""
     sätt pos till start
     sätt slut till start plus längd
@@ -9,12 +9,12 @@ sätt delsträng till grej med text som sträng, start som heltal, längd som he
     ge resultat
 
 . Helper to check if a character is a numeric digit
-sätt är_siffra till grej med tecken som sträng
+sätt är_siffra till grej med tecken som sträng returnera boolesk
     sätt kod till tecken som tal
     ge kod är större än eller lika med 48 och kod är mindre än eller lika med 57
 
 . Convert a string to uppercase (a-z → A-Z)
-sätt versaler till grej med text som sträng
+sätt versaler till grej med text som sträng returnera sträng
     sätt resultat till ""
     sätt pos till 0
     medan pos är mindre än längd från text

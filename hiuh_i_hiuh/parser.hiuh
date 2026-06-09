@@ -30,7 +30,7 @@ sätt T_IDENTIFIER till 36
 
 . === Inline join helper ===
 
-sätt slå_ihop till grej med delar som lista av sträng, sep som sträng
+sätt slå_ihop till grej med delar som lista av sträng, sep som sträng returnera sträng
     sätt ut till ""
     sätt första till sant
     för varje d i delar
@@ -43,7 +43,7 @@ sätt slå_ihop till grej med delar som lista av sträng, sep som sträng
 
 . === Collection helpers ===
 
-sätt samla_namn till grej med tkns som lista av token, pos som heltal, stopp_typ som heltal
+sätt samla_namn till grej med tkns som lista av token, pos som heltal, stopp_typ som heltal returnera lista av sträng
     sätt delar till lista av sträng
     medan pos är mindre än längd från tkns
         sätt t till element pos från tkns
@@ -57,7 +57,7 @@ sätt samla_namn till grej med tkns som lista av token, pos som heltal, stopp_ty
     sätt txt till slå_ihop med delar, " "
     ge lista med txt, pos
 
-sätt samla_tills_nyrad till grej med tkns som lista av token, pos som heltal
+sätt samla_tills_nyrad till grej med tkns som lista av token, pos som heltal returnera lista av sträng
     sätt delar till lista av sträng
     medan pos är mindre än längd från tkns
         sätt t till element pos från tkns
@@ -73,7 +73,7 @@ sätt samla_tills_nyrad till grej med tkns som lista av token, pos som heltal
     sätt txt till slå_ihop med delar, " "
     ge lista med txt, pos
 
-sätt samla_uttryck till grej med tkns som lista av token, pos som heltal
+sätt samla_uttryck till grej med tkns som lista av token, pos som heltal returnera lista av sträng
     sätt r1 till samla_tills_nyrad med tkns, pos
     sätt str_text till element 0 från r1
     sätt ny_pos till element 1 från r1
@@ -81,7 +81,7 @@ sätt samla_uttryck till grej med tkns som lista av token, pos som heltal
 
 . === Main entry ===
 
-sätt parsa till grej med tkns som lista av token
+sätt parsa till grej med tkns som lista av token returnera lista av sträng
     sätt resultat till lista av sträng
     sätt pos till 0
 
@@ -105,7 +105,7 @@ sätt parsa till grej med tkns som lista av token
 
 . === Statement parser ===
 
-sätt parsa_stmt till grej med tkns som lista av token, pos som heltal
+sätt parsa_stmt till grej med tkns som lista av token, pos som heltal returnera lista av sträng
     medan pos är mindre än längd från tkns
         sätt t till element pos från tkns
         om tokentyp från t är lika med T_NEWLINE
@@ -172,7 +172,7 @@ sätt parsa_stmt till grej med tkns som lista av token, pos som heltal
 
 . === Block parser ===
 
-sätt parsa_block till grej med tkns som lista av token, pos som heltal
+sätt parsa_block till grej med tkns som lista av token, pos som heltal returnera lista av sträng
     medan pos är mindre än längd från tkns
         sätt t till element pos från tkns
         om tokentyp från t är lika med T_NEWLINE
@@ -201,7 +201,7 @@ sätt parsa_block till grej med tkns som lista av token, pos som heltal
 
 . === If/else ===
 
-sätt parsa_om till grej med tkns som lista av token, pos som heltal
+sätt parsa_om till grej med tkns som lista av token, pos som heltal returnera lista av sträng
     öka pos med 1
 
     sätt r1 till samla_uttryck med tkns, pos
@@ -248,7 +248,7 @@ sätt parsa_om till grej med tkns som lista av token, pos som heltal
 
 . === While ===
 
-sätt parsa_medan till grej med tkns som lista av token, pos som heltal
+sätt parsa_medan till grej med tkns som lista av token, pos som heltal returnera lista av sträng
     öka pos med 1
 
     sätt r1 till samla_uttryck med tkns, pos
@@ -272,7 +272,7 @@ sätt parsa_medan till grej med tkns som lista av token, pos som heltal
 
 . === sätt <name> till <value> ===
 
-sätt parsa_satt till grej med tkns som lista av token, pos som heltal
+sätt parsa_satt till grej med tkns som lista av token, pos som heltal returnera lista av sträng
     öka pos med 1
 
     sätt r1 till samla_namn med tkns, pos, T_TO
@@ -292,7 +292,7 @@ sätt parsa_satt till grej med tkns som lista av token, pos som heltal
 
 . === skriv ===
 
-sätt parsa_skriv till grej med tkns som lista av token, pos som heltal
+sätt parsa_skriv till grej med tkns som lista av token, pos som heltal returnera lista av sträng
     öka pos med 1
     sätt r1 till samla_uttryck med tkns, pos
     sätt pos till element 1 från r1
@@ -300,7 +300,7 @@ sätt parsa_skriv till grej med tkns som lista av token, pos som heltal
 
 . === ge ===
 
-sätt parsa_ge till grej med tkns som lista av token, pos som heltal
+sätt parsa_ge till grej med tkns som lista av token, pos som heltal returnera lista av sträng
     öka pos med 1
     sätt r1 till samla_uttryck med tkns, pos
     sätt pos till element 1 från r1
@@ -308,7 +308,7 @@ sätt parsa_ge till grej med tkns som lista av token, pos som heltal
 
 . === använd ===
 
-sätt parsa_importera till grej med tkns som lista av token, pos som heltal
+sätt parsa_importera till grej med tkns som lista av token, pos som heltal returnera lista av sträng
     öka pos med 1
     sätt r1 till samla_tills_nyrad med tkns, pos
     sätt pos till element 1 från r1
@@ -316,7 +316,7 @@ sätt parsa_importera till grej med tkns som lista av token, pos som heltal
 
 . === stäng ===
 
-sätt parsa_stäng till grej med tkns som lista av token, pos som heltal
+sätt parsa_stäng till grej med tkns som lista av token, pos som heltal returnera lista av sträng
     öka pos med 1
     sätt r1 till samla_tills_nyrad med tkns, pos
     sätt pos till element 1 från r1
@@ -324,7 +324,7 @@ sätt parsa_stäng till grej med tkns som lista av token, pos som heltal
 
 . === öka/minska/gångra/dela ===
 
-sätt parsa_modifiera till grej med tkns som lista av token, pos som heltal, ntype som sträng
+sätt parsa_modifiera till grej med tkns som lista av token, pos som heltal, ntype som sträng returnera lista av sträng
     öka pos med 1
     sätt r1 till samla_namn med tkns, pos, T_WITH
     sätt pos till element 1 från r1

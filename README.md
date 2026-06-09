@@ -130,7 +130,7 @@ Note! Here `min lista` is the variable. `lista med` creates a list with the comm
 ### set function variable
 
 ```
-sätt min funktion till grej med param1, param2, param3
+sätt min funktion till grej med param1, param2, param3 returnera heltal
     ge param1 plus param2 minus param3
 
 sätt x till min funktion med 1, 2, 3
@@ -140,7 +140,7 @@ skriv x
 
 outputs: `0`
 
-Note! The variable `min funktion` is called with parameters 1, 2, 3. `grej` defines the function. Parameters come after `med`.
+Note! The variable `min funktion` is called with parameters 1, 2, 3. `grej` defines the function. Parameters come after `med`. **Every function must declare its return type** using `returnera typ` on the same line as the declaration. The `returnera` keyword must be the last thing on the `grej` / `verbgrej` / `skickagrej` / `hämtagrej` line.
 
 ### set typ variable
 
@@ -247,7 +247,7 @@ sätt uppdaterad person till kopia av p med namn Eva, ålder 38
 The target is reassigned to the function's return value.
 
 ```
-sätt upprepa till verbgrej med ord som sträng, antal som heltal
+sätt upprepa till verbgrej med ord som sträng, antal som heltal returnera sträng
     sätt resultat till ""
     sätt i till 0
     medan i är mindre än antal
@@ -273,7 +273,7 @@ The built-in verbs `öka`, `minska`, `gångra`, and `dela` use this pattern.
 The target is reassigned to the function's return value.
 
 ```
-sätt putta till skickagrej med sak som sträng, mål som lista av sträng
+sätt putta till skickagrej med sak som sträng, mål som lista av sträng returnera lista av sträng
     lägg till sak i mål
     ge mål
 
@@ -295,7 +295,7 @@ hejdå
 without assigning — the call site uses `sätt resultat till ...` or passes it directly.
 
 ```
-sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng
+sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng returnera sträng
     ge element 0 från källa
 
 sätt frukter till lista av sträng med äpple, banan, citron

@@ -1818,6 +1818,7 @@ class Resolver:
             is_infix=getattr(node, 'is_infix', False),
             type_params=getattr(node, 'type_params', []),
             kind=getattr(node, 'kind', None),
+            return_type=node.return_type,
         )
 
     def visit_FunctionCallNode(self, node):

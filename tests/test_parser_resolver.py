@@ -50,9 +50,19 @@ class TestParserResolverAST(unittest.TestCase):
             result[key] = self.strip_locations(value)
         return result
 
+    def _strip_return_type(self, node):
+        """Remove return_type keys from dict representation for comparison."""
+        if isinstance(node, dict):
+            return {k: self._strip_return_type(v) for k, v in node.items() if k != 'return_type'}
+        if isinstance(node, list):
+            return [self._strip_return_type(x) for x in node]
+        return node
+
     def assertNodesEqual(self, actual, expected):
         actual_stripped = self.strip_locations(actual)
         expected_stripped = self.strip_locations(expected)
+        actual_stripped = self._strip_return_type(actual_stripped)
+        expected_stripped = self._strip_return_type(expected_stripped)
         self.assertEqual(actual_stripped, expected_stripped)
 
     def test_casting_to_type(self):
@@ -201,7 +211,7 @@ om färger innehåller blå
 
     def test_är_comparison_with_defined_variable(self):
         """Verify that 'är' is preserved in comparisons when variable is defined.
-        
+
         'x är mindre än 5' should be parsed as ComparisonNode, not StringNode.
         """
         source = """
@@ -230,7 +240,7 @@ om x är mindre än 5
 
     def test_är_comparison_with_unresolved_variable(self):
         """'är' should be preserved in stringified comparisons.
-        
+
         'x är mindre än 5' with unresolved 'x' should stringify with 'är' preserved.
         """
         source = "skriv x är mindre än 5"
@@ -305,7 +315,7 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_body_property_access(self):
         """Verify that infix function bodies with property access are parsed correctly."""
-        source = "sätt innehåller till infixgrej med lista som lista av heltal, värde som heltal\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"
+        source = "sätt innehåller till infixgrej med lista som lista av heltal, värde som heltal returnera boolesk\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"
         expected = [
             AssignNode(
                 name="innehåller",
@@ -321,15 +331,16 @@ sätt z till resten av x delat på 4
                             body=[ReturnNode(value=BoolNode(True))]
                         )
                     ],
-                    is_infix=True
-                )
+                    is_infix=True,
+                    return_type="boolesk"
+                ),
             )
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_normal_function_body_property_access(self):
         """Verify that normal function bodies with property access are parsed correctly."""
-        source = "sätt foo till grej med a som heltal, b som heltal\n    skriv a är mindre än längd från b"
+        source = "sätt foo till grej med a som heltal, b som heltal returnera heltal\n    skriv a är mindre än längd från b"
         expected = [
             AssignNode(
                 name="foo",
@@ -343,7 +354,8 @@ sätt z till resten av x delat på 4
                             )
                         )
                     ],
-                    is_infix=False
+                    is_infix=False,
+                    return_type="heltal"
                 )
             )
         ]
@@ -351,7 +363,7 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_custom_definition(self):
         """Verify that custom infix function 'är del av' is defined correctly."""
-        source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal\n    sätt x till 0\n    ge FALSKT"
+        source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal returnera boolesk\n    sätt x till 0\n    ge FALSKT"
         expected = [
             AssignNode(
                 name="är del av",
@@ -361,7 +373,8 @@ sätt z till resten av x delat på 4
                         AssignNode(name="x", value=IntNode("0")),
                         ReturnNode(value=BoolNode(False))
                     ],
-                    is_infix=True
+                    is_infix=True,
+                    return_type="boolesk"
                 )
             )
         ]
@@ -369,14 +382,15 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_call_in_comparison(self):
         """Verify that infix function call in comparison is parsed correctly."""
-        source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal\n    ge FALSKT\nom grön är del av färger\n    skriv Hittat"
+        source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal returnera boolesk\n    ge FALSKT\nom grön är del av färger\n    skriv Hittat"
         expected = [
             AssignNode(
                 name="är del av",
                 value=FunctionDefNode(
                     params=[('del', 'heltal'), ('helhet', 'lista av heltal')],
                     body=[ReturnNode(value=BoolNode(False))],
-                    is_infix=True
+                    is_infix=True,
+                    return_type="boolesk"
                 )
             ),
             IfNode(
@@ -396,14 +410,15 @@ sätt z till resten av x delat på 4
 
     def test_named_args_in_function_call(self):
         """Verify that named arguments in function calls are parsed correctly."""
-        source = "sätt beräkna till grej med a som heltal, b som heltal\n    ge 0\nsätt resultat till beräkna med a 5, b 3"
+        source = "sätt beräkna till grej med a som heltal, b som heltal returnera heltal\n    ge 0\nsätt resultat till beräkna med a 5, b 3"
         expected = [
             AssignNode(
                 name="beräkna",
                 value=FunctionDefNode(
                     params=[('a', 'heltal'), ('b', 'heltal')],
                     body=[ReturnNode(value=IntNode("0"))],
-                    is_infix=False
+                    is_infix=False,
+                    return_type="heltal"
                 )
             ),
             AssignNode(
@@ -441,7 +456,7 @@ slutligen
 
     def test_for_each_loop(self):
         """Verify that for-each loops are resolved correctly with multi-word variable.
-        
+
         The resolved tree transforms ExpressionPartsNode into proper nodes.
         """
         source = "sätt min lista till lista med a, b, c\nför varje mitt index i min lista\n    skriv mitt index"
@@ -484,7 +499,7 @@ slutligen
     def test_infix_funktion_custom_definition(self):
         """Verify that custom infix function 'är del av' is defined and used correctly."""
         source = """
-sätt är del av till infixgrej med del som heltal, helhet som lista av heltal
+sätt är del av till infixgrej med del som heltal, helhet som lista av heltal returnera boolesk
     sätt x till 0
     medan x är mindre än längd från helhet
         om element x från helhet är lika med del
@@ -534,7 +549,8 @@ skriv resultat"""
                         ),
                         ReturnNode(value=BoolNode(False))
                     ],
-                    is_infix=True
+                    is_infix=True,
+                    return_type="boolesk"
                 )
             ),
             AssignNode(
@@ -585,7 +601,7 @@ skriv resultat"""
         source = """
 använd listor
 
-sätt matchar_hiuh till grej med text_stycke som sträng
+sätt matchar_hiuh till grej med text_stycke som sträng returnera boolesk
     ge text_stycke lika med Hiuh
 
 sätt namn_lista till lista med Java, Python, Hiuh, Kotlin
@@ -605,7 +621,8 @@ sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
                             right=StringNode("Hiuh")
                         ))
                     ],
-                    is_infix=False
+                    is_infix=False,
+                    return_type="boolesk"
                 )
             ),
             AssignNode(
@@ -641,7 +658,7 @@ sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
     def test_named_args_grej_function(self):
         """Verify that grej functions support named arguments."""
         source = """
-sätt add till grej med a som heltal, b som heltal
+sätt add till grej med a som heltal, b som heltal returnera heltal
     ge a plus b
 
 sätt resultat till add med a 5, b 3
@@ -658,7 +675,8 @@ skriv resultat
                             right=VarAccessNode("b")
                         ))
                     ],
-                    is_infix=False
+                    is_infix=False,
+                    return_type="heltal"
                 )
             ),
             AssignNode(
@@ -708,7 +726,7 @@ sätt element x i lista till hello
     def test_element_assign_in_function(self):
         """Verify that element assignment works inside a function."""
         source = """
-sätt uppdatera till grej med lst som lista av heltal
+sätt uppdatera till grej med lst som lista av heltal returnera heltal
     sätt element 0 i lst till 100
     ge element 0 från lst
         """
@@ -729,7 +747,8 @@ sätt uppdatera till grej med lst som lista av heltal
                             target=VarAccessNode("lst")
                         ))
                     ],
-                    is_infix=False
+                    is_infix=False,
+                    return_type="heltal"
                 )
             )
         ]
@@ -737,7 +756,7 @@ sätt uppdatera till grej med lst som lista av heltal
 
     def test_längd_från_property_minus_expression(self):
         """Verify that 'längd från värden minus 1' is parsed correctly as arithmetic expression.
-        
+
         The expression should be parsed as: (längd från värden) minus 1
         NOT: längd från (värden minus 1)
         """
@@ -815,7 +834,7 @@ dela poäng med 2
     def test_delstrang_function_call_ast(self):
         """Verify the resolved AST of the delsträng definition and call."""
         source = """
-sätt delsträng till grej med text som sträng, start som heltal, längd som heltal
+sätt delsträng till grej med text som sträng, start som heltal, längd som heltal returnera sträng
     sätt resultat till ""
     sätt pos till start
     sätt slut till start plus längd
@@ -860,7 +879,8 @@ skriv res
                             ]
                         ),
                         ReturnNode(value=VarAccessNode("resultat"))
-                    ]
+                    ],
+                    return_type="sträng"
                 )
             ),
             AssignNode(name="rad", value=StringNode("hejsan")),
@@ -927,7 +947,7 @@ sätt nästa_tecken till element pos plus 1 från innehåll
     def test_verb_grej_definition_and_call(self):
         """verbgrej declaration and call resolve correctly."""
         source = """
-sätt upprepa till verbgrej med ord som sträng, antal som heltal
+sätt upprepa till verbgrej med ord som sträng, antal som heltal returnera sträng
     sätt resultat till ""
     sätt i till 0
     medan i är mindre än antal
@@ -961,7 +981,8 @@ upprepa a med 3
                         ),
                         ReturnNode(value=VarAccessNode("resultat"))
                     ],
-                    is_infix=False
+                    is_infix=False,
+                    return_type="sträng"
                 )
             ),
             AssignNode(name="a", value=StringNode("hej")),
@@ -978,7 +999,7 @@ upprepa a med 3
     def test_skicka_grej_definition_and_call(self):
         """skickagrej declaration and call resolve correctly."""
         source = """
-sätt lägg_till till skickagrej med sak som sträng, mål som lista av sträng
+sätt lägg_till till skickagrej med sak som sträng, mål som lista av sträng returnera lista av sträng
     lägg till sak i mål
     ge mål
 
@@ -994,7 +1015,8 @@ lägg_till hej till min lista
                         AppendNode(value=VarAccessNode("sak"), target_list="mål"),
                         ReturnNode(value=VarAccessNode("mål"))
                     ],
-                    is_infix=False
+                    is_infix=False,
+                    return_type="lista av sträng"
                 )
             ),
             AssignNode(
@@ -1014,7 +1036,7 @@ lägg_till hej till min lista
     def test_hämta_grej_definition_and_call(self):
         """hämtagrej declaration and call resolve correctly."""
         source = """
-sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng
+sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng returnera sträng
     ge element 0 från källa
 
 sätt frukter till lista av sträng med "äpple", "banan"
@@ -1029,7 +1051,8 @@ sätt resultat till plocka banan från frukter
                         index=IntNode("0"),
                         target=VarAccessNode("källa")
                     ))],
-                    is_infix=False
+                    is_infix=False,
+                    return_type="sträng"
                 )
             ),
             AssignNode(

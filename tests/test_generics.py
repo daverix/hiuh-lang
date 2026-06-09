@@ -79,7 +79,7 @@ typ ordlista av nyckeltyp, värdetyp
 
     def test_generic_function_def(self):
         """sätt fn till grej av T1, T2 (no params)."""
-        source = """sätt make till grej av K, V
+        source = """sätt make till grej av K, V returnera V
     ge lista av heltal"""
         expected = [
             AssignNode(
@@ -88,7 +88,8 @@ typ ordlista av nyckeltyp, värdetyp
                     params=[],
                     body=[ReturnNode(value=ExpressionPartsNode(parts=["lista", "av", "heltal"]))],
                     is_infix=False,
-                    type_params=["K", "V"]
+                    type_params=["K", "V"],
+                    return_type='V',
                 )
             )
         ]
@@ -96,7 +97,7 @@ typ ordlista av nyckeltyp, värdetyp
 
     def test_generic_function_def_with_params(self):
         """sätt fn till grej av T1, T2 med x som T1."""
-        source = """sätt make till grej av K, V med key som K
+        source = """sätt make till grej av K, V med key som K returnera V
     ge key"""
         expected = [
             AssignNode(
@@ -105,7 +106,8 @@ typ ordlista av nyckeltyp, värdetyp
                     params=[("key", "K")],
                     body=[ReturnNode(value=ExpressionPartsNode(parts=["key"]))],
                     is_infix=False,
-                    type_params=["K", "V"]
+                    type_params=["K", "V"],
+                    return_type='V',
                 )
             )
         ]
@@ -235,7 +237,7 @@ sätt x till lista av par av K, V"""
     def test_function_with_generic_call_defined(self):
         """ny tom ordlista is defined -> FunctionCallNode('ny tom ordlista', [])."""
         source = """
-sätt ny tom ordlista till grej
+sätt ny tom ordlista till grej returnera ordlista av sträng, heltal
     ge lista av heltal
 
 sätt x till ny tom ordlista av sträng, heltal
@@ -247,7 +249,8 @@ sätt x till ny tom ordlista av sträng, heltal
                     params=[],
                     body=[ReturnNode(value=FunctionCallNode(name="lista", args=[]))],
                     is_infix=False,
-                    type_params=[]
+                    type_params=[],
+                    return_type='ordlista av sträng, heltal',
                 )
             ),
             AssignNode(

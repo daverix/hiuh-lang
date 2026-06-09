@@ -9,7 +9,7 @@ from hiuh.frontend.tokenizer import (
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
     TOKEN_DEDENT, TOKEN_COMMA, TOKEN_COPY, TOKEN_OF,
     TOKEN_FOR, TOKEN_EACH, TOKEN_FUNC,
-    TOKEN_BREAK, TOKEN_CONTINUE, TOKEN_INHERITS
+    TOKEN_BREAK, TOKEN_CONTINUE, TOKEN_INHERITS, TOKEN_RETURNS
 )
 
 class Parser:
@@ -374,9 +374,12 @@ class Parser:
                 self.consume()  # consume 'med'
                 params = self._parse_typed_params()
 
+            # Parse required return type: 'returnera typ'
+            return_type = self._parse_return_type()
+
             # Parse body (indented block)
             body = self.parse_block(params=self._extract_param_names(params))
-            func_def = FunctionDefNode(params, body, line=assign_token.line, column=assign_token.column, is_infix=is_infix, type_params=type_params)
+            func_def = FunctionDefNode(params, body, line=assign_token.line, column=assign_token.column, is_infix=is_infix, type_params=type_params, return_type=return_type)
             if is_infixgrej:
                 func_def.kind = 'infix'
             if is_verbgrej:
@@ -705,6 +708,33 @@ class Parser:
     def _extract_param_names(self, params):
         """Extract just the names from a list of params (which may be tuples or strings)."""
         return [p if isinstance(p, str) else p[0] for p in params]
+
+    def _parse_return_type(self):
+        """Parse required 'returnera typ' on same line after function parameters.
+
+        Returns the return type string, or raises an error if missing.
+        """
+        if not self.peek() or self.peek().type != TOKEN_RETURNS:
+            raise Exception(
+                "Funktionsdefinition saknar 'returnera typ' efter parametrar"
+            )
+        self.consume()  # consume 'returnera'
+        # Parse return type (supports generics like 'lista av heltal')
+        type_parts = []
+        while self.peek() and self.peek().type in (TOKEN_IDENTIFIER, TOKEN_FUNC, TOKEN_OF, TOKEN_COMMA):
+            # Stop if we hit a newline
+            if self.peek().type == TOKEN_NEWLINE:
+                break
+            type_parts.append(self.consume().value)
+        if not type_parts:
+            raise Exception(
+                "Förväntade en typ efter 'returnera' (t.ex. 'returnera heltal')"
+            )
+        return_type = ' '.join(type_parts)
+        # Clean up comma spacing
+        while ' ,' in return_type:
+            return_type = return_type.replace(' ,', ',')
+        return return_type
 
     def parse_type_def(self):
         type_def_token = self.consume(TOKEN_TYPE)

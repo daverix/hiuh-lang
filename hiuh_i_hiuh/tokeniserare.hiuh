@@ -63,6 +63,7 @@ sätt TOKEN EACH till 47
 sätt TOKEN BREAK till 48
 sätt TOKEN CONTINUE till 49
 sätt TOKEN INHERITS till 50
+sätt TOKEN RETURNS till 51
 
 . =============================================================
 . KEYWORD DICTIONARY SETUP
@@ -106,13 +107,14 @@ putta "varje", TOKEN EACH till nyckelord
 putta "bryt", TOKEN BREAK till nyckelord
 putta "fortsätt", TOKEN CONTINUE till nyckelord
 putta "ärver", TOKEN INHERITS till nyckelord
+putta "returnera", TOKEN RETURNS till nyckelord
 
 . =============================================================
 . HELPER FUNCTIONS
 . =============================================================
 
 . A factory function to create a new token object
-sätt skapa_token till grej med ttyp som heltal, val som sträng, row som heltal, col som heltal
+sätt skapa_token till grej med ttyp som heltal, val som sträng, row som heltal, col som heltal returnera token
     ge token med ttyp, val, row, col
 
 sätt CITAT till 34 som tecken
@@ -123,7 +125,7 @@ sätt KOMMA_TECKEN till 44 som tecken
 . =============================================================
 
 . The main tokenizer function, takes a list of strings (lines of code)
-sätt tokenisera till grej med rader som lista av sträng
+sätt tokenisera till grej med rader som lista av sträng returnera lista av token
     sätt tokens till lista av token
     sätt indent_stack till lista av heltal med 0
     sätt rad_nummer till 0

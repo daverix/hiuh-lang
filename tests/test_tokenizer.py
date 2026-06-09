@@ -12,7 +12,7 @@ from hiuh.frontend.tokenizer import (
     TOKEN_STRING, TOKEN_IDENTIFIER, TOKEN_NEWLINE, TOKEN_INDENT,
     TOKEN_DEDENT, TOKEN_COMMA, TOKEN_INFIX,
     TOKEN_FOR, TOKEN_EACH, TOKEN_OF,
-    TOKEN_BREAK, TOKEN_CONTINUE, TOKEN_INHERITS
+    TOKEN_BREAK, TOKEN_CONTINUE, TOKEN_INHERITS, TOKEN_RETURNS
 )
 
 
@@ -97,7 +97,7 @@ class _BaseTokenizerTests:
         self.assertEqual(self.tokenize(source), expected)
 
     def test_function_section(self):
-        source = "sätt f till grej med a som heltal\n    ge a"
+        source = "sätt f till grej med a som heltal returnera heltal\n    ge a"
         expected = [
             Token(TOKEN_SET, "sätt", 1, 1),
             Token(TOKEN_IDENTIFIER, "f", 1, 6),
@@ -107,7 +107,9 @@ class _BaseTokenizerTests:
             Token(TOKEN_IDENTIFIER, "a", 1, 22),
             Token(TOKEN_AS, "som", 1, 24),
             Token(TOKEN_IDENTIFIER, "heltal", 1, 28),
-            Token(TOKEN_NEWLINE, "\n", 1, 34),
+            Token(TOKEN_RETURNS, "returnera", 1, 35),
+            Token(TOKEN_IDENTIFIER, "heltal", 1, 45),
+            Token(TOKEN_NEWLINE, "\n", 1, 51),
             Token(TOKEN_INDENT, "    ", 2, 1),
             Token(TOKEN_GIVE, "ge", 2, 5),
             Token(TOKEN_IDENTIFIER, "a", 2, 8),
@@ -332,7 +334,7 @@ stäng fil"""
 
     def test_infix_grej_tokens(self):
         """Verify tokenization of 'infixgrej' syntax for infix function definition."""
-        source = "sätt innehåller till infixgrej med lista som lista av heltal, värde som heltal"
+        source = "sätt innehåller till infixgrej med lista som lista av heltal, värde som heltal returnera boolesk"
         expected = [
             Token(TOKEN_SET, "sätt", 1, 1),
             Token(TOKEN_IDENTIFIER, "innehåller", 1, 6),
@@ -347,7 +349,9 @@ stäng fil"""
             Token(TOKEN_COMMA, ",", 1, 61),
             Token(TOKEN_IDENTIFIER, "värde", 1, 63),
             Token(TOKEN_AS, "som", 1, 69),
-            Token(TOKEN_IDENTIFIER, "heltal", 1, 73)
+            Token(TOKEN_IDENTIFIER, "heltal", 1, 73),
+            Token(TOKEN_RETURNS, "returnera", 1, 80),
+            Token(TOKEN_IDENTIFIER, "boolesk", 1, 90)
         ]
         self.assertEqual(self.tokenize(source), expected)
 

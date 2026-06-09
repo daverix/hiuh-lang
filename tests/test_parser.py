@@ -85,7 +85,8 @@ def _ast_to_string(node, indent=0):
         params = str(node.params)
         body = _ast_to_string(node.body)
         infix = ", infix=True" if getattr(node, 'is_infix', False) else ""
-        return f"{classname}({params}, {body}{infix})"
+        ret = f", return_type={node.return_type!r}" if getattr(node, 'return_type', None) else ""
+        return f"{classname}({params}, {body}{infix}{ret})"
     if isinstance(node, ElementAssignNode):
         return f"{classname}({_ast_to_string(node.index)}, {node.target}, {_ast_to_string(node.value)})"
 
@@ -294,13 +295,14 @@ class _BaseParserTests:
         self.assertParseEqual(source, expected)
 
     def test_function_definition(self):
-        source = "sätt foo till grej med a som heltal, b som heltal\n    ge a plus b"
+        source = "sätt foo till grej med a som heltal, b som heltal returnera heltal\n    ge a plus b"
         expected = [
             AssignNode(
                 name="foo",
                 value=FunctionDefNode(
                     params=[("a", "heltal"), ("b", "heltal")],
                     body=[ReturnNode(value=ExpressionPartsNode(parts=["a", "plus", "b"]))],
+                    return_type='heltal',
                 ),
             )
         ]
@@ -368,7 +370,7 @@ class TestHiuhParser(_BaseParserTests, unittest.TestCase):
         line_strings = ", ".join(f'"{line}"' for line in lines)
 
         hiuh_source = (
-            "sätt formatera till grej med noder som lista av sträng\n"
+            "sätt formatera till grej med noder som lista av sträng returnera lista av sträng\n"
             "    ge noder\n"
             "\n"
             "använd parser\n"
