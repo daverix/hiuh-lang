@@ -18,6 +18,7 @@ class Parser:
         self.pos = 0
         self.in_structural_statement = False
         self.infix_functions = set()
+        self.verb_functions = {"öka", "minska", "gångra", "dela", "multiplicera", "dividera"}
         self.in_call_args = False
 
     def peek(self, offset=0):
@@ -65,14 +66,8 @@ class Parser:
         if t.type == TOKEN_IDENTIFIER and t.value == "ta":
             if self.peek(1) and self.peek(1).value == "bort":
                 return self.parse_remove()
-        if t.type == TOKEN_IDENTIFIER and t.value == "öka":
-            return self.parse_verb_with_preposition(AddAssignNode)
-        if t.type == TOKEN_IDENTIFIER and t.value == "minska":
-            return self.parse_verb_with_preposition(SubAssignNode)
-        if t.type == TOKEN_IDENTIFIER and t.value in ["multiplicera", "gångra"]:
-            return self.parse_verb_with_preposition(MultiplyAssignNode)
-        if t.type == TOKEN_IDENTIFIER and t.value in ["dividera", "dela"]:
-            return self.parse_verb_with_preposition(DivideAssignNode)
+        if t.type == TOKEN_IDENTIFIER and t.value in self.verb_functions:
+            return self._parse_verb_call()
         if t.type == TOKEN_SET: return self.parse_assignment()
         if t.type == TOKEN_PRINT: return self.parse_print()
         if t.type == TOKEN_IF: return self.parse_if()
@@ -152,15 +147,32 @@ class Parser:
             return RemoveIndexNode(target_expr, list_name, token=remove_token)
         return RemoveValueNode(target_expr, list_name, token=remove_token)
 
-    def parse_verb_with_preposition(self, node_class):
-        """Parse 'öka/miniska/gångra/dela <target> med <value>'."""
-        token = self.consume()  # consume keyword
+    def _parse_verb_call(self):
+        """Parse 'öka <target> med <value>' as AddAssignNode etc.
+        These map directly to x86 opcodes (ADD, SUB, MUL, DIV)."""
+        verb_token = self.consume()
+        verb_name = verb_token.value
+        # Collect target until 'med'
         target_parts = []
         while self.peek() and self.peek().type != TOKEN_WITH:
             target_parts.append(self.consume().value)
         target = " ".join(target_parts)
         self.consume(TOKEN_WITH)  # consume 'med'
-        return node_class(target, self.expression(), token=token)
+        val = self.expression()
+        # Map verb to specialized AST node
+        node_map = {
+            "öka": AddAssignNode,
+            "minska": SubAssignNode,
+            "gångra": MultiplyAssignNode,
+            "multiplicera": MultiplyAssignNode,
+            "dela": DivideAssignNode,
+            "dividera": DivideAssignNode,
+        }
+        node_class = node_map.get(verb_name)
+        if node_class:
+            return node_class(target, val, token=verb_token)
+        # Unknown verb — fall back to function call
+        return AssignNode(target, FunctionCallNode(verb_name, [VarAccessNode(target, token=verb_token), val], token=verb_token), token=verb_token)
 
     def parse_open_file(self):
         open_token = self.consume(TOKEN_OPEN)
@@ -258,12 +270,18 @@ class Parser:
             self.peek() and self.peek().value == 'infix'
             and self.peek(1) and self.peek(1).value == 'grej'
         )
+        is_verb_grej = (
+            self.peek() and self.peek().value == 'verb'
+            and self.peek(1) and self.peek(1).value == 'grej'
+        )
         
-        if is_grej or is_infix_grej:
+        if is_grej or is_infix_grej or is_verb_grej:
             is_infix = False
             if is_infix_grej:
                 self.consume()  # consume 'infix'
                 is_infix = True
+            elif is_verb_grej:
+                self.consume()  # consume 'verb'
             self.consume()  # consume 'grej'
 
             # Handle type parameters: 'grej av T1, T2'
@@ -285,6 +303,11 @@ class Parser:
             # Parse body (indented block)
             body = self.parse_block(params=self._extract_param_names(params))
             func_def = FunctionDefNode(params, body, line=assign_token.line, column=assign_token.column, is_infix=is_infix, type_params=type_params)
+            if is_infix_grej:
+                func_def.kind = 'infix'
+            if is_verb_grej:
+                func_def.kind = 'verb'
+                self.verb_functions.add(name)
             return AssignNode(name, func_def, target_type=None, token=assign_token)
         
         # Check for 'kopia av' pattern

@@ -1022,5 +1022,57 @@ sätt nästa_tecken till element pos plus 1 från innehåll
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_verb_grej_definition_and_call(self):
+        """verb grej declaration and call resolve correctly."""
+        source = """
+sätt upprepa till verb grej med ord som sträng, antal som heltal
+    sätt resultat till ""
+    sätt i till 0
+    medan i är mindre än antal
+        sätt resultat till resultat plus ord
+        öka i med 1
+    ge resultat
+
+sätt a till hej
+upprepa a med 3
+"""
+        expected = [
+            AssignNode(
+                name="upprepa",
+                value=FunctionDefNode(
+                    params=[("ord", "sträng"), ("antal", "heltal")],
+                    body=[
+                        AssignNode(name="resultat", value=StringNode("")),
+                        AssignNode(name="i", value=IntNode("0")),
+                        WhileNode(
+                            condition=LessThanNode(
+                                left=VarAccessNode("i"),
+                                right=VarAccessNode("antal")
+                            ),
+                            body=[
+                                AssignNode(name="resultat", value=AddNode(
+                                    left=VarAccessNode("resultat"),
+                                    right=VarAccessNode("ord")
+                                )),
+                                AddAssignNode(target="i", value=IntNode("1"))
+                            ]
+                        ),
+                        ReturnNode(value=VarAccessNode("resultat"))
+                    ],
+                    is_infix=False
+                )
+            ),
+            AssignNode(name="a", value=StringNode("hej")),
+            AssignNode(
+                name="a",
+                value=FunctionCallNode(
+                    name="upprepa",
+                    args=[VarAccessNode("a"), IntNode("3")]
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
+
 if __name__ == '__main__':
     unittest.main()

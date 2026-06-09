@@ -241,6 +241,32 @@ sätt p till person med David, 37
 sätt uppdaterad person till kopia av p med namn Eva, ålder 38
 ```
 
+### verb grej
+
+`verb grej` defines a function called with the pattern `verb target med args`.
+The target is reassigned to the function's return value.
+
+```
+sätt upprepa till verb grej med ord som sträng, antal som heltal
+    sätt resultat till ""
+    sätt i till 0
+    medan i är mindre än antal
+        sätt resultat till resultat plus ord
+        öka i med 1
+    ge resultat
+
+sätt a till hej
+upprepa a med 3
+skriv a
+```
+
+outputs:
+```
+hejhejhej
+```
+
+The built-in verbs `öka`, `minska`, `gångra`, and `dela` use this pattern.
+
 ### Named arguments
 
 All three constructs (`typ`, `grej`, and `kopia av`) support **named arguments** in addition to positional arguments.

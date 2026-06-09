@@ -209,15 +209,12 @@ class ContinueNode(ASTNode):
 class FunctionDefNode(ASTNode):
     def __init__(self, params, body, line=None, column=None, is_infix=False, type_params=None):
         super().__init__(line, column)
-        # params is a list of either:
-        # - strings (legacy untyped syntax)
-        # - (name, type) tuples (new typed syntax)
         self.params = params
         self.body = body
         self.is_infix = is_infix
-        # type_params is a list of type parameter names (e.g. ['K', 'V'] for generics)
-        # If None or empty, the function is not generic.
         self.type_params = type_params or []
+        # kind: 'grej', 'infix', or 'verb' — for user-defined function categories
+        self.kind = 'infix' if is_infix else 'grej'
 
     def get_param_types(self):
         """Return a dict mapping param name -> type name (only for typed params)."""

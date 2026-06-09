@@ -994,6 +994,25 @@ skriv resultat
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "b")
 
+    def test_verb_grej_user_defined(self):
+        """User-defined verb grej function works at runtime."""
+        source = """
+sätt upprepa till verb grej med ord som sträng, antal som heltal
+    sätt resultat till ""
+    sätt i till 0
+    medan i är mindre än antal
+        sätt resultat till resultat plus ord
+        öka i med 1
+    ge resultat
+
+sätt a till hej
+upprepa a med 3
+skriv a
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "hejhejhej")
+
 
 if __name__ == '__main__':
     unittest.main()

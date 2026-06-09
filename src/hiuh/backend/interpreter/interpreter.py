@@ -53,6 +53,12 @@ class Interpreter:
         self.globals.define("mellanrum", " ")
         self.globals.define("öppna", self.builtin_open)
 
+        # Built-in verb functions
+        self.globals.define("öka", lambda x, v: x + v if isinstance(x, (int, float)) else str(x) + str(v))
+        self.globals.define("minska", lambda x, v: x - v)
+        self.globals.define("gångra", lambda x, v: x * v)
+        self.globals.define("dela", lambda x, v: x / v)
+
         self.open_files = []
         self.call_stack = []
         self.file_stack = ["main"]
