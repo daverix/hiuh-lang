@@ -59,6 +59,13 @@ class Interpreter:
         self.globals.define("gångra", lambda x, v: x * v)
         self.globals.define("dela", lambda x, v: x / v)
 
+        # Built-in ordlista (like lista, creates a Python dict)
+        self.globals.define("ordlista", lambda: {})
+        self.globals.define("putta", self.builtin_putta)
+        self.globals.define("hämta", self.builtin_hämta)
+        self.globals.define("finns", self.builtin_finns)
+        self.globals.define("rensa", self.builtin_rensa)
+
         self.open_files = []
         self.call_stack = []
         self.file_stack = ["main"]
@@ -983,6 +990,35 @@ class Interpreter:
             # Return None or throw error if value doesn't exist
             return None
         raise Exception(f"Kan inte ta bort från '{node.target_list}' för det är inte en lista.")
+
+    def builtin_putta(self, key, value, target):
+        """putta key, value till target — add entry to dict."""
+        if not isinstance(target, dict):
+            raise Exception(f"Kan inte putta i '{type(target).__name__}' för det är inte en ordlista.")
+        target[key] = value
+        return target
+
+    def builtin_hämta(self, key, source):
+        """hämta key från source — get value from dict."""
+        if not isinstance(source, dict):
+            raise Exception(f"Kan inte hämta från '{type(source).__name__}' för det är inte en ordlista.")
+        if key not in source:
+            raise Exception(f"Nyckeln '{key}' finns inte i ordlistan.")
+        return source[key]
+
+    def builtin_finns(self, key, source):
+        """finns key i source — check if key exists in dict."""
+        if not isinstance(source, dict):
+            return False
+        return key in source
+
+    def builtin_rensa(self, key, target):
+        """rensa key från target — remove entry from dict."""
+        if not isinstance(target, dict):
+            raise Exception(f"Kan inte rensa från '{type(target).__name__}' för det är inte en ordlista.")
+        if key in target:
+            del target[key]
+        return target
 
     def builtin_open(self, path, mode_str="läsning"):
         # Map Swedish intent to Python modes

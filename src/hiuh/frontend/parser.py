@@ -19,7 +19,7 @@ class Parser:
         self.in_structural_statement = False
         self.infix_functions = set()
         self.verb_functions = {"öka", "minska", "gångra", "dela", "multiplicera", "dividera"}
-        self.skicka_functions = set()
+        self.skicka_functions = {"putta", "rensa"}
         self.hämta_functions = set()
         self.in_call_args = False
 

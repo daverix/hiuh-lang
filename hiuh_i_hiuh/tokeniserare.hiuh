@@ -1,5 +1,4 @@
 använd listor
-använd ordlista
 använd texter
 
 . tokeniserare - tokenizer for hiuh language
@@ -69,44 +68,44 @@ sätt TOKEN INHERITS till 50
 . KEYWORD DICTIONARY SETUP
 . Uses ordlista to map keywords to token types
 . =============================================================
-sätt nyckelord till ny tom ordlista
-putta från nyckelord med "skriv", TOKEN PRINT
-putta från nyckelord med "sätt", TOKEN SET
-putta från nyckelord med "till", TOKEN TO
-putta från nyckelord med "grej", TOKEN FUNC
-putta från nyckelord med "med", TOKEN WITH
-putta från nyckelord med "ge", TOKEN GIVE
-putta från nyckelord med "typ", TOKEN TYPE
-putta från nyckelord med "från", TOKEN FROM
-putta från nyckelord med "om", TOKEN IF
-putta från nyckelord med "är", TOKEN OP IS
-putta från nyckelord med "större", TOKEN GREATER
-putta från nyckelord med "mindre", TOKEN LESS
-putta från nyckelord med "än", TOKEN THAN
-putta från nyckelord med "lika", TOKEN EQUAL
-putta från nyckelord med "annars", TOKEN ELSE
-putta från nyckelord med "försök", TOKEN TRY
-putta från nyckelord med "kasta", TOKEN THROW
-putta från nyckelord med "fånga", TOKEN CATCH
-putta från nyckelord med "gånger", TOKEN OP MUL
-putta från nyckelord med "plus", TOKEN OP ADD
-putta från nyckelord med "minus", TOKEN OP SUB
-putta från nyckelord med "delat", TOKEN OP DIV
-putta från nyckelord med "eller", TOKEN OR
-putta från nyckelord med "och", TOKEN AND
-putta från nyckelord med "medan", TOKEN WHILE
-putta från nyckelord med "använd", TOKEN IMPORT
-putta från nyckelord med "öppna", TOKEN OPEN
-putta från nyckelord med "stäng", TOKEN CLOSE
-putta från nyckelord med "som", TOKEN AS
-putta från nyckelord med "kopia", TOKEN COPY
-putta från nyckelord med "av", TOKEN OF
-putta från nyckelord med "infix", TOKEN INFIX
-putta från nyckelord med "för", TOKEN FOR
-putta från nyckelord med "varje", TOKEN EACH
-putta från nyckelord med "bryt", TOKEN BREAK
-putta från nyckelord med "fortsätt", TOKEN CONTINUE
-putta från nyckelord med "ärver", TOKEN INHERITS
+sätt nyckelord till ordlista av sträng, heltal
+putta "skriv", TOKEN PRINT till nyckelord
+putta "sätt", TOKEN SET till nyckelord
+putta "till", TOKEN TO till nyckelord
+putta "grej", TOKEN FUNC till nyckelord
+putta "med", TOKEN WITH till nyckelord
+putta "ge", TOKEN GIVE till nyckelord
+putta "typ", TOKEN TYPE till nyckelord
+putta "från", TOKEN FROM till nyckelord
+putta "om", TOKEN IF till nyckelord
+putta "är", TOKEN OP IS till nyckelord
+putta "större", TOKEN GREATER till nyckelord
+putta "mindre", TOKEN LESS till nyckelord
+putta "än", TOKEN THAN till nyckelord
+putta "lika", TOKEN EQUAL till nyckelord
+putta "annars", TOKEN ELSE till nyckelord
+putta "försök", TOKEN TRY till nyckelord
+putta "kasta", TOKEN THROW till nyckelord
+putta "fånga", TOKEN CATCH till nyckelord
+putta "gånger", TOKEN OP MUL till nyckelord
+putta "plus", TOKEN OP ADD till nyckelord
+putta "minus", TOKEN OP SUB till nyckelord
+putta "delat", TOKEN OP DIV till nyckelord
+putta "eller", TOKEN OR till nyckelord
+putta "och", TOKEN AND till nyckelord
+putta "medan", TOKEN WHILE till nyckelord
+putta "använd", TOKEN IMPORT till nyckelord
+putta "öppna", TOKEN OPEN till nyckelord
+putta "stäng", TOKEN CLOSE till nyckelord
+putta "som", TOKEN AS till nyckelord
+putta "kopia", TOKEN COPY till nyckelord
+putta "av", TOKEN OF till nyckelord
+putta "infix", TOKEN INFIX till nyckelord
+putta "för", TOKEN FOR till nyckelord
+putta "varje", TOKEN EACH till nyckelord
+putta "bryt", TOKEN BREAK till nyckelord
+putta "fortsätt", TOKEN CONTINUE till nyckelord
+putta "ärver", TOKEN INHERITS till nyckelord
 
 . =============================================================
 . HELPER FUNCTIONS
@@ -255,9 +254,8 @@ sätt tokenisera till grej med rader som lista av sträng
             annars
                 . Check if it's a keyword
                 sätt tokentyp till TOKEN IDENTIFIER
-                om finns från nyckelord med värde
-                    sätt par till hämta från nyckelord med värde
-                    sätt tokentyp till värde från par
+                om finns med värde, nyckelord
+                    sätt tokentyp till hämta med värde, nyckelord
 
                 lägg till skapa_token med tokentyp, värde, rad_nummer, indent plus start plus 1 i tokens
 

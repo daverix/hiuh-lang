@@ -675,104 +675,6 @@ skriv resultat
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
-    def test_ordlista_utility_callbacks(self):
-        """Verify that ordlista.hiuh callback usage is parsed correctly."""
-        source = """
-använd ordlista
-använd listor
-
-sätt fruktantal till ny tom ordlista av sträng, heltal
-putta från fruktantal med äpple, 2
-putta från fruktantal med banan, 1
-putta från fruktantal med citron, 3
-
-rensa från fruktantal med banan
-
-sätt fruktpar till värden från fruktantal
-
-för varje par i fruktpar
-    sätt fruktnamn till nyckel från par
-    sätt fruktantal till värde från par
-    skriv fruktnamn plus mellanrum plus fruktantal plus . plus mellanrum
-
-"""
-        expected = [
-            ImportNode(module_name="ordlista", import_all=True, resolved=True),
-            ImportNode(module_name="listor", import_all=True, resolved=True),
-            AssignNode(
-                name="fruktantal",
-                value=FunctionCallNode(name="ny tom ordlista", args=[])
-            ),
-            FunctionCallNode(
-                name=VarAccessNode(name="putta", target="fruktantal"),
-                args=[
-                    StringNode("äpple"),
-                    IntNode("2")
-                ]
-            ),
-            FunctionCallNode(
-                name=VarAccessNode(name="putta", target="fruktantal"),
-                args=[
-                    StringNode("banan"),
-                    IntNode("1")
-                ]
-            ),
-            FunctionCallNode(
-                name=VarAccessNode(name="putta", target="fruktantal"),
-                args=[
-                    StringNode("citron"),
-                    IntNode("3")
-                ]
-            ),
-            FunctionCallNode(
-                name=VarAccessNode(name="rensa", target="fruktantal"),
-                args=[
-                    StringNode("banan")
-                ]
-            ),
-            AssignNode(
-                name="fruktpar",
-                value=PropertyAccessNode(
-                    property_name="värden",
-                    target=VarAccessNode("fruktantal")
-                )
-            ),
-            ForEachNode(
-                variable="par",
-                iterable=VarAccessNode("fruktpar"),
-                body=[
-                    AssignNode(
-                        name="fruktnamn",
-                        value=PropertyAccessNode(
-                            property_name="nyckel",
-                            target=VarAccessNode("par")
-                        )
-                    ),
-                    AssignNode(
-                        name="fruktantal",
-                        value=PropertyAccessNode(
-                            property_name="värde",
-                            target=VarAccessNode("par")
-                        )
-                    ),
-                    PrintNode(value=AddNode(
-                        left=AddNode(
-                            left=AddNode(
-                                left=AddNode(
-                                    left=VarAccessNode("fruktnamn"),
-                                    right=VarAccessNode("mellanrum")
-                                ),
-                                right=VarAccessNode("fruktantal")
-                            ),
-                            right=StringNode(".")
-                        ),
-                        right=VarAccessNode("mellanrum")
-                    ))
-                ]
-            )
-        ]
-        self.assertNodesEqual(self.parse_source(source), expected)
-
     def test_element_assign_int_index(self):
         """Verify that element assignment with integer index is parsed correctly."""
         source = """
@@ -1076,16 +978,16 @@ upprepa a med 3
     def test_skicka_grej_definition_and_call(self):
         """skickagrej declaration and call resolve correctly."""
         source = """
-sätt putta till skickagrej med sak som sträng, mål som lista av sträng
+sätt lägg_till till skickagrej med sak som sträng, mål som lista av sträng
     lägg till sak i mål
     ge mål
 
 sätt min lista till lista av sträng
-putta hej till min lista
+lägg_till hej till min lista
 """
         expected = [
             AssignNode(
-                name="putta",
+                name="lägg_till",
                 value=FunctionDefNode(
                     params=[("sak", "sträng"), ("mål", "lista av sträng")],
                     body=[
@@ -1102,7 +1004,7 @@ putta hej till min lista
             AssignNode(
                 name="min lista",
                 value=FunctionCallNode(
-                    name="putta",
+                    name="lägg_till",
                     args=[StringNode("hej"), VarAccessNode("min lista")]
                 )
             )

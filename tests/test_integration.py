@@ -537,31 +537,20 @@ skriv hittat_index plus mellanrum plus hittat_namn
 
             self.assertEqual(fake_out.getvalue().strip(), "2 Hiuh")
 
-    def test_ordlista_utility_callbacks(self):
-        """Verify that ordlista.hiuh can be imported and executed with high-order callback functions."""
+    def test_ordlista_builtin(self):
+        """Verify built-in ordlista (dict) operations."""
         source = """
-använd ordlista
-använd listor
+sätt fruktantal till ordlista av sträng, heltal
+putta äpple, 2 till fruktantal
+putta banan, 1 till fruktantal
 
-sätt fruktantal till ny tom ordlista
-putta från fruktantal med äpple, 2
-putta från fruktantal med banan, 1
-putta från fruktantal med citron, 3
+rensa banan till fruktantal
 
-rensa från fruktantal med banan
-
-sätt fruktpar till värden från fruktantal
-
-för varje par i fruktpar
-    sätt fruktnamn till nyckel från par
-    sätt fruktantal till värde från par
-    skriv fruktnamn plus mellanrum plus fruktantal plus . plus mellanrum
-
+skriv hämta med äpple, fruktantal
 """
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
-
-            self.assertEqual(fake_out.getvalue().strip(), "äpple 2. citron 3.")
+            self.assertEqual(fake_out.getvalue().strip(), "2")
 
     def test_named_args_typ_constructor(self):
         """Test that typ constructors support named arguments in any order."""
@@ -1016,13 +1005,13 @@ skriv a
     def test_skicka_grej_user_defined(self):
         """User-defined skickagrej function works at runtime."""
         source = """
-sätt putta till skickagrej med sak som sträng, mål som lista av sträng
+sätt skicka till skickagrej med sak som sträng, mål som lista av sträng
     lägg till sak i mål
     ge mål
 
 sätt min lista till lista av sträng
-putta hej till min lista
-putta då till min lista
+skicka hej till min lista
+skicka då till min lista
 skriv element 0 från min lista
 skriv element 1 från min lista
 """

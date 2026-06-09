@@ -73,6 +73,12 @@ class Resolver:
             self.module_registry.modules[mod].add_symbol("heltal", "func", FunctionSignature(params=[]))
             self.module_registry.modules[mod].add_symbol("text", "func", FunctionSignature(params=[]))
             self.module_registry.modules[mod].add_symbol("flyttal", "func", FunctionSignature(params=[]))
+            # Ordlista built-in functions
+            self.module_registry.modules[mod].add_symbol("ordlista", "func", FunctionSignature(params=[]))
+            self.module_registry.modules[mod].add_symbol("putta", "func", FunctionSignature(params=["nyckel", "värde", "mål"]))
+            self.module_registry.modules[mod].add_symbol("hämta", "func", FunctionSignature(params=["nyckel", "källa"]))
+            self.module_registry.modules[mod].add_symbol("finns", "func", FunctionSignature(params=["nyckel", "källa"]))
+            self.module_registry.modules[mod].add_symbol("rensa", "func", FunctionSignature(params=["nyckel", "mål"]))
 
     def _add_local_var(self, module_name: str, name: str):
         """Add a local variable to the module's scope."""
@@ -409,7 +415,7 @@ class Resolver:
 
             for node in module.ast:
                 if isinstance(node, ImportNode) and node.import_all:
-                    if node.module_name in self.modules:
+                    if node.module_name in self.modules and node.module_name != module_name:
                         imported_module_info = self.modules[node.module_name]
                         for stmt in imported_module_info.ast or []:
                             if isinstance(stmt, AssignNode):
@@ -424,10 +430,11 @@ class Resolver:
                                 if symbol_name in imported_symbols:
                                     # Conflict between two wildcard imports
                                     other_module = imported_symbols[symbol_name]
-                                    raise SyntaxError(
-                                        f"Symbol '{symbol_name}' is defined in both "
-                                        f"'{other_module}' and '{node.module_name}'"
-                                    )
+                                    if other_module != node.module_name:
+                                        raise SyntaxError(
+                                            f"Symbol '{symbol_name}' is defined in both "
+                                            f"'{other_module}' and '{node.module_name}'"
+                                        )
                                 imported_symbols[symbol_name] = node.module_name
 
     # === VarAccessNode - resolve or stringify ===
@@ -640,8 +647,8 @@ class Resolver:
                     if isinstance(node.value, FunctionDefNode):
                         params = getattr(node.value, 'params', [])
                         return len(params) == 0
-        
-        # Check imported modules (for wildcard imports like 'använd ordlista')
+
+        # Check imported modules
         if module_name in self.modules:
             mod = self.modules[module_name]
             if hasattr(mod, 'imports'):
@@ -973,7 +980,7 @@ class Resolver:
 
     def _get_generic_required(self):
         """Return set of built-in functions that require type params via 'av'."""
-        return {"lista"}
+        return {"lista", "ordlista"}
 
     def _function_has_kind(self, fn_name, kind):
         """Check if a function is defined with the given kind (e.g., 'hämtagrej', 'skickagrej', 'verbgrej')."""
