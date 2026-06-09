@@ -9,6 +9,14 @@ sätt V_ÖKA till "ö" plus "ka"
 sätt V_MINSKA till "min" plus "ska"
 sätt V_GÅNGRA till "gång" plus "ra"
 sätt V_DELA till "de" plus "la"
+sätt V_RETURNERA till "retur" plus "nera"
+
+. === Character constants for string building ===
+sätt C_COMMA till 44 som tecken
+sätt C_ENKELCITAT till 39 som tecken
+sätt C_MELLANRUM till 32 som tecken
+sätt C_ÖPPEN_PAREN till 40 som tecken
+sätt C_STÄNG_PAREN till 41 som tecken
 
 . === Token type aliases ===
 sätt T_PRINT till 1
@@ -27,6 +35,11 @@ sätt T_NEWLINE till 37
 sätt T_INDENT till 38
 sätt T_DEDENT till 39
 sätt T_IDENTIFIER till 36
+sätt T_FUNC till 4
+sätt T_OF till 44
+sätt T_RETURNS till 51
+sätt T_AS till 19
+sätt T_COMMA till 40
 
 . === Inline join helper ===
 
@@ -170,6 +183,148 @@ sätt parsa_stmt till grej med tkns som lista av token, pos som heltal returnera
     öka pos med 1
     ge lista med "", pos
 
+. === Grej (function definition) parser ===
+
+sätt parsa_grej till grej med tkns som lista av token, pos som heltal returnera lista av sträng
+    . Consume 'grej' token
+    sätt t_grej till element pos från tkns
+    öka pos med 1
+
+    . Skip optional 'av T1, T2' — just advance until 'med', 'returnera', or newline
+    medan pos är mindre än längd från tkns
+        sätt t till element pos från tkns
+        sätt tt till tokentyp från t
+        sätt tv till värde från t
+        om tt är lika med T_WITH
+            bryt
+        om tt är lika med T_RETURNS
+            bryt
+        om tv är lika med V_RETURNERA
+            bryt
+        om tt är lika med T_NEWLINE
+            bryt
+        öka pos med 1
+
+    . Parse params
+    sätt param_delar till lista av sträng
+    om pos är mindre än längd från tkns
+        sätt t till element pos från tkns
+        om tokentyp från t är lika med T_WITH
+            öka pos med 1
+
+            medan pos är mindre än längd från tkns
+                sätt t till element pos från tkns
+                sätt tt till tokentyp från t
+                sätt tv till värde från t
+
+                om tt är lika med T_RETURNS
+                    bryt
+                om tv är lika med V_RETURNERA
+                    bryt
+                om tt är lika med T_NEWLINE
+                    bryt
+
+                sätt pnamn till tv
+                öka pos med 1
+
+                om pos är mindre än längd från tkns
+                    sätt t3 till element pos från tkns
+                    om tokentyp från t3 är lika med T_AS
+                        öka pos med 1
+
+                sätt ptyp_delar till lista av sträng
+                medan pos är mindre än längd från tkns
+                    sätt t4 till element pos från tkns
+                    sätt t4t till tokentyp från t4
+                    sätt t4v till värde från t4
+                    om t4t är lika med T_COMMA
+                        öka pos med 1
+                        bryt
+                    om t4t är lika med T_RETURNS
+                        bryt
+                    om t4v är lika med V_RETURNERA
+                        bryt
+                    om t4t är lika med T_NEWLINE
+                        bryt
+                    lägg till t4v i ptyp_delar
+                    öka pos med 1
+
+                sätt ptyp till ""
+                sätt första till sant
+                för varje d i ptyp_delar
+                    om första
+                        sätt första till falskt
+                    annars
+                        sätt ptyp till ptyp plus " "
+                    sätt ptyp till ptyp plus d
+
+                om längd från pnamn är större än 0
+                    lägg till C_ÖPPEN_PAREN plus C_ENKELCITAT plus pnamn plus C_ENKELCITAT plus C_COMMA plus C_MELLANRUM plus C_ENKELCITAT plus ptyp plus C_ENKELCITAT plus C_STÄNG_PAREN i param_delar
+
+    sätt params_str till "["
+    sätt första till sant
+    för varje pd i param_delar
+        om första
+            sätt första till falskt
+        annars
+            sätt params_str till params_str plus ", "
+        sätt params_str till params_str plus pd
+    sätt params_str till params_str plus "]"
+
+    sätt ret_typ till "heltal"
+    om pos är mindre än längd från tkns
+        sätt t till element pos från tkns
+        sätt tt till tokentyp från t
+        sätt tv till värde från t
+        om tt är lika med T_RETURNS
+            öka pos med 1
+        annars om tv är lika med V_RETURNERA
+            öka pos med 1
+
+        sätt ret_delar till lista av sträng
+        medan pos är mindre än längd från tkns
+            sätt t2 till element pos från tkns
+            sätt t2t till tokentyp från t2
+            om t2t är lika med T_NEWLINE
+                bryt
+            om t2t är lika med T_INDENT
+                bryt
+            om t2t är lika med T_DEDENT
+                bryt
+            om t2t är lika med T_WITH
+                bryt
+            om t2t är lika med T_RETURNS
+                bryt
+            lägg till värde från t2 i ret_delar
+            öka pos med 1
+
+        om längd från ret_delar är större än 0
+            sätt ret_typ till ""
+            sätt första till sant
+            för varje d i ret_delar
+                om första
+                    sätt första till falskt
+                annars
+                    sätt ret_typ till ret_typ plus " "
+                sätt ret_typ till ret_typ plus d
+
+    sätt r1 till parsa_block med tkns, pos
+    sätt pos till element 1 från r1
+    sätt block_noder till element 0 från r1
+
+    sätt body_str till "["
+    sätt första till sant
+    för varje nd i block_noder
+        om första
+            sätt första till falskt
+        annars
+            sätt body_str till body_str plus ", "
+        sätt body_str till body_str plus nd
+    sätt body_str till body_str plus "]"
+
+    sätt fn_str till "FunctionDefNode(" plus params_str plus ", " plus body_str plus ", return_type=" plus C_ENKELCITAT plus ret_typ plus C_ENKELCITAT plus C_STÄNG_PAREN
+
+    ge lista med fn_str, pos
 . === Block parser ===
 
 sätt parsa_block till grej med tkns som lista av token, pos som heltal returnera lista av sträng
@@ -284,6 +439,38 @@ sätt parsa_satt till grej med tkns som lista av token, pos som heltal returnera
         om tokentyp från t är lika med T_TO
             öka pos med 1
 
+    . Check if value is a function definition (grej/verbgrej/skickagrej/hämtagrej)
+    om pos är mindre än längd från tkns
+        sätt t till element pos från tkns
+        sätt ttv till tokentyp från t
+        sätt ttvv till värde från t
+        om ttv är lika med T_FUNC
+            sätt r2 till parsa_grej med tkns, pos
+            sätt pos till element 1 från r2
+            sätt val_str till element 0 från r2
+            ge lista med "AssignNode(" plus nnamn plus ", " plus val_str plus ")", pos
+        om ttv är lika med T_IDENTIFIER
+            om ttvv är lika med "verbgrej"
+                sätt r2 till parsa_grej med tkns, pos
+                sätt pos till element 1 från r2
+                sätt val_str till element 0 från r2
+                ge lista med "AssignNode(" plus nnamn plus ", " plus val_str plus ")", pos
+            om ttvv är lika med "skickagrej"
+                sätt r2 till parsa_grej med tkns, pos
+                sätt pos till element 1 från r2
+                sätt val_str till element 0 från r2
+                ge lista med "AssignNode(" plus nnamn plus ", " plus val_str plus ")", pos
+            om ttvv är lika med "hämtagrej"
+                sätt r2 till parsa_grej med tkns, pos
+                sätt pos till element 1 från r2
+                sätt val_str till element 0 från r2
+                ge lista med "AssignNode(" plus nnamn plus ", " plus val_str plus ")", pos
+            om ttvv är lika med "infixgrej"
+                sätt r2 till parsa_grej med tkns, pos
+                sätt pos till element 1 från r2
+                sätt val_str till element 0 från r2
+                ge lista med "AssignNode(" plus nnamn plus ", " plus val_str plus ")", pos
+
     sätt r2 till samla_uttryck med tkns, pos
     sätt pos till element 1 från r2
     sätt val_str till element 0 från r2
@@ -338,3 +525,6 @@ sätt parsa_modifiera till grej med tkns som lista av token, pos som heltal, nty
     sätt r2 till samla_uttryck med tkns, pos
     sätt pos till element 1 från r2
     ge lista med ntype plus "(" plus ms plus ", " plus element 0 från r2 plus ")", pos
+
+
+. === Format nodes as strings (for testing) ===
