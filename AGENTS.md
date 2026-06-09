@@ -44,3 +44,9 @@ To ensure reliable development and prevent silent failures:
     *   If the read operation succeeds, the agent must confirm the content matches the written content and proceed.
 2.  Any failure in this protocol must be reported before moving to the next logical step.
 3.  **Build Verification:** After any code change in core files (e.g., src/), the agent MUST run `build.sh` to confirm compilation and test suite availability.
+
+## Git Rules
+- NEVER use `git checkout .` or `git checkout -- .` on all files
+- If you get stuck: commit your progress first, then explain the problem
+- Use `git stash` instead of checkout when you want to temporarily set aside changes
+- Refactor one file at a time, verify, commit — then move to the next
