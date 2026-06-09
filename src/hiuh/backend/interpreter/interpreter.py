@@ -955,6 +955,8 @@ class Interpreter:
         elif isinstance(val, list):
             type_name = "lista"
         elif callable(val):
+            if hasattr(val, '_hiuhtyp'):
+                return val._hiuhtyp
             type_name = "grej"
         else:
             type_name = "okänd"

@@ -370,9 +370,6 @@ class TestHiuhParser(_BaseParserTests, unittest.TestCase):
         line_strings = ", ".join(f'"{line}"' for line in lines)
 
         hiuh_source = (
-            "sätt formatera till grej med noder som lista av sträng returnera lista av sträng\n"
-            "    ge noder\n"
-            "\n"
             "använd parser\n"
             "använd tokeniserare\n"
             "\n"
