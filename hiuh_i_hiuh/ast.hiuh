@@ -227,3 +227,8 @@ typ ImporteraNod ärver BasNod
 typ UttrycksDelarNod ärver BasNod
     delar_start som heltal
     delar_slut som heltal
+
+. === Runtime type info ===
+typ hiuhtyp
+    namn som sträng
+    föräldrar som lista av hiuhtyp

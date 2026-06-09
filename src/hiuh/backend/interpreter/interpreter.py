@@ -66,6 +66,27 @@ class Interpreter:
         self.globals.define("finns", self.builtin_finns)
         self.globals.define("rensa", self.builtin_rensa)
 
+        # Built-in hiuhtyp objects for type comparison
+        self._hiuhtyp_heltal = {"namn": "heltal", "föräldrar": [], "_typ": "hiuhtyp"}
+        self._hiuhtyp_sträng = {"namn": "sträng", "föräldrar": [], "_typ": "hiuhtyp"}
+        self._hiuhtyp_flyttal = {"namn": "flyttal", "föräldrar": [], "_typ": "hiuhtyp"}
+        self._hiuhtyp_boolesk = {"namn": "boolesk", "föräldrar": [], "_typ": "hiuhtyp"}
+        self.globals.define("heltal", self._hiuhtyp_heltal)
+        self.globals.define("sträng", self._hiuhtyp_sträng)
+        self.globals.define("flyttal", self._hiuhtyp_flyttal)
+        self.globals.define("boolesk", self._hiuhtyp_boolesk)
+
+        # Map type names to hiuhtyp objects
+        self._hiuhtyp_registry = {
+            "heltal": self._hiuhtyp_heltal,
+            "sträng": self._hiuhtyp_sträng,
+            "flyttal": self._hiuhtyp_flyttal,
+            "boolesk": self._hiuhtyp_boolesk,
+            "lista": {"namn": "lista", "föräldrar": [], "_typ": "hiuhtyp"},
+            "ordlista": {"namn": "ordlista", "föräldrar": [], "_typ": "hiuhtyp"},
+            "hiuhtyp": {"namn": "hiuhtyp", "föräldrar": [], "_typ": "hiuhtyp"},
+        }
+
         self.open_files = []
         self.call_stack = []
         self.file_stack = ["main"]
@@ -878,30 +899,69 @@ class Interpreter:
                 if name in field_names:
                     result[name] = value
             result['_typ'] = node.name  # tag with type name for typ av
+            if node.parent_types:
+                result['_föräldrar'] = [p[0] for p in node.parent_types]
+            else:
+                result['_föräldrar'] = []
             return result
         make_constructor._fields = all_fields
         self.env.define(node.name, make_constructor)
+        
+        # Tag constructor with its hiuhtyp and register for typ av
+        parent_hiuhtyps = []
+        if node.parent_types:
+            for pn in [p[0] for p in node.parent_types]:
+                if pn in self._hiuhtyp_registry:
+                    parent_hiuhtyps.append(self._hiuhtyp_registry[pn])
+        h = {"namn": node.name, "föräldrar": parent_hiuhtyps, "_typ": "hiuhtyp"}
+        make_constructor._hiuhtyp = h
+        self._hiuhtyp_registry[node.name] = h
 
     def visit_TypeOfNode(self, node):
-        """typ av X — returns the type name of X as a string."""
+        """typ av X — returns a hiuhtyp object with namn and föräldrar."""
         val = self.visit(node.value)
+        
+        # For instances of user-defined types, get hiuhtyp from the constructor
         if isinstance(val, dict) and '_typ' in val:
-            return val['_typ']
+            type_name = val['_typ']
+            # Look up constructor to get its _hiuhtyp tag
+            cons = self.env.get(type_name)
+            if cons and hasattr(cons, '_hiuhtyp'):
+                return cons._hiuhtyp
+            # Fallback: look in registry
+            if type_name in self._hiuhtyp_registry:
+                return self._hiuhtyp_registry[type_name]
+            # Build from instance metadata
+            parent_names = val.get('_föräldrar', [])
+            parents = []
+            for pn in parent_names:
+                if pn in self._hiuhtyp_registry:
+                    parents.append(self._hiuhtyp_registry[pn])
+                else:
+                    parents.append({"namn": pn, "föräldrar": [], "_typ": "hiuhtyp"})
+            return {"namn": type_name, "föräldrar": parents, "_typ": "hiuhtyp"}
+        
+        # Built-in types
         if isinstance(val, bool):
-            return "boolesk"
-        if isinstance(val, str) and val in ("SANT", "FALSKT"):
-            return "boolesk"
-        if isinstance(val, int):
-            return "heltal"
-        if isinstance(val, float):
-            return "flyttal"
-        if isinstance(val, str):
-            return "sträng"
-        if isinstance(val, list):
-            return "lista"
-        if callable(val):
-            return "grej"
-        return "okänd"
+            type_name = "boolesk"
+        elif isinstance(val, str) and val in ("SANT", "FALSKT"):
+            type_name = "boolesk"
+        elif isinstance(val, int):
+            type_name = "heltal"
+        elif isinstance(val, float):
+            type_name = "flyttal"
+        elif isinstance(val, str):
+            type_name = "sträng"
+        elif isinstance(val, list):
+            type_name = "lista"
+        elif callable(val):
+            type_name = "grej"
+        else:
+            type_name = "okänd"
+        
+        if type_name in self._hiuhtyp_registry:
+            return self._hiuhtyp_registry[type_name]
+        return {"namn": type_name, "föräldrar": [], "_typ": "hiuhtyp"}
 
     def visit_CopyWithPropNode(self, node):
         """Handle 'sätt X till kopia av Y med P V, P V, P V' pattern.

@@ -52,7 +52,7 @@ class Resolver:
         for mod in ['__main__', 'main']:
             self.module_registry.add_module(mod, "")
 
-        # Built-in variables
+        # Built-in variables (including type references like heltal, sträng, etc.)
         for mod in ['__main__', 'main']:
             self.module_registry.modules[mod].add_symbol("SANT", "var")
             self.module_registry.modules[mod].add_symbol("FALSKT", "var")
@@ -63,16 +63,15 @@ class Resolver:
             self.module_registry.modules[mod].add_symbol("inmatning", "var")
             self.module_registry.modules[mod].add_symbol("heltal", "var")
             self.module_registry.modules[mod].add_symbol("text", "var")
+            self.module_registry.modules[mod].add_symbol("sträng", "var")
             self.module_registry.modules[mod].add_symbol("flyttal", "var")
+            self.module_registry.modules[mod].add_symbol("boolesk", "var")
             self.module_registry.modules[mod].add_symbol("argument", "var")
 
         # Built-in functions
         for mod in ['__main__', 'main']:
             self.module_registry.modules[mod].add_symbol("lista", "func", FunctionSignature(params=[]))
             self.module_registry.modules[mod].add_symbol("inmatning", "func", FunctionSignature(params=[]))
-            self.module_registry.modules[mod].add_symbol("heltal", "func", FunctionSignature(params=[]))
-            self.module_registry.modules[mod].add_symbol("text", "func", FunctionSignature(params=[]))
-            self.module_registry.modules[mod].add_symbol("flyttal", "func", FunctionSignature(params=[]))
             # Ordlista built-in functions
             self.module_registry.modules[mod].add_symbol("ordlista", "func", FunctionSignature(params=[]))
             self.module_registry.modules[mod].add_symbol("putta", "func", FunctionSignature(params=["nyckel", "värde", "mål"]))

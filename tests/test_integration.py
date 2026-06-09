@@ -1033,6 +1033,120 @@ skriv resultat
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "äpple")
 
+    def test_typ_av_heltal(self):
+        """typ av 42 returns hiuhtyp with namn 'heltal'."""
+        source = """
+sätt ht till typ av 42
+skriv namn från ht
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "heltal")
+
+    def test_typ_av_sträng(self):
+        """typ av returns hiuhtyp with namn 'sträng' for strings."""
+        source = """
+sätt ht till typ av "hej"
+skriv namn från ht
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "sträng")
+
+    def test_typ_av_flyttal(self):
+        source = """
+sätt ht till typ av 3,14
+skriv namn från ht
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "flyttal")
+
+    def test_typ_av_boolesk(self):
+        source = """
+sätt ht till typ av SANT
+skriv namn från ht
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "boolesk")
+
+    def test_typ_av_comparison_equal(self):
+        """typ av 42 är lika med heltal."""
+        source = """
+sätt x till 42
+om typ av x är lika med heltal
+    skriv "ja"
+annars
+    skriv "nej"
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "ja")
+
+    def test_typ_av_comparison_not_equal(self):
+        """typ av sträng är inte lika med heltal."""
+        source = """
+sätt x till "hej"
+om typ av x är inte lika med heltal
+    skriv "inte heltal"
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "inte heltal")
+
+    def test_typ_av_user_defined_type(self):
+        """typ av for user-defined typ returns correct hiuhtyp."""
+        source = """
+typ person
+    namn som sträng
+    ålder som heltal
+
+sätt p till person med David, 37
+sätt ht till typ av p
+skriv namn från ht
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "person")
+
+    def test_typ_av_same_type_equal(self):
+        """Two instances of same type have equal typ av."""
+        source = """
+typ person
+    namn som sträng
+    ålder som heltal
+
+sätt p1 till person med David, 37
+sätt p2 till person med Eva, 25
+om typ av p1 är lika med typ av p2
+    skriv "samma"
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "samma")
+
+    def test_typ_av_inheritance_parents(self):
+        """typ av includes parent types in föräldrar."""
+        source = """
+typ fordon
+    hastighet som heltal
+
+typ bil ärver fordon
+    märke som sträng
+
+sätt b till bil med 120, Volvo
+sätt ht till typ av b
+sätt fl till föräldrar från ht
+skriv längd från fl
+om längd från fl är större än 0
+    sätt förälder till element 0 från fl
+    skriv " "
+    skriv namn från förälder
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "1 fordon")
 
 if __name__ == '__main__':
     unittest.main()
