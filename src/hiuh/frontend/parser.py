@@ -20,6 +20,7 @@ class Parser:
         self.infix_functions = set()
         self.verb_functions = {"öka", "minska", "gångra", "dela", "multiplicera", "dividera"}
         self.skicka_functions = set()
+        self.hämta_functions = set()
         self.in_call_args = False
 
     def peek(self, offset=0):
@@ -178,27 +179,65 @@ class Parser:
         return AssignNode(target, FunctionCallNode(verb_name, [VarAccessNode(target, token=verb_token), val], token=verb_token), token=verb_token)
 
     def _parse_skicka_call(self):
-        """Parse 'skicka <thing> till <target>' as AssignNode(target, fn(thing, target))."""
+        """Parse 'skicka <thing> till <target>' as AssignNode(target, fn(args..., target))."""
         fn_token = self.consume()
         fn_name = fn_token.value
-        # Collect thing until 'till'
-        thing_parts = []
+        # Collect thing parts until 'till', split at commas into multiple args
+        all_thing_parts = []
         while self.peek() and self.peek().type != TOKEN_TO:
-            thing_parts.append(self.consume().value)
-        thing = " ".join(thing_parts)
+            all_thing_parts.append(self.consume().value)
         self.consume(TOKEN_TO)  # consume 'till'
         # Collect target
         target_parts = []
         while self.peek() and self.peek().type not in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
             target_parts.append(self.consume().value)
         target = " ".join(target_parts)
-        # Generate: sätt target till fn med thing, target
-        thing_node = StringNode(thing, token=fn_token) if not thing.isdigit() and not thing.startswith('"') else (
-            IntNode(thing, token=fn_token) if thing.isdigit() else StringNode(thing[1:-1], token=fn_token))
-        # Treat thing as expression — let resolver handle it
-        call_args = [ExpressionPartsNode(thing_parts, token=fn_token), VarAccessNode(target, token=fn_token)]
+        # Split thing parts into args at commas
+        call_args = []
+        current = []
+        for p in all_thing_parts:
+            if p == ',':
+                if current:
+                    call_args.append(ExpressionPartsNode(current, token=fn_token))
+                current = []
+            else:
+                current.append(p)
+        if current:
+            call_args.append(ExpressionPartsNode(current, token=fn_token))
+        # Add target as last arg
+        call_args.append(VarAccessNode(target, token=fn_token))
         func_call = FunctionCallNode(fn_name, call_args, token=fn_token)
         return AssignNode(target, func_call, token=fn_token)
+
+    def _parse_hämta_call(self):
+        """Parse 'hämta <thing> från <source>' as FunctionCallNode(fn, [thing, source]).
+        Unlike skicka, this does NOT assign — it just returns the value."""
+        fn_token = self.consume()
+        fn_name = fn_token.value
+        # Collect thing parts until 'från'
+        thing_parts = []
+        while self.peek() and self.peek().type != TOKEN_FROM:
+            thing_parts.append(self.consume().value)
+        self.consume(TOKEN_FROM)  # consume 'från'
+        # Collect source
+        source_parts = []
+        while self.peek() and self.peek().type not in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
+            source_parts.append(self.consume().value)
+        source = " ".join(source_parts)
+        # Build args: split thing at commas, then add source
+        call_args = []
+        current = []
+        for p in thing_parts:
+            if p == ',':
+                if current:
+                    call_args.append(ExpressionPartsNode(current, token=fn_token))
+                current = []
+            else:
+                current.append(p)
+        if current:
+            call_args.append(ExpressionPartsNode(current, token=fn_token))
+        call_args.append(VarAccessNode(source, token=fn_token))
+        return FunctionCallNode(fn_name, call_args, token=fn_token)
 
     def parse_open_file(self):
         open_token = self.consume(TOKEN_OPEN)
@@ -304,8 +343,12 @@ class Parser:
             self.peek() and self.peek().value == 'skicka'
             and self.peek(1) and self.peek(1).value == 'grej'
         )
+        is_hämta_grej = (
+            self.peek() and self.peek().value == 'hämta'
+            and self.peek(1) and self.peek(1).value == 'grej'
+        )
         
-        if is_grej or is_infix_grej or is_verb_grej or is_skicka_grej:
+        if is_grej or is_infix_grej or is_verb_grej or is_skicka_grej or is_hämta_grej:
             is_infix = False
             if is_infix_grej:
                 self.consume()  # consume 'infix'
@@ -314,6 +357,8 @@ class Parser:
                 self.consume()  # consume 'verb'
             elif is_skicka_grej:
                 self.consume()  # consume 'skicka'
+            elif is_hämta_grej:
+                self.consume()  # consume 'hämta'
             self.consume()  # consume 'grej'
 
             # Handle type parameters: 'grej av T1, T2'
@@ -343,6 +388,9 @@ class Parser:
             if is_skicka_grej:
                 func_def.kind = 'skicka'
                 self.skicka_functions.add(name)
+            if is_hämta_grej:
+                func_def.kind = 'hämta'
+                self.hämta_functions.add(name)
             return AssignNode(name, func_def, target_type=None, token=assign_token)
         
         # Check for 'kopia av' pattern

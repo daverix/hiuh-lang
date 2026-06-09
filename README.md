@@ -289,6 +289,25 @@ outputs:
 hejdå
 ```
 
+### hämta grej
+
+`hämta grej` defines a function called with `verb thing från source`. Returns a value
+without assigning — the call site uses `sätt resultat till ...` or passes it directly.
+
+```
+sätt plocka till hämta grej med namn som sträng, källa som lista av sträng
+    ge element 0 från källa
+
+sätt frukter till lista av sträng med äpple, banan, citron
+sätt resultat till plocka banan från frukter
+skriv resultat
+```
+
+outputs:
+```
+äpple
+```
+
 ### Named arguments
 
 All three constructs (`typ`, `grej`, and `kopia av`) support **named arguments** in addition to positional arguments.

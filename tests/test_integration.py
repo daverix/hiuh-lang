@@ -1030,6 +1030,20 @@ skriv element 1 från min lista
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "hejdå")
 
+    def test_hämta_grej_user_defined(self):
+        """User-defined hämta grej function works at runtime."""
+        source = """
+sätt plocka till hämta grej med namn som sträng, källa som lista av sträng
+    ge element 0 från källa
+
+sätt frukter till lista av sträng med äpple, banan, citron
+sätt resultat till plocka banan från frukter
+skriv resultat
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "äpple")
+
 
 if __name__ == '__main__':
     unittest.main()

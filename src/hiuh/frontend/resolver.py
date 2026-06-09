@@ -549,6 +549,11 @@ class Resolver:
             inner_result = self.visit(inner_node)
             return TypeOfNode(inner_result, token=node)
 
+        # Check for hämta-style call: "fn thing från source" where fn has kind='hämta'
+        result = self._try_hämta_call(parts, node)
+        if result:
+            return self.visit(result)
+
         # Check for property access: "X från Y" -> VarAccessNode with target
         result = self._try_property_access(parts, node)
         if result:
@@ -970,6 +975,58 @@ class Resolver:
         """Return set of built-in functions that require type params via 'av'."""
         return {"lista"}
 
+    def _function_has_kind(self, fn_name, kind):
+        """Check if a function is defined with the given kind (e.g., 'hämta', 'skicka', 'verb')."""
+        for mod_info in self.modules.values():
+            if mod_info.ast:
+                for n in mod_info.ast:
+                    if isinstance(n, AssignNode) and n.name == fn_name:
+                        if isinstance(n.value, FunctionDefNode):
+                            if getattr(n.value, 'kind', 'grej') == kind:
+                                return True
+        return False
+
+    def _try_hämta_call(self, parts, node):
+        """Try to parse as hämta-style call: 'fn thing från source' -> FunctionCallNode(fn, [thing, source]).
+        Only matches if fn is defined with kind='hämta'."""
+        if 'från' not in parts:
+            return None
+        från_idx = parts.index('från')
+        if från_idx < 2:
+            return None
+        fn_name = parts[0]
+        if not self._is_defined(fn_name, self._current_module):
+            return None
+        # Only match if fn is declared as 'hämta grej'
+        if not self._function_has_kind(fn_name, 'hämta'):
+            return None
+        # Split: fn is parts[0], thing is parts[1:från_idx], source is parts[från_idx+1:]
+        thing_parts = parts[1:från_idx]
+        source_parts = parts[från_idx + 1:]
+        if not thing_parts or not source_parts:
+            return None
+        # Build args: split thing at commas
+        args = []
+        current = []
+        for p in thing_parts:
+            if p == ',':
+                if current:
+                    args.append(ExpressionPartsNode(current, token=node))
+                current = []
+            else:
+                current.append(p)
+        if current:
+            args.append(ExpressionPartsNode(current, token=node))
+        # Add source as last arg
+        if len(source_parts) == 1:
+            if self._is_defined(source_parts[0], self._current_module):
+                args.append(VarAccessNode(source_parts[0], token=node))
+            else:
+                args.append(StringNode(' '.join(source_parts), token=node))
+        else:
+            args.append(ExpressionPartsNode(source_parts, token=node))
+        return FunctionCallNode(fn_name, args, token=node)
+
     def _try_generic_call(self, parts, node):
         """Try to parse as generic function call: 'fn av T1, T2' -> FunctionCallNode(fn, []).
         
@@ -977,6 +1034,13 @@ class Resolver:
         with no arguments. Validates that type params refer to known types.
         """
         if 'av' not in parts:
+            return None
+
+        av_idx = parts.index('av')
+
+        # If 'av' is immediately followed by a comma, it's an argument value,
+        # not a generic type marker (e.g., putta "av", ...)
+        if av_idx + 1 < len(parts) and parts[av_idx + 1] == ',':
             return None
 
         # If there's a 'med' after 'av', let _try_function_call handle the whole

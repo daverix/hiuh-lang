@@ -1109,6 +1109,44 @@ putta hej till min lista
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_hämta_grej_definition_and_call(self):
+        """hämta grej declaration and call resolve correctly."""
+        source = """
+sätt plocka till hämta grej med namn som sträng, källa som lista av sträng
+    ge element 0 från källa
+
+sätt frukter till lista av sträng med "äpple", "banan"
+sätt resultat till plocka banan från frukter
+"""
+        expected = [
+            AssignNode(
+                name="plocka",
+                value=FunctionDefNode(
+                    params=[("namn", "sträng"), ("källa", "lista av sträng")],
+                    body=[ReturnNode(value=ElementAccessNode(
+                        index=IntNode("0"),
+                        target=VarAccessNode("källa")
+                    ))],
+                    is_infix=False
+                )
+            ),
+            AssignNode(
+                name="frukter",
+                value=FunctionCallNode(
+                    name="lista",
+                    args=[StringNode("äpple"), StringNode("banan")]
+                )
+            ),
+            AssignNode(
+                name="resultat",
+                value=FunctionCallNode(
+                    name="plocka",
+                    args=[StringNode("banan"), VarAccessNode("frukter")]
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 
 if __name__ == '__main__':
     unittest.main()
