@@ -66,13 +66,13 @@ class Parser:
             if self.peek(1) and self.peek(1).value == "bort":
                 return self.parse_remove()
         if t.type == TOKEN_IDENTIFIER and t.value == "öka":
-            return self.parse_increment()
+            return self.parse_verb_with_preposition(AddAssignNode)
         if t.type == TOKEN_IDENTIFIER and t.value == "minska":
-            return self.parse_decrement()
+            return self.parse_verb_with_preposition(SubAssignNode)
         if t.type == TOKEN_IDENTIFIER and t.value in ["multiplicera", "gångra"]:
-            return self.parse_multiply_assign()
+            return self.parse_verb_with_preposition(MultiplyAssignNode)
         if t.type == TOKEN_IDENTIFIER and t.value in ["dividera", "dela"]:
-            return self.parse_divide_assign()
+            return self.parse_verb_with_preposition(DivideAssignNode)
         if t.type == TOKEN_SET: return self.parse_assignment()
         if t.type == TOKEN_PRINT: return self.parse_print()
         if t.type == TOKEN_IF: return self.parse_if()
@@ -152,61 +152,15 @@ class Parser:
             return RemoveIndexNode(target_expr, list_name, token=remove_token)
         return RemoveValueNode(target_expr, list_name, token=remove_token)
 
-    def parse_increment(self):
-        inc_token = self.consume()  # consume 'öka'
-        
-        # Collect target parts until we see TOKEN_WITH
+    def parse_verb_with_preposition(self, node_class):
+        """Parse 'öka/miniska/gångra/dela <target> med <value>'."""
+        token = self.consume()  # consume keyword
         target_parts = []
         while self.peek() and self.peek().type != TOKEN_WITH:
             target_parts.append(self.consume().value)
-            
         target = " ".join(target_parts)
         self.consume(TOKEN_WITH)  # consume 'med'
-        
-        val = self.expression()
-        return AddAssignNode(target, val, token=inc_token)
-
-    def parse_decrement(self):
-        dec_token = self.consume()  # consume 'minska'
-        
-        # Collect target parts until we see TOKEN_WITH
-        target_parts = []
-        while self.peek() and self.peek().type != TOKEN_WITH:
-            target_parts.append(self.consume().value)
-            
-        target = " ".join(target_parts)
-        self.consume(TOKEN_WITH)  # consume 'med'
-        
-        val = self.expression()
-        return SubAssignNode(target, val, token=dec_token)
-
-    def parse_multiply_assign(self):
-        mul_token = self.consume()  # consume keyword
-        
-        # Collect target parts until we see TOKEN_WITH
-        target_parts = []
-        while self.peek() and self.peek().type != TOKEN_WITH:
-            target_parts.append(self.consume().value)
-            
-        target = " ".join(target_parts)
-        self.consume(TOKEN_WITH)  # consume 'med'
-        
-        val = self.expression()
-        return MultiplyAssignNode(target, val, token=mul_token)
-
-    def parse_divide_assign(self):
-        div_token = self.consume()  # consume keyword
-        
-        # Collect target parts until we see TOKEN_WITH
-        target_parts = []
-        while self.peek() and self.peek().type != TOKEN_WITH:
-            target_parts.append(self.consume().value)
-            
-        target = " ".join(target_parts)
-        self.consume(TOKEN_WITH)  # consume 'med'
-        
-        val = self.expression()
-        return DivideAssignNode(target, val, token=div_token)
+        return node_class(target, self.expression(), token=token)
 
     def parse_open_file(self):
         open_token = self.consume(TOKEN_OPEN)
