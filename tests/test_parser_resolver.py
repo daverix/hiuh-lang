@@ -1073,6 +1073,42 @@ upprepa a med 3
         ]
         self.assertNodesEqual(self.parse_source(source), expected)
 
+    def test_skicka_grej_definition_and_call(self):
+        """skicka grej declaration and call resolve correctly."""
+        source = """
+sätt putta till skicka grej med sak som sträng, mål som lista av sträng
+    lägg till sak i mål
+    ge mål
+
+sätt min lista till lista av sträng
+putta hej till min lista
+"""
+        expected = [
+            AssignNode(
+                name="putta",
+                value=FunctionDefNode(
+                    params=[("sak", "sträng"), ("mål", "lista av sträng")],
+                    body=[
+                        AppendNode(value=VarAccessNode("sak"), target_list="mål"),
+                        ReturnNode(value=VarAccessNode("mål"))
+                    ],
+                    is_infix=False
+                )
+            ),
+            AssignNode(
+                name="min lista",
+                value=FunctionCallNode(name="lista", args=[])
+            ),
+            AssignNode(
+                name="min lista",
+                value=FunctionCallNode(
+                    name="putta",
+                    args=[StringNode("hej"), VarAccessNode("min lista")]
+                )
+            )
+        ]
+        self.assertNodesEqual(self.parse_source(source), expected)
+
 
 if __name__ == '__main__':
     unittest.main()

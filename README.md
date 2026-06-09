@@ -267,6 +267,28 @@ hejhejhej
 
 The built-in verbs `öka`, `minska`, `gångra`, and `dela` use this pattern.
 
+### skicka grej
+
+`skicka grej` defines a function called with the pattern `verb thing till target`.
+The target is reassigned to the function's return value.
+
+```
+sätt putta till skicka grej med sak som sträng, mål som lista av sträng
+    lägg till sak i mål
+    ge mål
+
+sätt min lista till lista av sträng
+putta hej till min lista
+putta då till min lista
+skriv element 0 från min lista
+skriv element 1 från min lista
+```
+
+outputs:
+```
+hejdå
+```
+
 ### Named arguments
 
 All three constructs (`typ`, `grej`, and `kopia av`) support **named arguments** in addition to positional arguments.

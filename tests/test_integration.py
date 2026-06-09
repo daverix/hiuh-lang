@@ -1013,6 +1013,23 @@ skriv a
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "hejhejhej")
 
+    def test_skicka_grej_user_defined(self):
+        """User-defined skicka grej function works at runtime."""
+        source = """
+sätt putta till skicka grej med sak som sträng, mål som lista av sträng
+    lägg till sak i mål
+    ge mål
+
+sätt min lista till lista av sträng
+putta hej till min lista
+putta då till min lista
+skriv element 0 från min lista
+skriv element 1 från min lista
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue().strip(), "hejdå")
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -19,6 +19,7 @@ class Parser:
         self.in_structural_statement = False
         self.infix_functions = set()
         self.verb_functions = {"öka", "minska", "gångra", "dela", "multiplicera", "dividera"}
+        self.skicka_functions = set()
         self.in_call_args = False
 
     def peek(self, offset=0):
@@ -68,6 +69,8 @@ class Parser:
                 return self.parse_remove()
         if t.type == TOKEN_IDENTIFIER and t.value in self.verb_functions:
             return self._parse_verb_call()
+        if t.type == TOKEN_IDENTIFIER and t.value in self.skicka_functions:
+            return self._parse_skicka_call()
         if t.type == TOKEN_SET: return self.parse_assignment()
         if t.type == TOKEN_PRINT: return self.parse_print()
         if t.type == TOKEN_IF: return self.parse_if()
@@ -174,6 +177,29 @@ class Parser:
         # Unknown verb — fall back to function call
         return AssignNode(target, FunctionCallNode(verb_name, [VarAccessNode(target, token=verb_token), val], token=verb_token), token=verb_token)
 
+    def _parse_skicka_call(self):
+        """Parse 'skicka <thing> till <target>' as AssignNode(target, fn(thing, target))."""
+        fn_token = self.consume()
+        fn_name = fn_token.value
+        # Collect thing until 'till'
+        thing_parts = []
+        while self.peek() and self.peek().type != TOKEN_TO:
+            thing_parts.append(self.consume().value)
+        thing = " ".join(thing_parts)
+        self.consume(TOKEN_TO)  # consume 'till'
+        # Collect target
+        target_parts = []
+        while self.peek() and self.peek().type not in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
+            target_parts.append(self.consume().value)
+        target = " ".join(target_parts)
+        # Generate: sätt target till fn med thing, target
+        thing_node = StringNode(thing, token=fn_token) if not thing.isdigit() and not thing.startswith('"') else (
+            IntNode(thing, token=fn_token) if thing.isdigit() else StringNode(thing[1:-1], token=fn_token))
+        # Treat thing as expression — let resolver handle it
+        call_args = [ExpressionPartsNode(thing_parts, token=fn_token), VarAccessNode(target, token=fn_token)]
+        func_call = FunctionCallNode(fn_name, call_args, token=fn_token)
+        return AssignNode(target, func_call, token=fn_token)
+
     def parse_open_file(self):
         open_token = self.consume(TOKEN_OPEN)
         self.in_structural_statement = True
@@ -274,14 +300,20 @@ class Parser:
             self.peek() and self.peek().value == 'verb'
             and self.peek(1) and self.peek(1).value == 'grej'
         )
+        is_skicka_grej = (
+            self.peek() and self.peek().value == 'skicka'
+            and self.peek(1) and self.peek(1).value == 'grej'
+        )
         
-        if is_grej or is_infix_grej or is_verb_grej:
+        if is_grej or is_infix_grej or is_verb_grej or is_skicka_grej:
             is_infix = False
             if is_infix_grej:
                 self.consume()  # consume 'infix'
                 is_infix = True
             elif is_verb_grej:
                 self.consume()  # consume 'verb'
+            elif is_skicka_grej:
+                self.consume()  # consume 'skicka'
             self.consume()  # consume 'grej'
 
             # Handle type parameters: 'grej av T1, T2'
@@ -308,6 +340,9 @@ class Parser:
             if is_verb_grej:
                 func_def.kind = 'verb'
                 self.verb_functions.add(name)
+            if is_skicka_grej:
+                func_def.kind = 'skicka'
+                self.skicka_functions.add(name)
             return AssignNode(name, func_def, target_type=None, token=assign_token)
         
         # Check for 'kopia av' pattern
