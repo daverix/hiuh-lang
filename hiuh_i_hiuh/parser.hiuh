@@ -13,9 +13,6 @@ sätt V_GÅNGRA till "gång" plus "ra"
 sätt V_DELA till "de" plus "la"
 sätt V_RETURNERA till "retur" plus "nera"
 
-. === Type name constants (concatenation avoids type-constructor clash) ===
-
-
 . === Character constants ===
 sätt C_COMMA till 44 som tecken
 sätt C_ENKELCITAT till 39 som tecken
@@ -57,7 +54,7 @@ sätt ny_nod till grej med n som BasNod returnera heltal
     ge längd från alla_noder minus 1
 
 sätt ny_sträng_nod till grej med text som sträng returnera heltal
-    sätt n till SträngNod med N_STRÄNG, text
+    sätt n till SträngNod med text
     lägg till n i alla_noder
     ge längd från alla_noder minus 1
 
@@ -172,11 +169,11 @@ sätt parsa_stmt till grej med tkns som lista av token, pos som heltal returnera
         ge r1
     om tt är lika med T_BREAK
         öka pos med 1
-        sätt n till BrytNod med N_BRYT
+        sätt n till BrytNod med
         ge lista med ny_nod med n, pos
     om tt är lika med T_CONTINUE
         öka pos med 1
-        sätt n till FortsättNod med N_FORTSÄTT
+        sätt n till FortsättNod med
         ge lista med ny_nod med n, pos
     om tt är lika med T_IMPORT
         sätt r1 till parsa_importera med tkns, pos
@@ -193,16 +190,16 @@ sätt parsa_stmt till grej med tkns som lista av token, pos som heltal returnera
     om tt är lika med T_IDENTIFIER
         sätt tv till värde från t
         om tv är lika med V_ÖKA
-            sätt r1 till parsa_modifiera med tkns, pos, N_ÖKA
+            sätt r1 till parsa_modifiera med tkns, pos, "öka"
             ge r1
         om tv är lika med V_MINSKA
-            sätt r1 till parsa_modifiera med tkns, pos, N_MINSKA
+            sätt r1 till parsa_modifiera med tkns, pos, "minska"
             ge r1
         om tv är lika med V_GÅNGRA
-            sätt r1 till parsa_modifiera med tkns, pos, N_GÅNGRA
+            sätt r1 till parsa_modifiera med tkns, pos, "gångra"
             ge r1
         om tv är lika med V_DELA
-            sätt r1 till parsa_modifiera med tkns, pos, N_DELA
+            sätt r1 till parsa_modifiera med tkns, pos, "dela"
             ge r1
 
     öka pos med 1
@@ -275,9 +272,9 @@ sätt parsa_om till grej med tkns som lista av token, pos som heltal returnera l
                 sätt annars_start till element 0 från annars_idxs
                 sätt annars_slut till annars_start plus längd från annars_idxs minus 1
 
-    sätt ov_nod till OmVillkorNod med N_OM_VILLKOR, villkor_idx, block_start, block_slut
+    sätt ov_nod till OmVillkorNod med villkor_idx, block_start, block_slut
     sätt ov_idx till ny_nod med ov_nod
-    sätt om_nod till OmNod med N_OM, ov_idx, ov_idx, annars_start, annars_slut
+    sätt om_nod till OmNod med ov_idx, ov_idx, annars_start, annars_slut
     sätt idx till ny_nod med om_nod
     ge lista med idx, pos
 
@@ -300,7 +297,7 @@ sätt parsa_medan till grej med tkns som lista av token, pos som heltal returner
         sätt block_start till element 0 från block_idxs
         sätt block_slut till block_start plus längd från block_idxs minus 1
 
-    sätt mn till MedanNod med N_MEDAN, villkor_idx, block_start, block_slut
+    sätt mn till MedanNod med villkor_idx, block_start, block_slut
     sätt idx till ny_nod med mn
     ge lista med idx, pos
 
@@ -339,14 +336,14 @@ sätt parsa_satt till grej med tkns som lista av token, pos som heltal returnera
             sätt r2 till parsa_grej med tkns, pos
             sätt pos till element 1 från r2
             sätt val_idx till element 0 från r2
-            sätt tn till TilldelaNod med N_TILLDELA, nnamn, val_idx
+            sätt tn till TilldelaNod med nnamn, val_idx
             ge lista med ny_nod med tn, pos
 
     sätt r2 till samla_uttryck med tkns, pos
     sätt pos till element 1 från r2
     sätt val_idx till element 0 från r2
 
-    sätt tn till TilldelaNod med N_TILLDELA, nnamn, val_idx
+    sätt tn till TilldelaNod med nnamn, val_idx
     ge lista med ny_nod med tn, pos
 
 . === Grej (function definition) parser ===
@@ -482,7 +479,7 @@ sätt parsa_grej till grej med tkns som lista av token, pos som heltal returnera
         sätt kropp_start till element 0 från block_idxs
         sätt kropp_slut till kropp_start plus längd från block_idxs minus 1
 
-    sätt fn_nod till FunktionsDefNod med N_FUNKTIONS_DEF, param_start, param_slut, kropp_start, kropp_slut, 0, ret_typ
+    sätt fn_nod till FunktionsDefNod med param_start, param_slut, kropp_start, kropp_slut, 0, ret_typ
     sätt fn_idx till ny_nod med fn_nod
     ge lista med fn_idx, pos
 
@@ -493,7 +490,7 @@ sätt parsa_skriv till grej med tkns som lista av token, pos som heltal returner
     sätt r1 till samla_uttryck med tkns, pos
     sätt pos till element 1 från r1
     sätt val_idx till element 0 från r1
-    sätt sn till SkrivNod med N_SKRIV, val_idx
+    sätt sn till SkrivNod med val_idx
     ge lista med ny_nod med sn, pos
 
 . === ge ===
@@ -503,7 +500,7 @@ sätt parsa_ge till grej med tkns som lista av token, pos som heltal returnera l
     sätt r1 till samla_uttryck med tkns, pos
     sätt pos till element 1 från r1
     sätt val_idx till element 0 från r1
-    sätt rn till ReturNod med N_RETUR, val_idx
+    sätt rn till ReturNod med val_idx
     ge lista med ny_nod med rn, pos
 
 . === använd ===
@@ -513,7 +510,7 @@ sätt parsa_importera till grej med tkns som lista av token, pos som heltal retu
     sätt r1 till samla_tills_nyrad med tkns, pos
     sätt pos till element 1 från r1
     sätt mod_namn till element 0 från r1
-    sätt in till ImporteraNod med N_IMPORTERA, mod_namn
+    sätt in till ImporteraNod med mod_namn
     ge lista med ny_nod med in, pos
 
 . === stäng ===
@@ -523,12 +520,12 @@ sätt parsa_stäng till grej med tkns som lista av token, pos som heltal returne
     sätt r1 till samla_tills_nyrad med tkns, pos
     sätt pos till element 1 från r1
     sätt var_namn till element 0 från r1
-    sätt sfn till StängFilNod med N_STÄNG_FIL, var_namn
+    sätt sfn till StängFilNod med var_namn
     ge lista med ny_nod med sfn, pos
 
 . === öka/minska/gångra/dela ===
 
-sätt parsa_modifiera till grej med tkns som lista av token, pos som heltal, ntype som heltal returnera lista av heltal
+sätt parsa_modifiera till grej med tkns som lista av token, pos som heltal, ntype som sträng returnera lista av heltal
     öka pos med 1
     sätt r1 till samla_namn med tkns, pos, T_WITH
     sätt pos till element 1 från r1
@@ -543,7 +540,14 @@ sätt parsa_modifiera till grej med tkns som lista av token, pos som heltal, nty
     sätt pos till element 1 från r2
     sätt val_idx till element 0 från r2
 
-    sätt bn till BinärNod med ntype, ms_idx, val_idx
+    om ntype är lika med "öka"
+        sätt bn till ÖkaNod med ms_idx, val_idx
+    annars om ntype är lika med "minska"
+        sätt bn till MinskaNod med ms_idx, val_idx
+    annars om ntype är lika med "gångra"
+        sätt bn till GångraNod med ms_idx, val_idx
+    annars
+        sätt bn till DelaNod med ms_idx, val_idx
     ge lista med ny_nod med bn, pos
 
 . === formatera — converts Nod indices to strings via typ av ===
@@ -651,25 +655,44 @@ sätt formatera till grej med idxs som lista av heltal returnera lista av strän
             lägg till "WhileNode(" plus vs plus ", " plus block_str plus ")" i resultat
             fortsätt
 
-        om ht är lika med typ av BinärNod
-            . Check nodtyp for which modifier
-            sätt nt till nodtyp från nod
+        om ht är lika med typ av ÖkaNod
             sätt ms_idx till vänster_nod från nod
             sätt ms_nod till element ms_idx från alla_noder
             sätt ms_str till värde från ms_nod
             sätt vi till höger_nod från nod
             sätt vn2 till element vi från alla_noder
             sätt vs2 till värde från vn2
-            om nt är lika med N_ÖKA
-                lägg till "AddAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
-            annars om nt är lika med N_MINSKA
-                lägg till "SubAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
-            annars om nt är lika med N_GÅNGRA
-                lägg till "MultiplyAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
-            annars om nt är lika med N_DELA
-                lägg till "DivideAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
-            annars
-                lägg till "Nod" i resultat
+            lägg till "AddAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
+            fortsätt
+
+        om ht är lika med typ av MinskaNod
+            sätt ms_idx till vänster_nod från nod
+            sätt ms_nod till element ms_idx från alla_noder
+            sätt ms_str till värde från ms_nod
+            sätt vi till höger_nod från nod
+            sätt vn2 till element vi från alla_noder
+            sätt vs2 till värde från vn2
+            lägg till "SubAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
+            fortsätt
+
+        om ht är lika med typ av GångraNod
+            sätt ms_idx till vänster_nod från nod
+            sätt ms_nod till element ms_idx från alla_noder
+            sätt ms_str till värde från ms_nod
+            sätt vi till höger_nod från nod
+            sätt vn2 till element vi från alla_noder
+            sätt vs2 till värde från vn2
+            lägg till "MultiplyAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
+            fortsätt
+
+        om ht är lika med typ av DelaNod
+            sätt ms_idx till vänster_nod från nod
+            sätt ms_nod till element ms_idx från alla_noder
+            sätt ms_str till värde från ms_nod
+            sätt vi till höger_nod från nod
+            sätt vn2 till element vi från alla_noder
+            sätt vs2 till värde från vn2
+            lägg till "DivideAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
             fortsätt
 
         om ht är lika med typ av ImporteraNod
@@ -795,3 +818,10 @@ sätt formatera_värde till grej med vi som heltal returnera sträng
         ge "AssignNode(" plus nm plus ", " plus vs plus ")"
 
     ge "Nod"
+
+sätt test_typav till grej returnera hiuhtyp
+    ge typ av SkrivNod
+
+sätt test_jämför_typ till grej returnera boolesk
+    sätt ht till typ av (SkrivNod med 0)
+    ge ht är lika med typ av SkrivNod

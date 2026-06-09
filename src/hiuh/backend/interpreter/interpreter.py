@@ -85,6 +85,24 @@ class Interpreter:
             "lista": {"namn": "lista", "föräldrar": [], "_typ": "hiuhtyp"},
             "ordlista": {"namn": "ordlista", "föräldrar": [], "_typ": "hiuhtyp"},
             "hiuhtyp": {"namn": "hiuhtyp", "föräldrar": [], "_typ": "hiuhtyp"},
+            # AST node types (from ast.hiuh)
+            "BasNod": {"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"},
+            "SkrivNod": {"namn": "SkrivNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "TilldelaNod": {"namn": "TilldelaNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "ReturNod": {"namn": "ReturNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "BrytNod": {"namn": "BrytNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "FortsättNod": {"namn": "FortsättNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "OmNod": {"namn": "OmNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "MedanNod": {"namn": "MedanNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "BinärNod": {"namn": "BinärNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "ImporteraNod": {"namn": "ImporteraNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "StängFilNod": {"namn": "StängFilNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "FunktionsDefNod": {"namn": "FunktionsDefNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "SträngNod": {"namn": "SträngNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "ÖkaNod": {"namn": "ÖkaNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "MinskaNod": {"namn": "MinskaNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "GångraNod": {"namn": "GångraNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
+            "DelaNod": {"namn": "DelaNod", "föräldrar": [{"namn": "BasNod", "föräldrar": [], "_typ": "hiuhtyp"}], "_typ": "hiuhtyp"},
         }
 
         self.open_files = []

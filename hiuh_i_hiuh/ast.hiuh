@@ -1,64 +1,9 @@
 . ast.hiuh - AST node types mirroring ast.py
-. All nodes inherit from BasNod which has a nodtyp discriminator.
+. All nodes inherit from BasNod (base type, no fields needed).
 . Children are referenced by index into a flat node array.
-
-. === Node type constants (matching ast.py classes) ===
-sätt N_INT till 1
-sätt N_FLOAT till 2
-sätt N_STRÄNG till 3
-sätt N_BOOL till 4
-sätt N_VAR till 5
-sätt N_ELEMENT till 6
-sätt N_ELEMENT_TILLDELA till 7
-sätt N_EGENSKAP till 8
-sätt N_ADD till 9
-sätt N_SUB till 10
-sätt N_MUL till 11
-sätt N_DIV till 12
-sätt N_MOD till 13
-sätt N_INTE till 14
-sätt N_LIKA_MED till 15
-sätt N_INTE_LIKA till 16
-sätt N_STÖRRE_ÄN till 17
-sätt N_MINDRE_ÄN till 18
-sätt N_STÖRRE_LIKA till 19
-sätt N_MINDRE_LIKA till 20
-sätt N_OCH till 21
-sätt N_ELLER till 22
-sätt N_UNÄR till 23
-sätt N_TILLDELA till 24
-sätt N_ÖKA till 25
-sätt N_MINSKA till 26
-sätt N_GÅNGRA till 27
-sätt N_DELA till 28
-sätt N_SKRIV till 29
-sätt N_OM till 30
-sätt N_OM_VILLKOR till 31
-sätt N_MEDAN till 32
-sätt N_FÖR_VARJE till 33
-sätt N_FUNKTIONS_DEF till 34
-sätt N_FUNKTIONS_ANROP till 35
-sätt N_NAMNAT_ARG till 36
-sätt N_INFIX_ANROP till 37
-sätt N_TYP_DEF till 38
-sätt N_RETUR till 39
-sätt N_BRYT till 40
-sätt N_FORTSÄTT till 41
-sätt N_FÖRSÖK till 42
-sätt N_IMPORTERA till 43
-sätt N_CAST till 44
-sätt N_TYP_AV till 45
-sätt N_LÄGG_TILL till 46
-sätt N_TA_BORT_INDEX till 47
-sätt N_TA_BORT_VÄRDE till 48
-sätt N_FIL_SKRIV till 49
-sätt N_STÄNG_FIL till 50
-sätt N_KOPIA_MED till 51
-sätt N_UTTRYCKS_DELAR till 52
 
 . === Base node type ===
 typ BasNod
-    nodtyp som heltal
 
 . === Literals ===
 typ IntNod ärver BasNod
@@ -90,8 +35,25 @@ typ EgenskapNod ärver BasNod
     egenskap_namn som sträng
     mål_nod som heltal
 
-. === Binary operations (math, comparisons, logic, modifiers) ===
+. === Binary operations (math, comparisons, logic) ===
 typ BinärNod ärver BasNod
+    vänster_nod som heltal
+    höger_nod som heltal
+
+. === Modifier operations (distinct from BinärNod for typ av) ===
+typ ÖkaNod ärver BasNod
+    vänster_nod som heltal
+    höger_nod som heltal
+
+typ MinskaNod ärver BasNod
+    vänster_nod som heltal
+    höger_nod som heltal
+
+typ GångraNod ärver BasNod
+    vänster_nod som heltal
+    höger_nod som heltal
+
+typ DelaNod ärver BasNod
     vänster_nod som heltal
     höger_nod som heltal
 
