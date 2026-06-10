@@ -25,3 +25,15 @@ sätt versaler till grej med text som sträng returnera sträng
         sätt resultat till resultat plus tecken
         öka pos med 1
     ge resultat
+
+sätt trimma till grej med text som sträng returnera sträng
+    sätt start till 0
+    sätt slut till längd från text minus 1
+
+    medan start är mindre än slut och element start från text är lika med mellanrum
+        öka start med 1
+
+    medan slut är större än start och element slut från text är lika med mellanrum
+        minska slut med 1
+
+    ge delsträng med text, start, slut plus 1 minus start

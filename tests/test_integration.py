@@ -1148,5 +1148,18 @@ om längd från fl är större än 0
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "1 fordon")
 
+    def test_texter_trimma_text(self):
+        """typ av includes parent types in föräldrar."""
+        source = """
+använd texter
+skriv start
+sätt x till "    hejsan    "
+skriv trimma med x
+skriv slut
+"""
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            self.run_source(source)
+            self.assertEqual(fake_out.getvalue(), "starthejsanslut")
+
 if __name__ == '__main__':
     unittest.main()
