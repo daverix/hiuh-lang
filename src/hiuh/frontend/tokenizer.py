@@ -79,7 +79,6 @@ class Tokenizer:
             "ge": TOKEN_GIVE,
             "typ": TOKEN_TYPE,
             "från": TOKEN_FROM,
-            "av": TOKEN_OF,
             "om": TOKEN_IF,
             "är": TOKEN_OP_IS,
             "större": TOKEN_GREATER,

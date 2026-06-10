@@ -6,48 +6,28 @@ använd ast
 . Returns indices into global alla_noder list.
 . formatera converts indices to strings via typ av comparison.
 
-. === Verb name strings (concatenation avoids built-in clash) ===
-sätt V_ÖKA till "ö" plus "ka"
-sätt V_MINSKA till "min" plus "ska"
-sätt V_GÅNGRA till "gång" plus "ra"
-sätt V_DELA till "de" plus "la"
-sätt V_RETURNERA till "retur" plus "nera"
+. sätt parsa grej till med tokens som lista av token returnera lista av BasNod
+.     sätt position till 0
+.     sätt strukturellt statement till FALSKT
+.     sätt infixgrejer till lista av sträng
+.     sätt verbgrejer till lista med "öka", "minska", "gångra", "dela", "multiplicera", "dividera"
+.     sätt skickagrejer till lista med "putta", "rensa"
+.     sätt hämtagrejer till lista av sträng
+.     sätt hanterar anropsargument till boolesk
 
-. === Character constants ===
-sätt C_COMMA till 44 som tecken
-sätt C_ENKELCITAT till 39 som tecken
-sätt C_MELLANRUM till 32 som tecken
-sätt C_ÖPPEN_PAREN till 40 som tecken
-sätt C_STÄNG_PAREN till 41 som tecken
+.     sätt noder till lista av BasNod
 
-. === Token type aliases ===
-sätt T_PRINT till 1
-sätt T_SET till 2
-sätt T_TO till 3
-sätt T_WITH till 5
-sätt T_GIVE till 6
-sätt T_IMPORT till 16
-sätt T_CLOSE till 18
-sätt T_BREAK till 48
-sätt T_CONTINUE till 49
-sätt T_IF till 10
-sätt T_ELSE till 11
-sätt T_WHILE till 15
-sätt T_NEWLINE till 37
-sätt T_INDENT till 38
-sätt T_DEDENT till 39
-sätt T_IDENTIFIER till 36
-sätt T_FUNC till 4
-sätt T_OF till 44
-sätt T_RETURNS till 51
-sätt T_AS till 19
-sätt T_COMMA till 40
+.     sätt kika till hämtagrej med avstånd som heltal returnera token
+.         ge element position plus avstånd från tokens
 
-. === Global node list ===
+.     sätt konsumera till grej med förväntad typ
 
-sätt alla_noder till lista av BasNod
+
+.     ge noder
 
 . === Node builders ===
+
+sätt alla_noder till lista av
 
 sätt ny_nod till grej med n som BasNod returnera heltal
     lägg till n i alla_noder
@@ -122,10 +102,10 @@ sätt parsa till grej med tkns som lista av token returnera lista av heltal
     medan pos är mindre än längd från tkns
         sätt t till element pos från tkns
         sätt tt till tokentyp från t
-        om tt är lika med T_INDENT
+        om tt är lika med indenteringstoken
             öka pos med 1
             fortsätt
-        om tt är lika med T_DEDENT
+        om tt är lika med avindenteringstoken
             öka pos med 1
             fortsätt
 
@@ -142,7 +122,7 @@ sätt parsa till grej med tkns som lista av token returnera lista av heltal
 sätt parsa_stmt till grej med tkns som lista av token, pos som heltal returnera lista av heltal
     medan pos är mindre än längd från tkns
         sätt t till element pos från tkns
-        om tokentyp från t är lika med T_NEWLINE
+        om tokentyp från t är lika med nyradstoken
             öka pos med 1
             fortsätt
         bryt
@@ -153,52 +133,52 @@ sätt parsa_stmt till grej med tkns som lista av token, pos som heltal returnera
     sätt t till element pos från tkns
     sätt tt till tokentyp från t
 
-    om tt är lika med T_DEDENT
+    om tt är lika med avindenteringstoken
         ge lista med -1, pos
-    om tt är lika med T_INDENT
+    om tt är lika med indenteringstoken
         ge lista med -1, pos
 
-    om tt är lika med T_SET
+    om tt är lika med sättoken
         sätt r1 till parsa_satt med tkns, pos
         ge r1
-    om tt är lika med T_PRINT
+    om tt är lika med skrivtoken
         sätt r1 till parsa_skriv med tkns, pos
         ge r1
-    om tt är lika med T_GIVE
+    om tt är lika med getoken
         sätt r1 till parsa_ge med tkns, pos
         ge r1
-    om tt är lika med T_BREAK
+    om tt är lika med bryttoken
         öka pos med 1
         sätt n till BrytNod med
         ge lista med ny_nod med n, pos
-    om tt är lika med T_CONTINUE
+    om tt är lika med fortsättoken
         öka pos med 1
         sätt n till FortsättNod med
         ge lista med ny_nod med n, pos
-    om tt är lika med T_IMPORT
+    om tt är lika med användtoken
         sätt r1 till parsa_importera med tkns, pos
         ge r1
-    om tt är lika med T_CLOSE
+    om tt är lika med stängtoken
         sätt r1 till parsa_stäng med tkns, pos
         ge r1
-    om tt är lika med T_IF
+    om tt är lika med omtoken
         sätt r1 till parsa_om med tkns, pos
         ge r1
-    om tt är lika med T_WHILE
+    om tt är lika med medantoken
         sätt r1 till parsa_medan med tkns, pos
         ge r1
-    om tt är lika med T_IDENTIFIER
+    om tt är lika med idtoken
         sätt tv till värde från t
-        om tv är lika med V_ÖKA
+        om tv är lika med "öka"
             sätt r1 till parsa_modifiera med tkns, pos, "öka"
             ge r1
-        om tv är lika med V_MINSKA
+        om tv är lika med "minska"
             sätt r1 till parsa_modifiera med tkns, pos, "minska"
             ge r1
-        om tv är lika med V_GÅNGRA
+        om tv är lika med "gångra"
             sätt r1 till parsa_modifiera med tkns, pos, "gångra"
             ge r1
-        om tv är lika med V_DELA
+        om tv är lika med "dela"
             sätt r1 till parsa_modifiera med tkns, pos, "dela"
             ge r1
 
@@ -210,20 +190,20 @@ sätt parsa_stmt till grej med tkns som lista av token, pos som heltal returnera
 sätt parsa_block till grej med tkns som lista av token, pos som heltal returnera lista av heltal
     medan pos är mindre än längd från tkns
         sätt t till element pos från tkns
-        om tokentyp från t är lika med T_NEWLINE
+        om tokentyp från t är lika med nyradstoken
             öka pos med 1
             fortsätt
         bryt
 
     om pos är mindre än längd från tkns
         sätt t till element pos från tkns
-        om tokentyp från t är lika med T_INDENT
+        om tokentyp från t är lika med indenteringstoken
             öka pos med 1
 
     sätt stmts till lista av heltal
     medan pos är mindre än längd från tkns
         sätt t till element pos från tkns
-        om tokentyp från t är lika med T_DEDENT
+        om tokentyp från t är lika med avindenteringstoken
             öka pos med 1
             bryt
         sätt r1 till parsa_stmt med tkns, pos
@@ -258,12 +238,12 @@ sätt parsa_om till grej med tkns som lista av token, pos som heltal returnera l
 
     medan pos är mindre än längd från tkns
         sätt t till element pos från tkns
-        om tokentyp från t är inte lika med T_NEWLINE
+        om tokentyp från t är inte lika med nyradstoken
             bryt
         öka pos med 1
     om pos är mindre än längd från tkns
         sätt t till element pos från tkns
-        om tokentyp från t är lika med T_ELSE
+        om tokentyp från t är lika med ellertoken
             öka pos med 1
             sätt r3 till parsa_block med tkns, pos
             sätt pos till element 1 från r3
@@ -306,13 +286,13 @@ sätt parsa_medan till grej med tkns som lista av token, pos som heltal returner
 sätt parsa_satt till grej med tkns som lista av token, pos som heltal returnera lista av heltal
     öka pos med 1
 
-    sätt r1 till samla_namn med tkns, pos, T_TO
+    sätt r1 till samla_namn med tkns, pos, tilltoken
     sätt pos till element 1 från r1
     sätt nnamn till element 0 från r1
 
     om pos är mindre än längd från tkns
         sätt t till element pos från tkns
-        om tokentyp från t är lika med T_TO
+        om tokentyp från t är lika med tilltoken
             öka pos med 1
 
     . Check for function definition
@@ -321,9 +301,9 @@ sätt parsa_satt till grej med tkns som lista av token, pos som heltal returnera
         sätt ttv till tokentyp från t
         sätt ttvv till värde från t
         sätt är_grej till falskt
-        om ttv är lika med T_FUNC
+        om ttv är lika med grejtoken
             sätt är_grej till sant
-        om ttv är lika med T_IDENTIFIER
+        om ttv är lika med idtoken
             om ttvv är lika med "verbgrej"
                 sätt är_grej till sant
             om ttvv är lika med "skickagrej"
@@ -357,13 +337,13 @@ sätt parsa_grej till grej med tkns som lista av token, pos som heltal returnera
         sätt t till element pos från tkns
         sätt tt till tokentyp från t
         sätt tv till värde från t
-        om tt är lika med T_WITH
+        om tt är lika med medtoken
             bryt
-        om tt är lika med T_RETURNS
+        om tt är lika med returnerartoken
             bryt
-        om tv är lika med V_RETURNERA
+        om tv är lika med getoken
             bryt
-        om tt är lika med T_NEWLINE
+        om tt är lika med nyradstoken
             bryt
         öka pos med 1
 
@@ -371,7 +351,7 @@ sätt parsa_grej till grej med tkns som lista av token, pos som heltal returnera
     sätt param_noder till lista av heltal
     om pos är mindre än längd från tkns
         sätt t till element pos från tkns
-        om tokentyp från t är lika med T_WITH
+        om tokentyp från t är lika med medtoken
             öka pos med 1
 
             medan pos är mindre än längd från tkns
@@ -379,11 +359,11 @@ sätt parsa_grej till grej med tkns som lista av token, pos som heltal returnera
                 sätt tt till tokentyp från t
                 sätt tv till värde från t
 
-                om tt är lika med T_RETURNS
+                om tt är lika med returnerartoken
                     bryt
-                om tv är lika med V_RETURNERA
+                om tv är lika med getoken
                     bryt
-                om tt är lika med T_NEWLINE
+                om tt är lika med nyradstoken
                     bryt
 
                 sätt pnamn_idx till ny_sträng_nod med tv
@@ -392,7 +372,7 @@ sätt parsa_grej till grej med tkns som lista av token, pos som heltal returnera
 
                 om pos är mindre än längd från tkns
                     sätt t3 till element pos från tkns
-                    om tokentyp från t3 är lika med T_AS
+                    om tokentyp från t3 är lika med somtoken
                         öka pos med 1
 
                 sätt ptyp_delar till lista av sträng
@@ -400,14 +380,14 @@ sätt parsa_grej till grej med tkns som lista av token, pos som heltal returnera
                     sätt t4 till element pos från tkns
                     sätt t4t till tokentyp från t4
                     sätt t4v till värde från t4
-                    om t4t är lika med T_COMMA
+                    om t4t är lika med kommatoken
                         öka pos med 1
                         bryt
-                    om t4t är lika med T_RETURNS
+                    om t4t är lika med returnerartoken
                         bryt
-                    om t4v är lika med V_RETURNERA
+                    om t4v är lika med getoken
                         bryt
-                    om t4t är lika med T_NEWLINE
+                    om t4t är lika med nyradstoken
                         bryt
                     lägg till t4v i ptyp_delar
                     öka pos med 1
@@ -436,24 +416,24 @@ sätt parsa_grej till grej med tkns som lista av token, pos som heltal returnera
         sätt t till element pos från tkns
         sätt tt till tokentyp från t
         sätt tv till värde från t
-        om tt är lika med T_RETURNS
+        om tt är lika med returnerartoken
             öka pos med 1
-        annars om tv är lika med V_RETURNERA
+        annars om tv är lika med getoken
             öka pos med 1
 
         sätt ret_delar till lista av sträng
         medan pos är mindre än längd från tkns
             sätt t2 till element pos från tkns
             sätt t2t till tokentyp från t2
-            om t2t är lika med T_NEWLINE
+            om t2t är lika med nyradstoken
                 bryt
-            om t2t är lika med T_INDENT
+            om t2t är lika med indenteringstoken
                 bryt
-            om t2t är lika med T_DEDENT
+            om t2t är lika med avindenteringstoken
                 bryt
-            om t2t är lika med T_WITH
+            om t2t är lika med medtoken
                 bryt
-            om t2t är lika med T_RETURNS
+            om t2t är lika med returnerartoken
                 bryt
             lägg till värde från t2 i ret_delar
             öka pos med 1
@@ -527,13 +507,13 @@ sätt parsa_stäng till grej med tkns som lista av token, pos som heltal returne
 
 sätt parsa_modifiera till grej med tkns som lista av token, pos som heltal, ntype som sträng returnera lista av heltal
     öka pos med 1
-    sätt r1 till samla_namn med tkns, pos, T_WITH
+    sätt r1 till samla_namn med tkns, pos, medtoken
     sätt pos till element 1 från r1
     sätt ms_idx till ny_sträng_nod med element 0 från r1
 
     om pos är mindre än längd från tkns
         sätt t till element pos från tkns
-        om tokentyp från t är lika med T_WITH
+        om tokentyp från t är lika med medtoken
             öka pos med 1
 
     sätt r2 till samla_uttryck med tkns, pos
@@ -817,7 +797,7 @@ sätt formatera_värde till grej med vi som heltal returnera sträng
         sätt vs till formatera_värde med vi
         ge "AssignNode(" plus nm plus ", " plus vs plus ")"
 
-    ge "Nod"
+    kasta vi plus kan inte formateras korrekt
 
 sätt test_typav till grej returnera hiuhtyp
     ge typ av SkrivNod

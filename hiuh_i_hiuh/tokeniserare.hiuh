@@ -1,168 +1,138 @@
 använd listor
 använd texter
 
-. tokeniserare - tokenizer for hiuh language
+sätt skrivtoken till 1
+sätt sättoken till 2
+sätt tilltoken till 3
+sätt grejtoken till 4
+sätt medtoken till 5
+sätt getoken till 6
+sätt typtoken till 7
+sätt itoken till 8
+sätt fråntoken till 9
+sätt omtoken till 10
+sätt annarstoken till 11
+sätt försöktoken till 12
+sätt kastatoken till 13
+sätt fångatoken till 14
+sätt medantoken till 15
+sätt användtoken till 16
+sätt öppnatoken till 17
+sätt stängtoken till 18
+sätt somtoken till 19
+sätt störretoken till 20
+sätt mindretoken till 21
+sätt likatoken till 22
+sätt äntoken till 23
+sätt ellertoken till 24
+sätt andtoken till 25
+sätt plustoken till 26
+sätt minustoken till 27
+sätt gångertoken till 28
+sätt delattoken till 29
+sätt ärtoken till 30
+sätt heltalstoken till 31
+sätt flyttalstoken till 32
+sätt santtoken till 33
+sätt falskttoken till 34
+sätt strängtoken till 35
+sätt idtoken till 36
+sätt nyradstoken till 37
+sätt indenteringstoken till 38
+sätt avindenteringstoken till 39
+sätt kommatoken till 40
+sätt filslutstoken till 42
+sätt kopiatoken till 43
+sätt avtoken till 44
+sätt infixtoken till 45
+sätt förtoken till 46
+sätt varjetoken till 47
+sätt bryttoken till 48
+sätt fortsättoken till 49
+sätt ärvertoken till 50
+sätt returnerartoken till 51
 
-. A type to represent a single token
 typ token
     tokentyp som heltal
     värde som sträng
     rad som heltal
     kolumn som heltal
 
-. =============================================================
-. TOKEN TYPE CONSTANTS
-. These must match the values in the Python implementation
-. =============================================================
-sätt TOKEN PRINT till 1
-sätt TOKEN SET till 2
-sätt TOKEN TO till 3
-sätt TOKEN FUNC till 4
-sätt TOKEN WITH till 5
-sätt TOKEN GIVE till 6
-sätt TOKEN TYPE till 7
-sätt TOKEN IN till 8
-sätt TOKEN FROM till 9
-sätt TOKEN IF till 10
-sätt TOKEN ELSE till 11
-sätt TOKEN TRY till 12
-sätt TOKEN THROW till 13
-sätt TOKEN CATCH till 14
-sätt TOKEN WHILE till 15
-sätt TOKEN IMPORT till 16
-sätt TOKEN OPEN till 17
-sätt TOKEN CLOSE till 18
-sätt TOKEN AS till 19
-sätt TOKEN GREATER till 20
-sätt TOKEN LESS till 21
-sätt TOKEN EQUAL till 22
-sätt TOKEN THAN till 23
-sätt TOKEN OR till 24
-sätt TOKEN AND till 25
-sätt TOKEN OP ADD till 26
-sätt TOKEN OP SUB till 27
-sätt TOKEN OP MUL till 28
-sätt TOKEN OP DIV till 29
-sätt TOKEN OP IS till 30
-sätt TOKEN LITERAL INT till 31
-sätt TOKEN LITERAL FLOAT till 32
-sätt TOKEN LITERAL TRUE till 33
-sätt TOKEN LITERAL FALSE till 34
-sätt TOKEN STRING till 35
-sätt TOKEN IDENTIFIER till 36
-sätt TOKEN NEWLINE till 37
-sätt TOKEN INDENT till 38
-sätt TOKEN DEDENT till 39
-sätt TOKEN COMMA till 40
-sätt TOKEN EOF till 42
-sätt TOKEN COPY till 43
-sätt TOKEN OF till 44
-sätt TOKEN INFIX till 45
-sätt TOKEN FOR till 46
-sätt TOKEN EACH till 47
-sätt TOKEN BREAK till 48
-sätt TOKEN CONTINUE till 49
-sätt TOKEN INHERITS till 50
-sätt TOKEN RETURNS till 51
-
-. =============================================================
-. KEYWORD DICTIONARY SETUP
-. Uses ordlista to map keywords to token types
-. =============================================================
-sätt nyckelord till ordlista av sträng, heltal
-putta "skriv", TOKEN PRINT till nyckelord
-putta "sätt", TOKEN SET till nyckelord
-putta "till", TOKEN TO till nyckelord
-putta "grej", TOKEN FUNC till nyckelord
-putta "med", TOKEN WITH till nyckelord
-putta "ge", TOKEN GIVE till nyckelord
-putta "typ", TOKEN TYPE till nyckelord
-putta "från", TOKEN FROM till nyckelord
-putta "om", TOKEN IF till nyckelord
-putta "är", TOKEN OP IS till nyckelord
-putta "större", TOKEN GREATER till nyckelord
-putta "mindre", TOKEN LESS till nyckelord
-putta "än", TOKEN THAN till nyckelord
-putta "lika", TOKEN EQUAL till nyckelord
-putta "annars", TOKEN ELSE till nyckelord
-putta "försök", TOKEN TRY till nyckelord
-putta "kasta", TOKEN THROW till nyckelord
-putta "fånga", TOKEN CATCH till nyckelord
-putta "gånger", TOKEN OP MUL till nyckelord
-putta "plus", TOKEN OP ADD till nyckelord
-putta "minus", TOKEN OP SUB till nyckelord
-putta "delat", TOKEN OP DIV till nyckelord
-putta "eller", TOKEN OR till nyckelord
-putta "och", TOKEN AND till nyckelord
-putta "medan", TOKEN WHILE till nyckelord
-putta "använd", TOKEN IMPORT till nyckelord
-putta "öppna", TOKEN OPEN till nyckelord
-putta "stäng", TOKEN CLOSE till nyckelord
-putta "som", TOKEN AS till nyckelord
-putta "kopia", TOKEN COPY till nyckelord
-putta "av", TOKEN OF till nyckelord
-putta "infix", TOKEN INFIX till nyckelord
-putta "för", TOKEN FOR till nyckelord
-putta "varje", TOKEN EACH till nyckelord
-putta "bryt", TOKEN BREAK till nyckelord
-putta "fortsätt", TOKEN CONTINUE till nyckelord
-putta "ärver", TOKEN INHERITS till nyckelord
-putta "returnera", TOKEN RETURNS till nyckelord
-
-. =============================================================
-. HELPER FUNCTIONS
-. =============================================================
-
-. A factory function to create a new token object
-sätt skapa_token till grej med ttyp som heltal, val som sträng, row som heltal, col som heltal returnera token
-    ge token med ttyp, val, row, col
-
-sätt CITAT till 34 som tecken
-sätt KOMMA_TECKEN till 44 som tecken
-
-. =============================================================
-. MAIN TOKENIZER LOGIC
-. =============================================================
-
-. The main tokenizer function, takes a list of strings (lines of code)
 sätt tokenisera till grej med rader som lista av sträng returnera lista av token
+    sätt nyckelord till ordlista av sträng, heltal
+    putta "skriv", skrivtoken till nyckelord
+    putta "sätt", sättoken till nyckelord
+    putta "till", tilltoken till nyckelord
+    putta "grej", grejtoken till nyckelord
+    putta "med", medtoken till nyckelord
+    putta "ge", getoken till nyckelord
+    putta "typ", typtoken till nyckelord
+    putta "från", fråntoken till nyckelord
+    putta "om", omtoken till nyckelord
+    putta "är", ärtoken till nyckelord
+    putta "större", störretoken till nyckelord
+    putta "mindre", mindretoken till nyckelord
+    putta "än", äntoken till nyckelord
+    putta "lika", likatoken till nyckelord
+    putta "annars", annarstoken till nyckelord
+    putta "försök", försöktoken till nyckelord
+    putta "kasta", kastatoken till nyckelord
+    putta "fånga", fångatoken till nyckelord
+    putta "gånger", gångertoken till nyckelord
+    putta "plus", plustoken till nyckelord
+    putta "minus", minustoken till nyckelord
+    putta "delat", delattoken till nyckelord
+    putta "eller", ellertoken till nyckelord
+    putta "och", andtoken till nyckelord
+    putta "medan", medantoken till nyckelord
+    putta "använd", användtoken till nyckelord
+    putta "öppna", öppnatoken till nyckelord
+    putta "stäng", stängtoken till nyckelord
+    putta "som", somtoken till nyckelord
+    putta "kopia", kopiatoken till nyckelord
+    putta "av", avtoken till nyckelord
+    putta "infix", infixtoken till nyckelord
+    putta "för", förtoken till nyckelord
+    putta "varje", varjetoken till nyckelord
+    putta "bryt", bryttoken till nyckelord
+    putta "fortsätt", fortsättoken till nyckelord
+    putta "ärver", ärvertoken till nyckelord
+    putta "returnera", returnerartoken till nyckelord
+
+    sätt är siffra till grej med symbol som tecken returnera boolesk
+        sätt kod till symbol som tal
+        ge kod är större än eller lika med 48 och kod är mindre än eller lika med 57
+
     sätt tokens till lista av token
-    sätt indent_stack till lista av heltal med 0
-    sätt rad_nummer till 0
+    sätt indenteringsstack till lista av heltal med 0
+    sätt radnummer till 0
 
     . Process each line using a for-each loop from the 'listor' module
     för varje rad i rader
-        öka rad_nummer med 1
+        öka radnummer med 1
 
-        . --- Step 1: Handle Indentation ---
-        . Calculate current line's indentation level
-        sätt indent till 0
-        medan indent är mindre än längd från rad och element indent från rad är lika med " "
-            öka indent med 1
-
-        sätt innehåll till delsträng med rad, indent, längd från rad minus indent
-        
-        om längd från innehåll är lika med 0
+        sätt trimmad rad till trimma med rad
+        om längd från trimmad rad lika med 0 eller element 0 från trimmad rad är lika med punkttecken
             fortsätt
 
-        om element 0 från innehåll är lika med "."
-            fortsätt
-        
-        . Compare with previous indentation level
-        sätt sista_idx till längd från indent_stack minus 1
-        sätt sista_indent till element sista_idx från indent_stack
-        om indent är större än sista_indent
-            sätt indent_text till " "
-            gångra indent_text med indent
-            sätt ny_token till skapa_token med TOKEN INDENT, indent_text, rad_nummer, 1
-            lägg till ny_token i tokens
-            lägg till indent i indent_stack
-        annars om indent är mindre än sista_indent
-            medan indent är mindre än element sista_idx från indent_stack
-                ta bort element sista_idx från indent_stack
-                sätt ny_token till skapa_token med TOKEN DEDENT, "", rad_nummer, 1
-                lägg till ny_token i tokens
-                sätt sista_idx till längd från indent_stack minus 1
+        sätt indenteringsnivå till 0
+        medan indenteringsnivå är mindre än längd från rad och element indenteringsnivå från rad är lika med mellanrum
+            öka indenteringsnivå med 1
+
+        sätt innehåll till delsträng med rad, indenteringsnivå, längd från rad minus indenteringsnivå
+
+        sätt sista indexet till längd från indenteringsstack minus 1
+        sätt sista indenteringen till element sista indexet från indenteringsstack
+        om indenteringsnivå är större än sista indenteringen
+            sätt indenteringstext till mellanrum
+            gångra indenteringstext med indenteringsnivå
+            lägg till token med indenteringstoken, indenteringstext, radnummer, 1 i tokens
+            lägg till indenteringsnivå i indenteringsstack
+        annars om indenteringsnivå är mindre än sista indenteringen
+            medan indenteringsnivå är mindre än element sista indexet från indenteringsstack
+                ta bort element sista indexet från indenteringsstack
+                sätt sista indexet till längd från indenteringsstack minus 1
+                lägg till token med avindenteringstoken, "", radnummer, 1 i tokens
         
         . --- Step 3: Tokenize the line content ---
         sätt pos till 0
@@ -175,100 +145,101 @@ sätt tokenisera till grej med rader som lista av sträng returnera lista av tok
                 fortsätt
             
             . Comma
-            om tecken är lika med ","
-                sätt ny_token till skapa_token med TOKEN COMMA, KOMMA_TECKEN, rad_nummer, indent plus pos plus 1
-                lägg till ny_token i tokens
+            om tecken är lika med kommatecken
+                lägg till token med kommatoken, kommatecken, radnummer, indenteringsnivå plus pos plus 1 i tokens
                 öka pos med 1
                 fortsätt
 
             . String literals
-            om tecken är lika med CITAT
+            om tecken är lika med citattecken eller tecken är lika med apostroftecken
+                sätt jämförelsetecken till tecken
                 sätt start till pos
                 öka pos med 1
-                medan pos är mindre än längd från innehåll och element pos från innehåll är inte lika med CITAT
+                medan pos är mindre än längd från innehåll och element pos från innehåll är inte lika med jämförelsetecken
                     öka pos med 1
                 
                 om pos är lika med längd från innehåll
-                    kasta "Oavslutad textsträng på rad " plus rad_nummer
+                    kasta "Oavslutad textsträng på rad " plus radnummer
                 
                 sätt värde till delsträng med innehåll, start plus 1, pos minus start minus 1
-                öka pos med 1 . skip closing quote
-                lägg till skapa_token med TOKEN STRING, värde, rad_nummer, indent plus start plus 1 i tokens
+                öka pos med 1
+                lägg till token med strängtoken, värde, radnummer, indenteringsnivå plus start plus 1 i tokens
                 fortsätt
 
             . Numbers (integer or float)
-            sätt nästa_tecken till ""
+            sätt nästa tecken till ""
             om pos plus 1 är mindre än längd från innehåll
-                sätt nästa_tecken till element pos plus 1 från innehåll
+                sätt nästa tecken till element pos plus 1 från innehåll
             
-            sätt är_siff till falskt
-            om är_siffra med tecken
-                sätt är_siff till sant
-            annars om tecken är lika med "-" och är_siffra med nästa_tecken
-                sätt är_siff till sant
+            sätt har siffertecken till falskt
+            om är siffra med tecken
+                sätt har siffertecken till sant
+            annars om tecken är lika med minustecken och är siffra med nästa_tecken
+                sätt har siffertecken till sant
 
-            om är_siff
+            om har siffertecken
                 sätt start till pos
-                sätt har_komma till falskt
+                sätt har komma till falskt
                 öka pos med 1
                 medan pos är mindre än längd från innehåll
-                    sätt siffra_tecken till element pos från innehåll
-                    om siffra_tecken är lika med ","
+                    sätt siffertecken till element pos från innehåll
+                    om siffertecken är lika med kommatecken
                         . Only consume comma if followed by a digit (decimal separator)
                         om pos plus 1 är mindre än längd från innehåll
-                            sätt nästa_siffra till element pos plus 1 från innehåll
-                            om är_siffra med nästa_siffra
-                                sätt har_komma till sant
+                            sätt nästa siffra till element pos plus 1 från innehåll
+                            om är siffra med nästa siffra
+                                sätt har komma till sant
                                 öka pos med 1
                             annars
                                 bryt
                         annars
                             bryt
-                    annars om är_siffra med siffra_tecken
+                    annars om är siffra med siffertecken
                         öka pos med 1
                     annars
-                        bryt . break the loop
+                        bryt
                 
                 sätt värde till delsträng med innehåll, start, pos minus start
-                sätt tokentyp till TOKEN LITERAL INT
-                om har_komma
-                    sätt tokentyp till TOKEN LITERAL FLOAT
+                sätt tokentyp till heltalstoken
+                om har komma
+                    sätt tokentyp till flyttalstoken
                 
-                lägg till skapa_token med tokentyp, värde, rad_nummer, indent plus start plus 1 i tokens
+                lägg till token med tokentyp, värde, radnummer, indenteringsnivå plus start plus 1 i tokens
                 fortsätt
                 
             . Identifiers and Keywords
             sätt start till pos
             medan pos är mindre än längd från innehåll
-                sätt id_tecken till element pos från innehåll
-                om id_tecken är lika med mellanrum eller id_tecken är lika med "," eller id_tecken är lika med CITAT
+                sätt idt till element pos från innehåll
+                om idt är lika med mellanrum eller idt är lika med kommatecken eller idt är lika med citattecken
                     bryt
                 öka pos med 1
             
             sätt värde till delsträng med innehåll, start, pos minus start
 
             . Check for boolean literals first (case-insensitive via versaler)
-            sätt versal_värde till versaler med värde
-            om versal_värde är lika med "SANT"
-                lägg till skapa_token med TOKEN LITERAL TRUE, värde, rad_nummer, indent plus start plus 1 i tokens
-            annars om versal_värde är lika med "FALSKT"
-                lägg till skapa_token med TOKEN LITERAL FALSE, värde, rad_nummer, indent plus start plus 1 i tokens
+            sätt tokentyp till idtoken
+            sätt versalvärde till versaler med värde
+            om versalvärde är lika med "SANT"
+                sätt tokentyp till santtoken
+            annars om versalvärde är lika med "FALSKT"
+                sätt tokentyp till falskttoken
             annars
                 . Check if it's a keyword
-                sätt tokentyp till TOKEN IDENTIFIER
                 om finns med värde, nyckelord
                     sätt tokentyp till hämta med värde, nyckelord
 
-                lägg till skapa_token med tokentyp, värde, rad_nummer, indent plus start plus 1 i tokens
+            lägg till token med tokentyp, värde, radnummer, indenteringsnivå plus start plus 1 i tokens
 
         . --- Step 4: Add Newline Token ---
-        om rad_nummer är mindre än längd från rader
-            lägg till skapa_token med TOKEN NEWLINE, "\n", rad_nummer, längd från rad plus 1 i tokens
+        om radnummer är mindre än längd från rader
+            lägg till token med nyradstoken, ny rad, radnummer, längd från rad plus 1 i tokens
 
     . --- Step 5: Final Dedents ---
-    medan längd från indent_stack är större än 1
-        sätt sista_idx till längd från indent_stack minus 1
-        ta bort element sista_idx från indent_stack
-        lägg till skapa_token med TOKEN DEDENT, "", längd från rader plus 1, 1 i tokens
+    medan längd från indenteringsstack är större än 1
+        sätt sista indexet till längd från indenteringsstack minus 1
+        ta bort element sista indexet från indenteringsstack
+        sätt radnummer till längd från rader plus 1
+        lägg till token med avindenteringstoken, "", radnummer, 1 i tokens
         
     ge tokens

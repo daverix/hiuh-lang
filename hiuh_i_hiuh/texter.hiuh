@@ -1,3 +1,11 @@
+sätt citattecken till 34 som tecken
+sätt apostroftecken till 39 som tecken
+sätt kommatecken till 44 som tecken
+sätt punkttecken till 46 som tecken
+sätt minustecken till 45 som tecken
+sätt startparantestecken till 40 som tecken
+sätt slutparantestecken till 41 som tecken
+
 . Helper function to get substring
 sätt delsträng till grej med text som sträng, start som heltal, längd som heltal returnera sträng
     sätt resultat till ""
@@ -7,11 +15,6 @@ sätt delsträng till grej med text som sträng, start som heltal, längd som he
         sätt resultat till resultat plus element pos från text
         öka pos med 1
     ge resultat
-
-. Helper to check if a character is a numeric digit
-sätt är_siffra till grej med tecken som sträng returnera boolesk
-    sätt kod till tecken som tal
-    ge kod är större än eller lika med 48 och kod är mindre än eller lika med 57
 
 . Convert a string to uppercase (a-z → A-Z)
 sätt versaler till grej med text som sträng returnera sträng
