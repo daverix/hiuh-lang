@@ -35,6 +35,9 @@ When writing hiuh code (`.hiuh` files), use only characters available on a Swedi
 
 This ensures hiuh code can be written easily on mobile devices without switching keyboard layouts.
 
+Try to make expression as clear as possible by breaking out parts as separate variables. Only use quotes for filenames
+or when it's not possible to use ascii codes (`kod som tecken`)
+
 ## Agent Protocol Updates
 
 To ensure reliable development and prevent silent failures:
