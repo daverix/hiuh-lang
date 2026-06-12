@@ -1,0 +1,16 @@
+{
+    "comments": {
+        "lineComment": "."
+    },
+    "brackets": [],
+    "autoClosingPairs": [
+        { "open": "\"", "close": "\"" },
+        { "open": "'", "close": "'" }
+    ],
+    "folding": {
+        "markers": {
+            "start": "^\\s*(om|medan|för\\s+varje|typ|grej|försök|fånga|slutligen)\\b",
+            "end": "^(?!\\s*\\s)"
+        }
+    }
+}

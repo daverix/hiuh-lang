@@ -1,0 +1,19 @@
+{
+    "name": "hiuh",
+    "displayName": "hiuh",
+    "description": "Syntax highlighting for hiuh language",
+    "version": "1.0.0",
+    "engines": { "vscode": "^1.0.0" },
+    "contributes": {
+        "languages": [{
+            "id": "hiuh",
+            "extensions": [".hiuh"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "hiuh",
+            "scopeName": "source.hiuh",
+            "path": "./syntaxes/hiuh.tmLanguage.json"
+        }]
+    }
+}

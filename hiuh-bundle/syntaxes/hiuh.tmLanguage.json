@@ -1,0 +1,113 @@
+{
+    "fileTypes": [
+        "hiuh"
+    ],
+    "name": "hiuh",
+    "patterns": [
+        {
+            "match": "^\\s*\\..*$",
+            "name": "comment.line.hiuh"
+        },
+        {
+            "match": "\"[^\"]*\"",
+            "name": "string.quoted.hiuh"
+        },
+        {
+            "match": "'[^']*'",
+            "name": "string.quoted.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})(SANT|FALSKT)(?!\\p{L})",
+            "name": "constant.language.hiuh"
+        },
+        {
+            "match": "-?\\d+(,\\d+)?",
+            "name": "constant.numeric.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})(skriv|öppna|stäng|konvertera)(?!\\p{L})",
+            "name": "support.function.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})(om|medan|annars|försök|fånga|kasta|slutligen)(?!\\p{L})",
+            "name": "keyword.control.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})för\\s+varje(?!\\p{L})",
+            "name": "keyword.control.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})(bryt|fortsätt)(?!\\p{L})",
+            "name": "keyword.control.hiuh"
+        },
+        {
+            "comment": "Matchar strukturen: sätt [variabel] till [värde/uttryck]",
+            "match": "^\\s*(sätt)\\s+(\\p{L}+)\\s+(till)\\s+(((grej|verbgrej|hämtagrej|infixgrej)\\s+(med))|(kopia\\s+av)\\s)?",
+            "captures": {
+                "1": {
+                    "name": "keyword.operator.assignment.hiuh"
+                },
+                "2": {
+                    "name": "variable.other.assignment.hiuh"
+                },
+                "3": {
+                    "name": "keyword.operator.assignment.hiuh"
+                },
+                "6": {
+                    "name": "keyword.declaration.hiuh"
+                },
+                "7": {
+                    "name": "keyword.other.hiuh"
+                },
+                "8": {
+                    "name": "keyword.function.hiuh"
+                }
+            }
+        },
+        {
+            "match": "(?<!\\p{L})typ(?!\\p{L})",
+            "name": "keyword.declaration.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})ger(?!\\p{L})",
+            "name": "keyword.function.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})ge(?!\\p{L})",
+            "name": "keyword.return.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})(från|i|som|av|ärver)(?!\\p{L})",
+            "name": "keyword.other.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})använd(?!\\p{L})",
+            "name": "keyword.import.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})(är \\s)?(större|mindre|lika|än|eller|och)(?!\\p{L})",
+            "name": "keyword.operator.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})(plus|minus|gånger|delat)(?!\\p{L})",
+            "name": "keyword.operator.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})(öka|minska|gångra|dela|multiplicera|dividera)(?!\\p{L})",
+            "name": "support.function.modifier.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})(lista|ordlista|heltal|sträng|flyttal|boolesk|tecken|hiuhtyp|inmatning)(?!\\p{L})",
+            "name": "support.type.hiuh"
+        },
+        {
+            "match": ",",
+            "name": "punctuation.hiuh"
+        },
+        {
+            "match": "(?<!\\p{L})[a-zA-ZåäöÅÄÖ]+(?!\\p{L})",
+            "name": "variable.other.hiuh"
+        }
+    ],
+    "scopeName": "source.hiuh"
+}
