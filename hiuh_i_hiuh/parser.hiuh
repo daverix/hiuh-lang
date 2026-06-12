@@ -1,107 +1,432 @@
-använd tokeniserare
 använd ast
+använd tokeniserare
 
-. parser - parses token list into AST Nod objects.
-. All function params use 'tkns' and 'pos' to avoid named-arg conflicts.
-. Returns indices into global alla_noder list.
-. formatera converts indices to strings via typ av comparison.
+sätt v öka till "öka"
+sätt v minska till "minska"
+sätt v gångra till "gångra"
+sätt v dela till "dela"
+sätt v returnera till "returnera"
+sätt g verbgrej till "verbgrej"
+sätt g skickagrej till "skickagrej"
+sätt g hämtagrej till "hämtagrej"
+sätt g infixgrej till "infixgrej"
 
-. sätt parsa grej till med tokens som lista av token returnera lista av basnod
-.     sätt position till 0
-.     sätt strukturellt statement till FALSKT
-.     sätt infixgrejer till lista av sträng
-.     sätt verbgrejer till lista med "öka", "minska", "gångra", "dela", "multiplicera", "dividera"
-.     sätt skickagrejer till lista med "putta", "rensa"
-.     sätt hämtagrejer till lista av sträng
-.     sätt hanterar anropsargument till boolesk
+sätt parsa till grej med tokenlista som lista av token returnera lista av basnod
 
-.     sätt noder till lista av basnod
+    sätt slå ihop till grej med delar som lista av sträng, separator som sträng returnera sträng
+        sätt ut till tom text
+        sätt först till SANT
+        för varje d i delar
+            om först
+                sätt först till FALSKT
+            annars
+                sätt ut till ut plus separator
+            sätt ut till ut plus d
+        ge ut
 
-.     sätt kika till hämtagrej med avstånd som heltal returnera token
-.         ge element position plus avstånd från tokens
+    sätt samla namn till grej med tkns som lista av token, startpos som heltal, stopptyp som heltal returnera lista av sträng
+        sätt delar till lista av sträng
+        sätt pos till startpos
+        medan pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            sätt tt till tokentyp från t
+            om tt är lika med stopptyp
+                bryt
+            om tt är lika med nyradstoken
+                bryt
+            lägg till värde från t i delar
+            öka pos med 1
+        sätt namn till slå ihop med delar, " "
+        ge lista med namn, pos
 
-.     sätt konsumera till grej med förväntad typ
+    sätt samla tills nyrad till grej med tkns som lista av token, startpos som heltal returnera lista av sträng
+        sätt delar till lista av sträng
+        sätt pos till startpos
+        medan pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            sätt tt till tokentyp från t
+            om tt är lika med nyradstoken
+                bryt
+            om tt är lika med indenteringstoken
+                bryt
+            om tt är lika med avindenteringstoken
+                bryt
+            lägg till värde från t i delar
+            öka pos med 1
+        sätt txt till slå ihop med delar, " "
+        ge lista med txt, pos
 
+    sätt samla uttryck till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt r till samla tills nyrad med tkns, startpos
+        sätt text till element 0 från r
+        sätt nypos till element 1 från r
+        sätt delar till lista av sträng
+        lägg till text i delar
+        sätt nod till uttrycksdelarnod med delar
+        ge lista med nod, nypos
 
-.     ge noder
+    sätt parsa sats till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt pos till startpos
 
-. === Node builders ===
+        medan pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            om tokentyp från t är lika med nyradstoken
+                öka pos med 1
+                fortsätt
+            bryt
 
-sätt alla_noder till lista av
+        om pos är större än eller lika med längd från tkns
+            ge lista med inget av basnod, pos
 
-sätt ny_nod till grej med n som basnod returnera heltal
-    lägg till n i alla_noder
-    ge längd från alla_noder minus 1
+        sätt t till element pos från tkns
+        sätt tt till tokentyp från t
 
-sätt ny_sträng_nod till grej med text som sträng returnera heltal
-    sätt n till SträngNod med text
-    lägg till n i alla_noder
-    ge längd från alla_noder minus 1
+        om tt är lika med avindenteringstoken
+            ge lista med inget av basnod, pos
+        om tt är lika med indenteringstoken
+            ge lista med inget av basnod, pos
 
-. === Inline join helper ===
+        om tt är lika med sättoken
+            sätt r till parsa sätt med tkns, pos
+            ge r
+        om tt är lika med skrivtoken
+            sätt r till parsa skriv med tkns, pos
+            ge r
+        om tt är lika med getoken
+            sätt r till parsa ge med tkns, pos
+            ge r
+        om tt är lika med bryttoken
+            öka pos med 1
+            sätt n till brytnod med
+            ge lista med n, pos
+        om tt är lika med fortsättoken
+            öka pos med 1
+            sätt n till fortsättnod med
+            ge lista med n, pos
+        om tt är lika med användtoken
+            sätt r till parsa använd med tkns, pos
+            ge r
+        om tt är lika med stängtoken
+            sätt r till parsa stäng med tkns, pos
+            ge r
+        om tt är lika med omtoken
+            sätt r till parsa om med tkns, pos
+            ge r
+        om tt är lika med medantoken
+            sätt r till parsa medan med tkns, pos
+            ge r
+        om tt är lika med idtoken
+            sätt tv till värde från t
+            om tv är lika med v öka
+                sätt r till parsa mod med tkns, pos
+                ge r
+            om tv är lika med v minska
+                sätt r till parsa mod med tkns, pos
+                ge r
+            om tv är lika med v gångra
+                sätt r till parsa mod med tkns, pos
+                ge r
+            om tv är lika med v dela
+                sätt r till parsa mod med tkns, pos
+                ge r
 
-sätt slå_ihop till grej med delar som lista av sträng, sep som sträng returnera sträng
-    sätt ut till ""
-    sätt första till sant
-    för varje d i delar
-        om första
-            sätt första till falskt
+        öka pos med 1
+        ge lista med inget av basnod, pos
+
+    sätt parsa block till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt pos till startpos
+
+        medan pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            om tokentyp från t är lika med nyradstoken
+                öka pos med 1
+                fortsätt
+            bryt
+
+        om pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            om tokentyp från t är lika med indenteringstoken
+                öka pos med 1
+
+        sätt stmts till lista av basnod
+        medan pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            om tokentyp från t är lika med avindenteringstoken
+                öka pos med 1
+                bryt
+            sätt r till parsa sats med tkns, pos
+            sätt nod till element 0 från r
+            sätt pos till element 1 från r
+            lägg till nod i stmts
+
+        ge lista med stmts, pos
+
+    sätt parsa om till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt pos till startpos
+        öka pos med 1
+
+        sätt r till samla uttryck med tkns, pos
+        sätt pos till element 1 från r
+        sätt villkor till element 0 från r
+
+        sätt r till parsa block med tkns, pos
+        sätt pos till element 1 från r
+        sätt block till element 0 från r
+
+        sätt annarsblock till lista av basnod
+
+        medan pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            om tokentyp från t är inte lika med nyradstoken
+                bryt
+            öka pos med 1
+
+        om pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            om tokentyp från t är lika med annarstoken
+                öka pos med 1
+                sätt r till parsa block med tkns, pos
+                sätt pos till element 1 från r
+                sätt annarsblock till element 0 från r
+
+        sätt ov till omvillkor med villkor, block
+        sätt vl till lista av omvillkor
+        lägg till ov i vl
+        sätt n till omnod med vl, annarsblock
+        ge lista med n, pos
+
+    sätt parsa medan till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt pos till startpos
+        öka pos med 1
+
+        sätt r till samla uttryck med tkns, pos
+        sätt pos till element 1 från r
+        sätt villkor till element 0 från r
+
+        sätt r till parsa block med tkns, pos
+        sätt pos till element 1 från r
+        sätt block till element 0 från r
+
+        sätt n till medannod med villkor, block
+        ge lista med n, pos
+
+    sätt parsa sätt till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt pos till startpos
+        öka pos med 1
+
+        sätt r till samla namn med tkns, pos, tilltoken
+        sätt pos till element 1 från r
+        sätt namn till element 0 från r
+
+        om pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            om tokentyp från t är lika med tilltoken
+                öka pos med 1
+
+        om pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            sätt ttv till tokentyp från t
+            sätt ttvv till värde från t
+
+            sätt ärgrej till FALSKT
+            om ttv är lika med grejtoken
+                sätt ärgrej till SANT
+            om ttv är lika med idtoken
+                om ttvv är lika med g verbgrej
+                    sätt ärgrej till SANT
+                om ttvv är lika med g skickagrej
+                    sätt ärgrej till SANT
+                om ttvv är lika med g hämtagrej
+                    sätt ärgrej till SANT
+                om ttvv är lika med g infixgrej
+                    sätt ärgrej till SANT
+
+            om ärgrej
+                sätt r till parsa grej med tkns, pos
+                sätt pos till element 1 från r
+                sätt fn till element 0 från r
+                sätt n till tilldelningsnod med namn, fn
+                ge lista med n, pos
+
+        sätt r till samla uttryck med tkns, pos
+        sätt pos till element 1 från r
+        sätt värde till element 0 från r
+
+        sätt n till tilldelningsnod med namn, värde
+        ge lista med n, pos
+
+    sätt parsa grej till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt pos till startpos
+        öka pos med 1
+
+        medan pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            sätt tt till tokentyp från t
+            sätt tv till värde från t
+            om tt är lika med medtoken
+                bryt
+            om tt är lika med returnerartoken
+                bryt
+            om tv är lika med v returnera
+                bryt
+            om tt är lika med nyradstoken
+                bryt
+            öka pos med 1
+
+        sätt paramnoder till lista av basnod
+        om pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            om tokentyp från t är lika med medtoken
+                öka pos med 1
+
+                medan pos är mindre än längd från tkns
+                    sätt t till element pos från tkns
+                    sätt tt till tokentyp från t
+                    sätt tv till värde från t
+
+                    om tt är lika med returnerartoken
+                        bryt
+                    om tv är lika med v returnera
+                        bryt
+                    om tt är lika med nyradstoken
+                        bryt
+
+                    sätt pn till strängnod med tv
+                    öka pos med 1
+                    lägg till pn i paramnoder
+
+                    om pos är mindre än längd från tkns
+                        sätt t3 till element pos från tkns
+                        om tokentyp från t3 är lika med somtoken
+                            öka pos med 1
+
+                    sätt typdelar till lista av sträng
+                    medan pos är mindre än längd från tkns
+                        sätt t4 till element pos från tkns
+                        sätt t4t till tokentyp från t4
+                        sätt t4v till värde från t4
+                        om t4t är lika med kommatoken
+                            öka pos med 1
+                            bryt
+                        om t4t är lika med returnerartoken
+                            bryt
+                        om t4v är lika med v returnera
+                            bryt
+                        om t4t är lika med nyradstoken
+                            bryt
+                        lägg till t4v i typdelar
+                        öka pos med 1
+
+                    sätt pt till strängnod med slå ihop med typdelar, " "
+                    lägg till pt i paramnoder
+
+        sätt rettyp till heltal
+        om pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            sätt tt till tokentyp från t
+            sätt tv till värde från t
+            om tt är lika med returnerartoken
+                öka pos med 1
+            annars om tv är lika med v returnera
+                öka pos med 1
+
+            sätt retdelar till lista av sträng
+            medan pos är mindre än längd från tkns
+                sätt t2 till element pos från tkns
+                sätt t2t till tokentyp från t2
+                om t2t är lika med nyradstoken
+                    bryt
+                om t2t är lika med indenteringstoken
+                    bryt
+                om t2t är lika med avindenteringstoken
+                    bryt
+                om t2t är lika med medtoken
+                    bryt
+                om t2t är lika med returnerartoken
+                    bryt
+                lägg till värde från t2 i retdelar
+                öka pos med 1
+
+            om längd från retdelar är större än 0
+                sätt rettyp till slå ihop med retdelar, " "
+
+        sätt r till parsa block med tkns, pos
+        sätt pos till element 1 från r
+        sätt blocknoder till element 0 från r
+
+        sätt fn till grejdefinitionsnod med paramnoder, blocknoder, lista av sträng, "grej", rettyp
+        ge lista med fn, pos
+
+    sätt parsa skriv till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt pos till startpos
+        öka pos med 1
+        sätt r till samla uttryck med tkns, pos
+        sätt pos till element 1 från r
+        sätt n till skrivnod med element 0 från r
+        ge lista med n, pos
+
+    sätt parsa ge till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt pos till startpos
+        öka pos med 1
+        sätt r till samla uttryck med tkns, pos
+        sätt pos till element 1 från r
+        sätt n till genod med element 0 från r
+        ge lista med n, pos
+
+    sätt parsa använd till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt pos till startpos
+        öka pos med 1
+        sätt r till samla tills nyrad med tkns, pos
+        sätt pos till element 1 från r
+        sätt n till användnod med element 0 från r
+        ge lista med n, pos
+
+    sätt parsa stäng till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt pos till startpos
+        öka pos med 1
+        sätt r till samla tills nyrad med tkns, pos
+        sätt pos till element 1 från r
+        sätt n till stängfilnod med element 0 från r
+        ge lista med n, pos
+
+    sätt parsa mod till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
+        sätt pos till startpos
+        öka pos med 1
+        sätt r till samla namn med tkns, pos, medtoken
+        sätt pos till element 1 från r
+        sätt msnamn till element 0 från r
+
+        om pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            om tokentyp från t är lika med medtoken
+                öka pos med 1
+
+        sätt r till samla uttryck med tkns, pos
+        sätt pos till element 1 från r
+        sätt valnod till element 0 från r
+
+        sätt msnod till strängnod med msnamn
+
+        sätt t0 till element startpos från tkns
+        sätt tv0 till värde från t0
+        om tv0 är lika med v öka
+            sätt n till ökanod med msnod, valnod
+        annars om tv0 är lika med v minska
+            sätt n till minskanod med msnod, valnod
+        annars om tv0 är lika med v gångra
+            sätt n till gångranod med msnod, valnod
         annars
-            sätt ut till ut plus sep
-        sätt ut till ut plus d
-    ge ut
+            sätt n till delanod med msnod, valnod
 
-. === Collection helpers (return string, pos) ===
+        ge lista med n, pos
 
-sätt samla_namn till grej med tkns som lista av token, pos som heltal, stopp_typ som heltal returnera lista av sträng
-    sätt delar till lista av sträng
-    medan pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        sätt tt till tokentyp från t
-        om tt är lika med stopp_typ
-            bryt
-        om tt är lika med 37
-            bryt
-        lägg till värde från t i delar
-        öka pos med 1
-    sätt txt till slå_ihop med delar, " "
-    ge lista med txt, pos
-
-sätt samla_tills_nyrad till grej med tkns som lista av token, pos som heltal returnera lista av sträng
-    sätt delar till lista av sträng
-    medan pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        sätt tt till tokentyp från t
-        om tt är lika med 37
-            bryt
-        om tt är lika med 38
-            bryt
-        om tt är lika med 39
-            bryt
-        lägg till värde från t i delar
-        öka pos med 1
-    sätt txt till slå_ihop med delar, " "
-    ge lista med txt, pos
-
-sätt samla_uttryck till grej med tkns som lista av token, pos som heltal returnera lista av heltal
-    sätt r1 till samla_tills_nyrad med tkns, pos
-    sätt str_text till element 0 från r1
-    sätt ny_pos till element 1 från r1
-    sätt expr_str till "Expr(" plus str_text plus ")"
-    sätt idx till ny_sträng_nod med expr_str
-    ge lista med idx, ny_pos
-
-. === Main entry ===
-
-sätt parsa till grej med tkns som lista av token returnera lista av heltal
-    sätt resultat till lista av heltal
+    sätt resultat till lista av basnod
     sätt pos till 0
 
-    sätt alla_noder till lista av basnod
-
-    medan pos är mindre än längd från tkns
-        sätt t till element pos från tkns
+    medan pos är mindre än längd från tokenlista
+        sätt t till element pos från tokenlista
         sätt tt till tokentyp från t
+
         om tt är lika med indenteringstoken
             öka pos med 1
             fortsätt
@@ -109,699 +434,146 @@ sätt parsa till grej med tkns som lista av token returnera lista av heltal
             öka pos med 1
             fortsätt
 
-        sätt r1 till parsa_stmt med tkns, pos
-        sätt nod_idx till element 0 från r1
-        sätt pos till element 1 från r1
-        om nod_idx är större än eller lika med 0
-            lägg till nod_idx i resultat
+        sätt r till parsa sats med tokenlista, pos
+        sätt nod till element 0 från r
+        sätt pos till element 1 från r
+        lägg till nod i resultat
 
     ge resultat
 
-. === Statement parser ===
-
-sätt parsa_stmt till grej med tkns som lista av token, pos som heltal returnera lista av heltal
-    medan pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        om tokentyp från t är lika med nyradstoken
-            öka pos med 1
-            fortsätt
-        bryt
-
-    om pos är större än eller lika med längd från tkns
-        ge lista med -1, pos
-
-    sätt t till element pos från tkns
-    sätt tt till tokentyp från t
-
-    om tt är lika med avindenteringstoken
-        ge lista med -1, pos
-    om tt är lika med indenteringstoken
-        ge lista med -1, pos
-
-    om tt är lika med sättoken
-        sätt r1 till parsa_satt med tkns, pos
-        ge r1
-    om tt är lika med skrivtoken
-        sätt r1 till parsa_skriv med tkns, pos
-        ge r1
-    om tt är lika med getoken
-        sätt r1 till parsa_ge med tkns, pos
-        ge r1
-    om tt är lika med bryttoken
-        öka pos med 1
-        sätt n till BrytNod med
-        ge lista med ny_nod med n, pos
-    om tt är lika med fortsättoken
-        öka pos med 1
-        sätt n till FortsättNod med
-        ge lista med ny_nod med n, pos
-    om tt är lika med användtoken
-        sätt r1 till parsa_importera med tkns, pos
-        ge r1
-    om tt är lika med stängtoken
-        sätt r1 till parsa_stäng med tkns, pos
-        ge r1
-    om tt är lika med omtoken
-        sätt r1 till parsa_om med tkns, pos
-        ge r1
-    om tt är lika med medantoken
-        sätt r1 till parsa_medan med tkns, pos
-        ge r1
-    om tt är lika med idtoken
-        sätt tv till värde från t
-        om tv är lika med "öka"
-            sätt r1 till parsa_modifiera med tkns, pos, "öka"
-            ge r1
-        om tv är lika med "minska"
-            sätt r1 till parsa_modifiera med tkns, pos, "minska"
-            ge r1
-        om tv är lika med "gångra"
-            sätt r1 till parsa_modifiera med tkns, pos, "gångra"
-            ge r1
-        om tv är lika med "dela"
-            sätt r1 till parsa_modifiera med tkns, pos, "dela"
-            ge r1
-
-    öka pos med 1
-    ge lista med -1, pos
-
-. === Block parser ===
-
-sätt parsa_block till grej med tkns som lista av token, pos som heltal returnera lista av heltal
-    medan pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        om tokentyp från t är lika med nyradstoken
-            öka pos med 1
-            fortsätt
-        bryt
-
-    om pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        om tokentyp från t är lika med indenteringstoken
-            öka pos med 1
-
-    sätt stmts till lista av heltal
-    medan pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        om tokentyp från t är lika med avindenteringstoken
-            öka pos med 1
-            bryt
-        sätt r1 till parsa_stmt med tkns, pos
-        sätt nod_idx till element 0 från r1
-        sätt pos till element 1 från r1
-        om nod_idx är större än eller lika med 0
-            lägg till nod_idx i stmts
-
-    ge lista med stmts, pos
-
-. === If/else ===
-
-sätt parsa_om till grej med tkns som lista av token, pos som heltal returnera lista av heltal
-    öka pos med 1
-
-    sätt r1 till samla_uttryck med tkns, pos
-    sätt pos till element 1 från r1
-    sätt villkor_idx till element 0 från r1
-
-    sätt r2 till parsa_block med tkns, pos
-    sätt pos till element 1 från r2
-    sätt block_idxs till element 0 från r2
-
-    sätt block_start till -1
-    sätt block_slut till -1
-    om längd från block_idxs är större än 0
-        sätt block_start till element 0 från block_idxs
-        sätt block_slut till block_start plus längd från block_idxs minus 1
-
-    sätt annars_start till -1
-    sätt annars_slut till -1
-
-    medan pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        om tokentyp från t är inte lika med nyradstoken
-            bryt
-        öka pos med 1
-    om pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        om tokentyp från t är lika med ellertoken
-            öka pos med 1
-            sätt r3 till parsa_block med tkns, pos
-            sätt pos till element 1 från r3
-            sätt annars_idxs till element 0 från r3
-            om längd från annars_idxs är större än 0
-                sätt annars_start till element 0 från annars_idxs
-                sätt annars_slut till annars_start plus längd från annars_idxs minus 1
-
-    sätt ov_nod till OmVillkorNod med villkor_idx, block_start, block_slut
-    sätt ov_idx till ny_nod med ov_nod
-    sätt om_nod till OmNod med ov_idx, ov_idx, annars_start, annars_slut
-    sätt idx till ny_nod med om_nod
-    ge lista med idx, pos
-
-. === While ===
-
-sätt parsa_medan till grej med tkns som lista av token, pos som heltal returnera lista av heltal
-    öka pos med 1
-
-    sätt r1 till samla_uttryck med tkns, pos
-    sätt pos till element 1 från r1
-    sätt villkor_idx till element 0 från r1
-
-    sätt r2 till parsa_block med tkns, pos
-    sätt pos till element 1 från r2
-    sätt block_idxs till element 0 från r2
-
-    sätt block_start till -1
-    sätt block_slut till -1
-    om längd från block_idxs är större än 0
-        sätt block_start till element 0 från block_idxs
-        sätt block_slut till block_start plus längd från block_idxs minus 1
-
-    sätt mn till MedanNod med villkor_idx, block_start, block_slut
-    sätt idx till ny_nod med mn
-    ge lista med idx, pos
-
-. === sätt <name> till <value> ===
-
-sätt parsa_satt till grej med tkns som lista av token, pos som heltal returnera lista av heltal
-    öka pos med 1
-
-    sätt r1 till samla_namn med tkns, pos, tilltoken
-    sätt pos till element 1 från r1
-    sätt nnamn till element 0 från r1
-
-    om pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        om tokentyp från t är lika med tilltoken
-            öka pos med 1
-
-    . Check for function definition
-    om pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        sätt ttv till tokentyp från t
-        sätt ttvv till värde från t
-        sätt är_grej till falskt
-        om ttv är lika med grejtoken
-            sätt är_grej till sant
-        om ttv är lika med idtoken
-            om ttvv är lika med "verbgrej"
-                sätt är_grej till sant
-            om ttvv är lika med "skickagrej"
-                sätt är_grej till sant
-            om ttvv är lika med "hämtagrej"
-                sätt är_grej till sant
-            om ttvv är lika med "infixgrej"
-                sätt är_grej till sant
-        om är_grej
-            sätt r2 till parsa_grej med tkns, pos
-            sätt pos till element 1 från r2
-            sätt val_idx till element 0 från r2
-            sätt tn till TilldelaNod med nnamn, val_idx
-            ge lista med ny_nod med tn, pos
-
-    sätt r2 till samla_uttryck med tkns, pos
-    sätt pos till element 1 från r2
-    sätt val_idx till element 0 från r2
-
-    sätt tn till TilldelaNod med nnamn, val_idx
-    ge lista med ny_nod med tn, pos
-
-. === Grej (function definition) parser ===
-
-sätt parsa_grej till grej med tkns som lista av token, pos som heltal returnera lista av heltal
-    sätt t_grej till element pos från tkns
-    öka pos med 1
-
-    . Skip optional 'av T1, T2'
-    medan pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        sätt tt till tokentyp från t
-        sätt tv till värde från t
-        om tt är lika med medtoken
-            bryt
-        om tt är lika med returnerartoken
-            bryt
-        om tv är lika med getoken
-            bryt
-        om tt är lika med nyradstoken
-            bryt
-        öka pos med 1
-
-    . Parse params: store name/type as SträngNod pairs
-    sätt param_noder till lista av heltal
-    om pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        om tokentyp från t är lika med medtoken
-            öka pos med 1
-
-            medan pos är mindre än längd från tkns
-                sätt t till element pos från tkns
-                sätt tt till tokentyp från t
-                sätt tv till värde från t
-
-                om tt är lika med returnerartoken
-                    bryt
-                om tv är lika med getoken
-                    bryt
-                om tt är lika med nyradstoken
-                    bryt
-
-                sätt pnamn_idx till ny_sträng_nod med tv
-                öka pos med 1
-                lägg till pnamn_idx i param_noder
-
-                om pos är mindre än längd från tkns
-                    sätt t3 till element pos från tkns
-                    om tokentyp från t3 är lika med somtoken
-                        öka pos med 1
-
-                sätt ptyp_delar till lista av sträng
-                medan pos är mindre än längd från tkns
-                    sätt t4 till element pos från tkns
-                    sätt t4t till tokentyp från t4
-                    sätt t4v till värde från t4
-                    om t4t är lika med kommatoken
-                        öka pos med 1
-                        bryt
-                    om t4t är lika med returnerartoken
-                        bryt
-                    om t4v är lika med getoken
-                        bryt
-                    om t4t är lika med nyradstoken
-                        bryt
-                    lägg till t4v i ptyp_delar
-                    öka pos med 1
-
-                sätt ptyp till ""
-                sätt första till sant
-                för varje d i ptyp_delar
-                    om första
-                        sätt första till falskt
-                    annars
-                        sätt ptyp till ptyp plus " "
-                    sätt ptyp till ptyp plus d
-
-                sätt ptyp_idx till ny_sträng_nod med ptyp
-                lägg till ptyp_idx i param_noder
-
-    sätt param_start till -1
-    sätt param_slut till -1
-    om längd från param_noder är större än 0
-        sätt param_start till element 0 från param_noder
-        sätt param_slut till param_start plus längd från param_noder minus 1
-
-    . Parse return type string
-    sätt ret_typ till "heltal"
-    om pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        sätt tt till tokentyp från t
-        sätt tv till värde från t
-        om tt är lika med returnerartoken
-            öka pos med 1
-        annars om tv är lika med getoken
-            öka pos med 1
-
-        sätt ret_delar till lista av sträng
-        medan pos är mindre än längd från tkns
-            sätt t2 till element pos från tkns
-            sätt t2t till tokentyp från t2
-            om t2t är lika med nyradstoken
-                bryt
-            om t2t är lika med indenteringstoken
-                bryt
-            om t2t är lika med avindenteringstoken
-                bryt
-            om t2t är lika med medtoken
-                bryt
-            om t2t är lika med returnerartoken
-                bryt
-            lägg till värde från t2 i ret_delar
-            öka pos med 1
-
-        om längd från ret_delar är större än 0
-            sätt ret_typ till ""
-            sätt första till sant
-            för varje d i ret_delar
-                om första
-                    sätt första till falskt
-                annars
-                    sätt ret_typ till ret_typ plus " "
-                sätt ret_typ till ret_typ plus d
-
-    . Parse body block
-    sätt r1 till parsa_block med tkns, pos
-    sätt pos till element 1 från r1
-    sätt block_idxs till element 0 från r1
-
-    sätt kropp_start till -1
-    sätt kropp_slut till -1
-    om längd från block_idxs är större än 0
-        sätt kropp_start till element 0 från block_idxs
-        sätt kropp_slut till kropp_start plus längd från block_idxs minus 1
-
-    sätt fn_nod till FunktionsDefNod med param_start, param_slut, kropp_start, kropp_slut, 0, ret_typ
-    sätt fn_idx till ny_nod med fn_nod
-    ge lista med fn_idx, pos
-
-. === skriv ===
-
-sätt parsa_skriv till grej med tkns som lista av token, pos som heltal returnera lista av heltal
-    öka pos med 1
-    sätt r1 till samla_uttryck med tkns, pos
-    sätt pos till element 1 från r1
-    sätt val_idx till element 0 från r1
-    sätt sn till SkrivNod med val_idx
-    ge lista med ny_nod med sn, pos
-
-. === ge ===
-
-sätt parsa_ge till grej med tkns som lista av token, pos som heltal returnera lista av heltal
-    öka pos med 1
-    sätt r1 till samla_uttryck med tkns, pos
-    sätt pos till element 1 från r1
-    sätt val_idx till element 0 från r1
-    sätt rn till ReturNod med val_idx
-    ge lista med ny_nod med rn, pos
-
-. === använd ===
-
-sätt parsa_importera till grej med tkns som lista av token, pos som heltal returnera lista av heltal
-    öka pos med 1
-    sätt r1 till samla_tills_nyrad med tkns, pos
-    sätt pos till element 1 från r1
-    sätt mod_namn till element 0 från r1
-    sätt in till ImporteraNod med mod_namn
-    ge lista med ny_nod med in, pos
-
-. === stäng ===
-
-sätt parsa_stäng till grej med tkns som lista av token, pos som heltal returnera lista av heltal
-    öka pos med 1
-    sätt r1 till samla_tills_nyrad med tkns, pos
-    sätt pos till element 1 från r1
-    sätt var_namn till element 0 från r1
-    sätt sfn till StängFilNod med var_namn
-    ge lista med ny_nod med sfn, pos
-
-. === öka/minska/gångra/dela ===
-
-sätt parsa_modifiera till grej med tkns som lista av token, pos som heltal, ntype som sträng returnera lista av heltal
-    öka pos med 1
-    sätt r1 till samla_namn med tkns, pos, medtoken
-    sätt pos till element 1 från r1
-    sätt ms_idx till ny_sträng_nod med element 0 från r1
-
-    om pos är mindre än längd från tkns
-        sätt t till element pos från tkns
-        om tokentyp från t är lika med medtoken
-            öka pos med 1
-
-    sätt r2 till samla_uttryck med tkns, pos
-    sätt pos till element 1 från r2
-    sätt val_idx till element 0 från r2
-
-    om ntype är lika med "öka"
-        sätt bn till ÖkaNod med ms_idx, val_idx
-    annars om ntype är lika med "minska"
-        sätt bn till MinskaNod med ms_idx, val_idx
-    annars om ntype är lika med "gångra"
-        sätt bn till GångraNod med ms_idx, val_idx
-    annars
-        sätt bn till DelaNod med ms_idx, val_idx
-    ge lista med ny_nod med bn, pos
-
-. === formatera — converts Nod indices to strings via typ av ===
-
-sätt formatera till grej med idxs som lista av heltal returnera lista av sträng
-    sätt resultat till lista av sträng
-    för varje idx i idxs
-        sätt nod till element idx från alla_noder
-        sätt ht till typ av nod
-
-        om ht är lika med typ av SkrivNod
-            sätt vi till värde_nod från nod
-            sätt vn till element vi från alla_noder
-            lägg till "PrintNode(" plus värde från vn plus ")" i resultat
-            fortsätt
-
-        om ht är lika med typ av TilldelaNod
-            sätt nm till namn från nod
-            sätt vi till värde_nod från nod
-            sätt vs till formatera_värde med vi
-            lägg till "AssignNode(" plus nm plus ", " plus vs plus ")" i resultat
-            fortsätt
-
-        om ht är lika med typ av ReturNod
-            sätt vi till värde_nod från nod
-            sätt vn till element vi från alla_noder
-            lägg till "ReturnNode(" plus värde från vn plus ")" i resultat
-            fortsätt
-
-        om ht är lika med typ av BrytNod
-            lägg till "BreakNode()" i resultat
-            fortsätt
-
-        om ht är lika med typ av FortsättNod
-            lägg till "ContinueNode()" i resultat
-            fortsätt
-
-        om ht är lika med typ av OmNod
-            sätt vs_start till villkor_start från nod
-            sätt ov till element vs_start från alla_noder
-            sätt test_idx till test_nod från ov
-            sätt tn2 till element test_idx från alla_noder
-            sätt t_str till värde från tn2
-            sätt bs_start till block_start från ov
-            sätt bs_slut till block_slut från ov
-            sätt block_delar till lista av sträng
-            sätt bi till bs_start
-            medan bi är mindre än eller lika med bs_slut
-                lägg till element bi från resultat i block_delar
-                öka bi med 1
-            sätt block_str till "["
-            sätt första till sant
-            för varje d i block_delar
-                om första
-                    sätt första till falskt
-                annars
-                    sätt block_str till block_str plus ", "
-                sätt block_str till block_str plus d
-            sätt block_str till block_str plus "]"
-
-            sätt ut_str till "IfNode(IfCond(" plus t_str plus ", " plus block_str plus ")"
-
-            sätt as_start till annars_start från nod
-            sätt as_slut till annars_slut från nod
-            om as_start är större än eller lika med 0
-                sätt annars_delar till lista av sträng
-                sätt ai till as_start
-                medan ai är mindre än eller lika med as_slut
-                    lägg till element ai från resultat i annars_delar
-                    öka ai med 1
-                sätt annars_str till "["
-                sätt första till sant
-                för varje d i annars_delar
-                    om första
-                        sätt första till falskt
-                    annars
-                        sätt annars_str till annars_str plus ", "
-                    sätt annars_str till annars_str plus d
-                sätt annars_str till annars_str plus "]"
-                sätt ut_str till ut_str plus ", Else(" plus annars_str plus ")"
-            sätt ut_str till ut_str plus ")"
-            lägg till ut_str i resultat
-            fortsätt
-
-        om ht är lika med typ av MedanNod
-            sätt vi till villkor_nod från nod
-            sätt vn till element vi från alla_noder
-            sätt vs till värde från vn
-            sätt bs_start till kropp_start från nod
-            sätt bs_slut till kropp_slut från nod
-            sätt block_delar till lista av sträng
-            sätt bi till bs_start
-            medan bi är mindre än eller lika med bs_slut
-                lägg till element bi från resultat i block_delar
-                öka bi med 1
-            sätt block_str till "["
-            sätt första till sant
-            för varje d i block_delar
-                om första
-                    sätt första till falskt
-                annars
-                    sätt block_str till block_str plus ", "
-                sätt block_str till block_str plus d
-            sätt block_str till block_str plus "]"
-            lägg till "WhileNode(" plus vs plus ", " plus block_str plus ")" i resultat
-            fortsätt
-
-        om ht är lika med typ av ÖkaNod
-            sätt ms_idx till vänster_nod från nod
-            sätt ms_nod till element ms_idx från alla_noder
-            sätt ms_str till värde från ms_nod
-            sätt vi till höger_nod från nod
-            sätt vn2 till element vi från alla_noder
-            sätt vs2 till värde från vn2
-            lägg till "AddAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
-            fortsätt
-
-        om ht är lika med typ av MinskaNod
-            sätt ms_idx till vänster_nod från nod
-            sätt ms_nod till element ms_idx från alla_noder
-            sätt ms_str till värde från ms_nod
-            sätt vi till höger_nod från nod
-            sätt vn2 till element vi från alla_noder
-            sätt vs2 till värde från vn2
-            lägg till "SubAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
-            fortsätt
-
-        om ht är lika med typ av GångraNod
-            sätt ms_idx till vänster_nod från nod
-            sätt ms_nod till element ms_idx från alla_noder
-            sätt ms_str till värde från ms_nod
-            sätt vi till höger_nod från nod
-            sätt vn2 till element vi från alla_noder
-            sätt vs2 till värde från vn2
-            lägg till "MultiplyAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
-            fortsätt
-
-        om ht är lika med typ av DelaNod
-            sätt ms_idx till vänster_nod från nod
-            sätt ms_nod till element ms_idx från alla_noder
-            sätt ms_str till värde från ms_nod
-            sätt vi till höger_nod från nod
-            sätt vn2 till element vi från alla_noder
-            sätt vs2 till värde från vn2
-            lägg till "DivideAssignNode(" plus ms_str plus ", " plus vs2 plus ")" i resultat
-            fortsätt
-
-        om ht är lika med typ av ImporteraNod
-            sätt mn till modul_namn från nod
-            lägg till "ImportNode(" plus mn plus ")" i resultat
-            fortsätt
-
-        om ht är lika med typ av StängFilNod
-            sätt mn till mål_var_namn från nod
-            lägg till "CloseFileNode(" plus mn plus ")" i resultat
-            fortsätt
-
-        om ht är lika med typ av FunktionsDefNod
-            sätt ps till parametrar_start från nod
-            sätt pe till parametrar_slut från nod
-            sätt params_str till "["
-            sätt bi till ps
-            sätt första till sant
-            medan bi är mindre än eller lika med pe
-                sätt namn_nod till element bi från alla_noder
-                sätt typ_nod till element bi plus 1 från alla_noder
-                sätt n_str till värde från namn_nod
-                sätt t_str till värde från typ_nod
-                om första
-                    sätt första till falskt
-                annars
-                    sätt params_str till params_str plus ", "
-                sätt params_str till params_str plus "('" plus n_str plus "', '" plus t_str plus "')"
-                öka bi med 2
-            sätt params_str till params_str plus "]"
-
-            sätt ks till kropp_start från nod
-            sätt ke till kropp_slut från nod
-            sätt body_str till "["
-            sätt bi till ks
-            sätt första till sant
-            medan bi är mindre än eller lika med ke
-                om första
-                    sätt första till falskt
-                annars
-                    sätt body_str till body_str plus ", "
-                sätt body_str till body_str plus element bi från resultat
-                öka bi med 1
-            sätt body_str till body_str plus "]"
-
-            sätt rt till retur_typ från nod
-            lägg till "FunctionDefNode(" plus params_str plus ", " plus body_str plus ", return_type='" plus rt plus "')" i resultat
-            fortsätt
-
-        om ht är lika med typ av SträngNod
-            lägg till värde från nod i resultat
-            fortsätt
-
-        . Fallback
-        lägg till "Nod" i resultat
-    ge resultat
-
-sätt formatera_värde till grej med vi som heltal returnera sträng
-    sätt nod till element vi från alla_noder
-    sätt ht till typ av nod
-
-    om ht är lika med typ av FunktionsDefNod
-        sätt ps till parametrar_start från nod
-        sätt pe till parametrar_slut från nod
-        sätt params_str till "["
-        sätt bi till ps
-        sätt första till sant
-        medan bi är mindre än eller lika med pe
-            sätt namn_nod till element bi från alla_noder
-            sätt typ_nod till element bi plus 1 från alla_noder
-            sätt n_str till värde från namn_nod
-            sätt t_str till värde från typ_nod
-            om första
-                sätt första till falskt
-            annars
-                sätt params_str till params_str plus ", "
-            sätt params_str till params_str plus "('" plus n_str plus "', '" plus t_str plus "')"
-            öka bi med 2
-        sätt params_str till params_str plus "]"
-
-        sätt ks till kropp_start från nod
-        sätt ke till kropp_slut från nod
-        sätt body_str till "["
-        sätt bi till ks
-        sätt första till sant
-        medan bi är mindre än eller lika med ke
-            sätt bn till element bi från alla_noder
-            sätt bs till formatera_värde med bi
-            om första
-                sätt första till falskt
-            annars
-                sätt body_str till body_str plus ", "
-            sätt body_str till body_str plus bs
-            öka bi med 1
-        sätt body_str till body_str plus "]"
-
-        sätt rt till retur_typ från nod
-        ge "FunctionDefNode(" plus params_str plus ", " plus body_str plus ", return_type='" plus rt plus "')"
-
-    om ht är lika med typ av SträngNod
-        ge värde från nod
-
-    om ht är lika med typ av SkrivNod
-        sätt vi till värde_nod från nod
-        sätt cn till element vi från alla_noder
-        ge "PrintNode(" plus värde från cn plus ")"
-
-    om ht är lika med typ av ReturNod
-        sätt vi till värde_nod från nod
-        sätt cn till element vi från alla_noder
-        ge "ReturnNode(" plus värde från cn plus ")"
-
-    om ht är lika med typ av BrytNod
+sätt formatera till grej med noder som lista av basnod returnera lista av sträng
+    sätt ut till lista av sträng
+    för varje n i noder
+        sätt str till formatera en nod med n
+        lägg till str i ut
+    ge ut
+
+sätt formatera en nod till grej med n som basnod returnera sträng
+    sätt ht till typ av n
+
+    om ht är lika med typ av strängnod
+        ge värde från n
+
+    om ht är lika med typ av uttrycksdelarnod
+        sätt delar till delar från n
+        sätt txt till element 0 från delar
+        ge "Expr(" plus txt plus ")"
+
+    om ht är lika med typ av skrivnod
+        sätt vn till värde från n
+        sätt vs till formatera en nod med vn
+        ge "PrintNode(" plus vs plus ")"
+
+    om ht är lika med typ av tilldelningsnod
+        sätt nnamn till namn från n
+        sätt vn till värde från n
+        sätt vs till formatera en nod med vn
+        ge "AssignNode(" plus nnamn plus ", " plus vs plus ")"
+
+    om ht är lika med typ av genod
+        sätt vn till värde från n
+        sätt vs till formatera en nod med vn
+        ge "ReturnNode(" plus vs plus ")"
+
+    om ht är lika med typ av brytnod
         ge "BreakNode()"
 
-    om ht är lika med typ av FortsättNod
+    om ht är lika med typ av fortsättnod
         ge "ContinueNode()"
 
-    om ht är lika med typ av TilldelaNod
-        sätt nm till namn från nod
-        sätt vi till värde_nod från nod
-        sätt vs till formatera_värde med vi
-        ge "AssignNode(" plus nm plus ", " plus vs plus ")"
+    om ht är lika med typ av användnod
+        sätt mn till namn från n
+        ge "ImportNode(" plus mn plus ")"
 
-    kasta vi plus kan inte formateras korrekt
+    om ht är lika med typ av stängfilnod
+        sätt mn till variabel från n
+        ge "CloseFileNode(" plus mn plus ")"
 
-sätt test_typav till grej returnera hiuhtyp
-    ge typ av SkrivNod
+    om ht är lika med typ av ökanod
+        sätt msn till mål från n
+        sätt vn till värde från n
+        sätt ms till värde från msn
+        sätt vs till formatera en nod med vn
+        ge "AddAssignNode(" plus ms plus ", " plus vs plus ")"
 
-sätt test_jämför_typ till grej returnera boolesk
-    sätt ht till typ av (SkrivNod med 0)
-    ge ht är lika med typ av SkrivNod
+    om ht är lika med typ av minskanod
+        sätt msn till mål från n
+        sätt vn till värde från n
+        sätt ms till värde från msn
+        sätt vs till formatera en nod med vn
+        ge "SubAssignNode(" plus ms plus ", " plus vs plus ")"
+
+    om ht är lika med typ av gångranod
+        sätt msn till mål från n
+        sätt vn till värde från n
+        sätt ms till värde från msn
+        sätt vs till formatera en nod med vn
+        ge "MultiplyAssignNode(" plus ms plus ", " plus vs plus ")"
+
+    om ht är lika med typ av delanod
+        sätt msn till mål från n
+        sätt vn till värde från n
+        sätt ms till värde från msn
+        sätt vs till formatera en nod med vn
+        ge "DivideAssignNode(" plus ms plus ", " plus vs plus ")"
+
+    om ht är lika med typ av omnod
+        sätt vl till villkor från n
+        sätt ov till element 0 från vl
+        sätt test till test från ov
+        sätt block till block från ov
+        sätt ts till formatera en nod med test
+        sätt blockstr till formatera block med block
+        sätt utstr till "IfNode(IfCond(" plus ts plus ", " plus blockstr plus ")"
+        sätt eb till ellerblock från n
+        om längd från eb är större än 0
+            sätt annarsstr till formatera block med eb
+            sätt utstr till utstr plus ", Else(" plus annarsstr plus ")"
+        sätt utstr till utstr plus ")"
+        ge utstr
+
+    om ht är lika med typ av medannod
+        sätt villkor till villkor från n
+        sätt block till block från n
+        sätt vs till formatera en nod med villkor
+        sätt blockstr till formatera block med block
+        ge "WhileNode(" plus vs plus ", " plus blockstr plus ")"
+
+    om ht är lika med typ av grejdefinitionsnod
+        sätt pm till parametrar från n
+        sätt block till block från n
+        sätt rt till returtyp från n
+        sätt paramsstr till formatera paramer med pm
+        sätt blockstr till formatera block med block
+        ge "FunctionDefNode(" plus paramsstr plus ", " plus blockstr plus ", return_type='" plus rt plus "')"
+
+    ge "nod"
+
+sätt formatera block till grej med block som lista av basnod returnera sträng
+    sätt ut till "["
+    sätt först till SANT
+    för varje bn i block
+        om först
+            sätt först till FALSKT
+        annars
+            sätt ut till ut plus ", "
+        sätt ut till ut plus formatera en nod med bn
+    sätt ut till ut plus "]"
+    ge ut
+
+sätt formatera paramer till grej med pm som lista av basnod returnera sträng
+    sätt ut till "["
+    sätt pos till 0
+    sätt först till SANT
+    medan pos är mindre än längd från pm
+        sätt namn till värde från element pos från pm
+        öka pos med 1
+        sätt typ till värde från element pos från pm
+        öka pos med 1
+        om först
+            sätt först till FALSKT
+        annars
+            sätt ut till ut plus ", "
+        sätt ut till ut plus "('" plus namn plus "', '" plus typ plus "')"
+    sätt ut till ut plus "]"
+    ge ut

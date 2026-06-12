@@ -330,18 +330,18 @@ class Parser:
         
         # Check for function definition: "sätt x till grej med a, b"
         # Check by value since 'grej' can have different token types
-        is_grej = self.peek() and self.peek().value == 'grej'
+        is_grej = self.peek() and self.peek().type == TOKEN_FUNC and self.peek().value == 'grej'
         is_infixgrej = (
-            self.peek() and self.peek().value == 'infixgrej'
+            self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value == 'infixgrej'
         )
         is_verbgrej = (
-            self.peek() and self.peek().value == 'verbgrej'
+            self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value == 'verbgrej'
         )
         is_skickagrej = (
-            self.peek() and self.peek().value == 'skickagrej'
+            self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value == 'skickagrej'
         )
         is_hämtagrej = (
-            self.peek() and self.peek().value == 'hämtagrej'
+            self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value == 'hämtagrej'
         )
         
         if is_grej or is_infixgrej or is_verbgrej or is_skickagrej or is_hämtagrej:
