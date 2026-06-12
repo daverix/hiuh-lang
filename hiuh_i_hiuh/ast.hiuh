@@ -1,196 +1,264 @@
-. ast.hiuh - AST node types mirroring ast.py
-. All nodes inherit from BasNod (base type, no fields needed).
-. Children are referenced by index into a flat node array.
+använd resultat
 
-. === Base node type ===
-typ BasNod
+. Base node type .......................................
 
-. === Literals ===
-typ IntNod ärver BasNod
+. ASTNode in ast.py
+typ basnod
+    rad som heltal
+    kolumn som heltal
+
+. Literals .............................................
+
+. IntNode in ast.py
+typ heltalsnod ärver basnod
     värde som heltal
 
-typ FloatNod ärver BasNod
+. FloatNode in ast.py
+typ flyttalsnod ärver basnod
     värde som flyttal
 
-typ SträngNod ärver BasNod
+. StringNode in ast.py
+typ strängnod ärver basnod
     värde som sträng
 
-typ BoolNod ärver BasNod
-    värde som heltal
+. BoolNode in ast.py
+typ boolesknod ärver basnod
+    värde som boolesk
 
-. === Variables & Access ===
-typ VarNod ärver BasNod
+. Variables & Access ....................................
+
+. VarAccessNode in ast.py
+typ variabelnod ärver basnod
     namn som sträng
+    mål som resultat av basnod
 
-typ ElementNod ärver BasNod
-    index_nod som heltal
-    mål_nod som heltal
+. ElementAccessNode in ast.py
+typ elementåtskomstnod ärver basnod
+    index som heltal
+    mål som sträng
 
-typ ElementTilldelaNod ärver BasNod
-    index_nod som heltal
-    mål_nod som heltal
-    värde_nod som heltal
+. ElementAssignNode in ast.py
+typ elementtilldelnigsnod ärver basnod
+    index som heltal
+    mål som sträng
+    värde som basnod
 
-typ EgenskapNod ärver BasNod
-    egenskap_namn som sträng
-    mål_nod som heltal
-
-. === Binary operations (math, comparisons, logic) ===
-typ BinärNod ärver BasNod
-    vänster_nod som heltal
-    höger_nod som heltal
-
-. === Modifier operations (distinct from BinärNod for typ av) ===
-typ ÖkaNod ärver BasNod
-    vänster_nod som heltal
-    höger_nod som heltal
-
-typ MinskaNod ärver BasNod
-    vänster_nod som heltal
-    höger_nod som heltal
-
-typ GångraNod ärver BasNod
-    vänster_nod som heltal
-    höger_nod som heltal
-
-typ DelaNod ärver BasNod
-    vänster_nod som heltal
-    höger_nod som heltal
-
-. === Unary operations ===
-typ UnärNod ärver BasNod
-    op som sträng
-    operand_nod som heltal
-
-. === Not ===
-typ InteNod ärver BasNod
-    villkor_nod som heltal
-
-. === Statements ===
-typ TilldelaNod ärver BasNod
+. PropertyAccessNode in ast.py
+typ egenskapsåtkomstnod ärver basnod
     namn som sträng
-    värde_nod som heltal
+    mål som basnod
 
-typ SkrivNod ärver BasNod
-    värde_nod som heltal
+. Binary operations (math, comparisons, logic) ..............................
 
-typ ReturNod ärver BasNod
-    värde_nod som heltal
+. Almost maps to ComparisonNodes in ast.py, we use this as the base type for all other types instead
+typ binärnod ärver basnod
+    vänster som basnod
+    höger som basnod
 
-typ BrytNod ärver BasNod
+. AddNode in ast.py
+typ adderanod ärver binärnod
 
-typ FortsättNod ärver BasNod
+. SubNode in ast.py
+typ subtraheranod ärver binärnod
 
-typ OmVillkorNod ärver BasNod
-    test_nod som heltal
-    block_start som heltal
-    block_slut som heltal
+. MulNode in ast.py
+typ multipliceranod ärver binärnod
 
-typ OmNod ärver BasNod
-    villkor_start som heltal
-    villkor_slut som heltal
-    annars_start som heltal
-    annars_slut som heltal
+. DivNode in ast.py
+typ divideranod ärver binärnod
 
-typ MedanNod ärver BasNod
-    villkor_nod som heltal
-    kropp_start som heltal
-    kropp_slut som heltal
+. ModNode in ast.py
+typ restnod ärver binärnod
 
-typ FörVarjeNod ärver BasNod
-    variabel_namn som sträng
-    itererbar_nod som heltal
-    kropp_start som heltal
-    kropp_slut som heltal
+. NotNod in ast.py
+typ intenod ärver basnod
+    uttryck som basnod
 
-. === Functions ===
-typ FunktionsDefNod ärver BasNod
-    parametrar_start som heltal
-    parametrar_slut som heltal
-    kropp_start som heltal
-    kropp_slut som heltal
-    är_infix som heltal
-    retur_typ som sträng
+. EqualNode in ast.py
+typ likanod ärver binärnod
 
-typ FunktionsAnropNod ärver BasNod
+. NotEqualNode in ast.py
+typ intelikanod ärver binärnod
+
+. GreaterThanNode in ast.py
+typ störreännod ärver binärnod
+
+. LessThanNode in ast.py
+typ mindreännod ärver binärnod
+
+. GreaterThanOrEqualNode in ast.py
+typ störrelikanod ärver binärnod
+
+. LessThanOrEqualNode in ast.py
+typ mindrelikanod ärver binärnod
+
+. AndNode in ast.py
+typ ochnod ärver binärnod
+
+. OrNode in ast.py
+typ ellernod ärver binärnod
+
+typ unärnod ärver basnod
+    operator som tecken
+    uttryck som basnod
+
+. satser .............................................uttryck
+
+. AssignNode in ast.py
+typ tilldelningsnod ärver basnod
     namn som sträng
-    argument_start som heltal
-    argument_slut som heltal
+    värde som basnod
+    måltyp som resultat av sträng
 
-typ NamnatArgNod ärver BasNod
-    arg_namn som sträng
-    värde_nod som heltal
+. AddAssignNode in ast.py
+typ ökanod ärver basnod
+    mål som sträng
+    värde som basnod
 
-typ InfixAnropNod ärver BasNod
-    vänster_nod som heltal
-    operator_namn som sträng
-    höger_nod som heltal
+. SubAssignNode in ast.py
+typ minskanod ärver basnod
+    mål som sträng
+    värde som basnod
 
-. === Types ===
-typ TypDefNod ärver BasNod
-    typ_namn som sträng
-    fält_start som heltal
-    fält_slut som heltal
-    typ_parametrar_start som heltal
-    typ_parametrar_slut som heltal
-    föräldra_start som heltal
-    föräldra_slut som heltal
+. MultiplyAssignNode in ast.py
+typ gångranod ärver basnod
+    mål som sträng
+    värde som basnod
 
-. === Error Handling ===
-typ FörsökNod ärver BasNod
-    försök_start som heltal
-    försök_slut som heltal
-    fel_variabel som sträng
-    fånga_start som heltal
-    fånga_slut som heltal
-    slutligen_start som heltal
-    slutligen_slut som heltal
+. DivideAssignNode in ast.py
+typ delanod ärver basnod
+    mål som sträng
+    värde som basnod
 
-. === Cast & TypeOf ===
-typ CastNod ärver BasNod
-    värde_nod som heltal
-    mål_typ som sträng
+. PrintNode in ast.py
+typ skrivnod ärver basnod
+    värde som basnod
 
-typ TypAvNod ärver BasNod
-    värde_nod som heltal
+. IfCondition in ast.py
+typ omvillkor
+    test som basnod
+    block som lista av basnod
 
-. === List operations ===
-typ LäggTillNod ärver BasNod
-    värde_nod som heltal
-    mål_lista_nod som heltal
+. IfNode in ast.py
+typ omnod ärver basnod
+    villkor som lista av omvillkor
+    ellerblock som lista av basnod
 
-typ TaBortIndexNod ärver BasNod
-    index_nod som heltal
-    mål_lista_nod som heltal
+. WhileNode in ast.py
+typ medannod ärver basnod
+    villkor som basnod
+    block som lista av basnod
 
-typ TaBortVärdeNod ärver BasNod
-    värde_nod som heltal
-    mål_lista_nod som heltal
+. BreakNode in ast.py
+typ brytnod ärver basnod
 
-. === File operations ===
-typ FilSkrivNod ärver BasNod
-    värde_nod som heltal
-    mål_var_nod som heltal
+. ContinueNode in ast.py
+typ fortsättnod ärver basnod
 
-typ StängFilNod ärver BasNod
-    mål_var_namn som sträng
+. FunctionDefNode in ast.py
+typ grejdefinitionsnod ärver basnod
+    parametrar som lista av basnod
+    block som basnod
+    typparametrar som lista av sträng
+    sort som sträng
+    returtyp som sträng
 
-. === Copy with properties ===
-typ KopiaMedNod ärver BasNod
-    nytt_namn som sträng
-    källa_namn som sträng
-    uppdateringar_start som heltal
-    uppdateringar_slut som heltal
-
-. === Misc ===
-typ ImporteraNod ärver BasNod
-    modul_namn som sträng
-
-typ UttrycksDelarNod ärver BasNod
-    delar_start som heltal
-    delar_slut som heltal
-
-. === Runtime type info ===
-typ hiuhtyp
+. NamedArgNode in ast.py
+typ namngivenargnod ärver basnod
     namn som sträng
-    föräldrar som lista av hiuhtyp
+    värde som basnod
+
+. FunctionCallNode in ast.py
+typ grejanropsnod ärver basnod
+    namn som sträng
+    argument som lista av namngivenargnod
+
+. InfixCallNode in ast.py
+typ infixanropsnod ärver basnod
+    vänster som basnod
+    operator som sträng
+    höger som basnod
+
+typ typdefinitionsfältnod ärver basnod
+    namn som sträng
+    fälttyp som sträng
+
+typ typdefinitionsföräldrartypnod ärver basnod
+    namn som sträng
+    typparametrar som lista av sträng
+
+. TypeDefNode in ast.py
+typ typdefinitionsnod ärver basnod
+    namn som sträng
+    fält som lista av typdefinitionsfältnod
+    typparametrar som lista av sträng
+    föräldrartyper som typdefinitionsföräldrartypnod
+
+. ReturnNode in ast.py
+typ genod ärver basnod
+    värde som basnod
+
+. Error Handling & Packages ...........................
+
+. TryCatchNode in ast.py
+typ försöknod ärver basnod
+    försökblock som lista av basnod
+    felvariabel som sträng
+    fångablock som lista av basnod
+    slutligenblock som lista av basnod
+
+. ForEachNode in ast.py
+typ förvarjenod ärver basnod
+    variabel som sträng
+    itererbar som basnod
+    block som lista av basnod
+
+. ImportNode in ast.py
+typ användnod ärver basnod
+    namn som sträng
+    . inget as value means import all
+    alias som resultat av sträng
+    . resolved should be stored in resolver
+
+. CastNode in ast.py
+typ somnod ärver basnod
+    värde som basnod
+    måltyp som sträng
+
+. TypoOfNode in ast.py
+typ typavnod ärver basnod
+    värde som basnod
+
+. AppendNode
+typ läggtillnod ärver basnod
+    värde som basnod
+    mål som sträng
+
+. RemoveIndexNode in ast.py
+typ tabortindexnod ärver basnod
+    index som heltal
+    mål som sträng
+
+. RemoveValueNode in ast.py
+typ tabortvärdenod ärver basnod
+    värde som basnod
+    mål som sträng
+
+. FileWriteNode in ast.py
+typ skrivfilnod ärver basnod
+    värde som basnod
+    variabel som sträng
+
+. CloseFileNode in ast.py
+typ stängfilnod ärver basnod
+    variabel som sträng
+
+. CopyWithPropNode in ast.py
+typ kopiaavnod ärver basnod
+    namn som sträng
+    källa som basnod
+    mål som basnod
+
+. ExpressionPartsNode in ast.py
+typ uttrycksdelarnod ärver basnod
+    delar som lista av sträng

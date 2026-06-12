@@ -6,7 +6,7 @@ använd ast
 . Returns indices into global alla_noder list.
 . formatera converts indices to strings via typ av comparison.
 
-. sätt parsa grej till med tokens som lista av token returnera lista av BasNod
+. sätt parsa grej till med tokens som lista av token returnera lista av basnod
 .     sätt position till 0
 .     sätt strukturellt statement till FALSKT
 .     sätt infixgrejer till lista av sträng
@@ -15,7 +15,7 @@ använd ast
 .     sätt hämtagrejer till lista av sträng
 .     sätt hanterar anropsargument till boolesk
 
-.     sätt noder till lista av BasNod
+.     sätt noder till lista av basnod
 
 .     sätt kika till hämtagrej med avstånd som heltal returnera token
 .         ge element position plus avstånd från tokens
@@ -29,7 +29,7 @@ använd ast
 
 sätt alla_noder till lista av
 
-sätt ny_nod till grej med n som BasNod returnera heltal
+sätt ny_nod till grej med n som basnod returnera heltal
     lägg till n i alla_noder
     ge längd från alla_noder minus 1
 
@@ -97,7 +97,7 @@ sätt parsa till grej med tkns som lista av token returnera lista av heltal
     sätt resultat till lista av heltal
     sätt pos till 0
 
-    sätt alla_noder till lista av BasNod
+    sätt alla_noder till lista av basnod
 
     medan pos är mindre än längd från tkns
         sätt t till element pos från tkns

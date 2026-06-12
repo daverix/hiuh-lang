@@ -1,0 +1,5 @@
+
+. Runtime type info ..............................................
+typ hiuhtyp
+    namn som sträng
+    föräldrar som lista av hiuhtyp
