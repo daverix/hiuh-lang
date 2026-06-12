@@ -440,12 +440,13 @@ class Parser:
         return ExpressionPartsNode(parts, token=self.peek())
 
     def expression(self):
-        """Parse expression - collect all tokens as strings for resolver to handle."""
+        """Parse expression - collect all tokens as ExpressionPart for resolver to handle."""
         parts = []
         t = self.peek()
         
         while t and t.type not in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
-            parts.append(self.consume().value)
+            tok = self.consume()
+            parts.append(ExpressionPart(tok.value, tok.type, tok.line, tok.column))
             t = self.peek()
 
         return ExpressionPartsNode(parts, token=t)

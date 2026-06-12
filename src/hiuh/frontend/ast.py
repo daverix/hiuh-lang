@@ -358,6 +358,22 @@ class CopyWithPropNode(ASTNode):
         self.source = source     # The source object (Y)
         self.updates = updates    # List of (prop_name, value) tuples
 
+class ExpressionPart(str):
+    """A single part in an expression, with original token type for disambiguation.
+    
+    Acts as a string (value) but carries the original token type, line, and column.
+    """
+    def __new__(cls, value, token_type, line=None, column=None):
+        instance = super().__new__(cls, value)
+        instance.token_type = token_type
+        instance.line = line
+        instance.column = column
+        return instance
+
+    def __repr__(self):
+        return f"ExpressionPart({super().__str__()!r}, type={self.token_type})"
+
+
 class ExpressionPartsNode(ASTNode):
     """Generic expression node that stores a list of parts to be resolved later.
     

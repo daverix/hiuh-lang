@@ -1,16 +1,6 @@
 använd ast
 använd tokeniserare
 
-sätt v öka till "öka"
-sätt v minska till "minska"
-sätt v gångra till "gångra"
-sätt v dela till "dela"
-sätt v returnera till "returnera"
-sätt g verbgrej till "verbgrej"
-sätt g skickagrej till "skickagrej"
-sätt g hämtagrej till "hämtagrej"
-sätt g infixgrej till "infixgrej"
-
 sätt parsa till grej med tokenlista som lista av token returnera lista av basnod
 
     sätt slå ihop till grej med delar som lista av sträng, separator som sträng returnera sträng
@@ -57,13 +47,22 @@ sätt parsa till grej med tokenlista som lista av token returnera lista av basno
         ge lista med txt, pos
 
     sätt samla uttryck till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
-        sätt r till samla tills nyrad med tkns, startpos
-        sätt text till element 0 från r
-        sätt nypos till element 1 från r
-        sätt delar till lista av sträng
-        lägg till text i delar
+        sätt delar till lista av uttrycksdelnod
+        sätt pos till startpos
+        medan pos är mindre än längd från tkns
+            sätt t till element pos från tkns
+            sätt tt till tokentyp från t
+            om tt är lika med nyradstoken
+                bryt
+            om tt är lika med indenteringstoken
+                bryt
+            om tt är lika med avindenteringstoken
+                bryt
+            sätt ud till uttrycksdelnod med rad från t, kolumn från t, värde från t, tt
+            lägg till ud i delar
+            öka pos med 1
         sätt nod till uttrycksdelarnod med delar
-        ge lista med nod, nypos
+        ge lista med nod, pos
 
     sätt parsa sats till grej med tkns som lista av token, startpos som heltal returnera lista av basnod
         sätt pos till startpos
@@ -117,16 +116,16 @@ sätt parsa till grej med tokenlista som lista av token returnera lista av basno
             ge r
         om tt är lika med idtoken
             sätt tv till värde från t
-            om tv är lika med v öka
+            om tv är lika med "öka"
                 sätt r till parsa mod med tkns, pos
                 ge r
-            om tv är lika med v minska
+            om tv är lika med "minska"
                 sätt r till parsa mod med tkns, pos
                 ge r
-            om tv är lika med v gångra
+            om tv är lika med "gångra"
                 sätt r till parsa mod med tkns, pos
                 ge r
-            om tv är lika med v dela
+            om tv är lika med "dela"
                 sätt r till parsa mod med tkns, pos
                 ge r
 
@@ -232,13 +231,13 @@ sätt parsa till grej med tokenlista som lista av token returnera lista av basno
             om ttv är lika med grejtoken
                 sätt ärgrej till SANT
             om ttv är lika med idtoken
-                om ttvv är lika med g verbgrej
+                om ttvv är lika med "verbgrej"
                     sätt ärgrej till SANT
-                om ttvv är lika med g skickagrej
+                om ttvv är lika med "skickagrej"
                     sätt ärgrej till SANT
-                om ttvv är lika med g hämtagrej
+                om ttvv är lika med "hämtagrej"
                     sätt ärgrej till SANT
-                om ttvv är lika med g infixgrej
+                om ttvv är lika med "infixgrej"
                     sätt ärgrej till SANT
 
             om ärgrej
@@ -267,7 +266,7 @@ sätt parsa till grej med tokenlista som lista av token returnera lista av basno
                 bryt
             om tt är lika med returnerartoken
                 bryt
-            om tv är lika med v returnera
+            om tv är lika med "returnera"
                 bryt
             om tt är lika med nyradstoken
                 bryt
@@ -286,7 +285,7 @@ sätt parsa till grej med tokenlista som lista av token returnera lista av basno
 
                     om tt är lika med returnerartoken
                         bryt
-                    om tv är lika med v returnera
+                    om tv är lika med "returnera"
                         bryt
                     om tt är lika med nyradstoken
                         bryt
@@ -310,7 +309,7 @@ sätt parsa till grej med tokenlista som lista av token returnera lista av basno
                             bryt
                         om t4t är lika med returnerartoken
                             bryt
-                        om t4v är lika med v returnera
+                        om t4v är lika med "returnera"
                             bryt
                         om t4t är lika med nyradstoken
                             bryt
@@ -327,7 +326,7 @@ sätt parsa till grej med tokenlista som lista av token returnera lista av basno
             sätt tv till värde från t
             om tt är lika med returnerartoken
                 öka pos med 1
-            annars om tv är lika med v returnera
+            annars om tv är lika med "returnera"
                 öka pos med 1
 
             sätt retdelar till lista av sträng
@@ -409,11 +408,11 @@ sätt parsa till grej med tokenlista som lista av token returnera lista av basno
 
         sätt t0 till element startpos från tkns
         sätt tv0 till värde från t0
-        om tv0 är lika med v öka
+        om tv0 är lika med "öka"
             sätt n till ökanod med msnod, valnod
-        annars om tv0 är lika med v minska
+        annars om tv0 är lika med "minska"
             sätt n till minskanod med msnod, valnod
-        annars om tv0 är lika med v gångra
+        annars om tv0 är lika med "gångra"
             sätt n till gångranod med msnod, valnod
         annars
             sätt n till delanod med msnod, valnod
@@ -456,7 +455,8 @@ sätt formatera en nod till grej med n som basnod returnera sträng
 
     om ht är lika med typ av uttrycksdelarnod
         sätt delar till delar från n
-        sätt txt till element 0 från delar
+        sätt första till element 0 från delar
+        sätt txt till värde från första
         ge "Expr(" plus txt plus ")"
 
     om ht är lika med typ av skrivnod
@@ -489,28 +489,28 @@ sätt formatera en nod till grej med n som basnod returnera sträng
         sätt mn till variabel från n
         ge "CloseFileNode(" plus mn plus ")"
 
-    om ht är lika med typ av ökanod
+    om ht är lika med typ a"öka"nod
         sätt msn till mål från n
         sätt vn till värde från n
         sätt ms till värde från msn
         sätt vs till formatera en nod med vn
         ge "AddAssignNode(" plus ms plus ", " plus vs plus ")"
 
-    om ht är lika med typ av minskanod
+    om ht är lika med typ a"minska"nod
         sätt msn till mål från n
         sätt vn till värde från n
         sätt ms till värde från msn
         sätt vs till formatera en nod med vn
         ge "SubAssignNode(" plus ms plus ", " plus vs plus ")"
 
-    om ht är lika med typ av gångranod
+    om ht är lika med typ a"gångra"nod
         sätt msn till mål från n
         sätt vn till värde från n
         sätt ms till värde från msn
         sätt vs till formatera en nod med vn
         ge "MultiplyAssignNode(" plus ms plus ", " plus vs plus ")"
 
-    om ht är lika med typ av delanod
+    om ht är lika med typ a"dela"nod
         sätt msn till mål från n
         sätt vn till värde från n
         sätt ms till värde från msn

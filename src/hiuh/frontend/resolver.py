@@ -12,6 +12,7 @@ Two-pass:
 
 import os
 from hiuh.frontend.ast import *
+from hiuh.frontend.tokenizer import TOKEN_STRING
 from hiuh.frontend.module_registry import ModuleRegistry, FunctionSignature
 
 
@@ -588,12 +589,20 @@ class Resolver:
         return self.visit(StringNode(joined, token=node))
 
     def _part_to_node(self, s, token):
-        """Convert a string to the appropriate AST node."""
+        """Convert a string (or ExpressionPart) to the appropriate AST node."""
+        # If s is an ExpressionPart (subclass of str), extract token type
+        token_type = None
+        if isinstance(s, ExpressionPart):
+            token_type = s.token_type
+        
         # Check for known literals
         if s.lower() == 'sant':
             return BoolNode(True, token=token)
         elif s.lower() == 'falskt':
             return BoolNode(False, token=token)
+        elif token_type == TOKEN_STRING:
+            # Original token was a quoted string — always treat as string
+            return StringNode(s, token=token)
         elif s.isdigit():
             return IntNode(s, token=token)
         elif self._is_float(s):

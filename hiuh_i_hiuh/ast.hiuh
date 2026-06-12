@@ -259,6 +259,10 @@ typ kopiaavnod ärver basnod
     källa som basnod
     mål som basnod
 
+typ uttrycksdelnod ärver basnod
+    värde som sträng
+    tokentyp som heltal
+
 . ExpressionPartsNode in ast.py
 typ uttrycksdelarnod ärver basnod
-    delar som lista av sträng
+    delar som lista av uttrycksdelnod
