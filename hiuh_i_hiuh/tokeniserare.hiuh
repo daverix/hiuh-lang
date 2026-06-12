@@ -50,7 +50,7 @@ sätt varjetoken till 47
 sätt bryttoken till 48
 sätt fortsättoken till 49
 sätt ärvertoken till 50
-sätt returnerartoken till 51
+sätt gertoken till 51
 
 typ token
     tokentyp som heltal
@@ -58,7 +58,7 @@ typ token
     rad som heltal
     kolumn som heltal
 
-sätt tokenisera till grej med rader som lista av sträng returnera lista av token
+sätt tokenisera till grej med rader som lista av sträng ger lista av token
     sätt nyckelord till ordlista av sträng, heltal
     putta "skriv", skrivtoken till nyckelord
     putta "sätt", sättoken till nyckelord
@@ -97,9 +97,9 @@ sätt tokenisera till grej med rader som lista av sträng returnera lista av tok
     putta "bryt", bryttoken till nyckelord
     putta "fortsätt", fortsättoken till nyckelord
     putta "ärver", ärvertoken till nyckelord
-    putta "returnera", returnerartoken till nyckelord
+    putta "ger", gertoken till nyckelord
 
-    sätt är siffra till grej med symbol som tecken returnera boolesk
+    sätt är siffra till grej med symbol som tecken ger boolesk
         sätt kod till symbol som tal
         ge kod är större än eller lika med 48 och kod är mindre än eller lika med 57
 

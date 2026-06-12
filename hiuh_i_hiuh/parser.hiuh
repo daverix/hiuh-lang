@@ -1,9 +1,9 @@
 använd ast
 använd tokeniserare
 
-sätt parsa till grej med tokens som lista av token returnera lista av basnod
+sätt parsa till grej med tokens som lista av token ger lista av basnod
 
-    sätt slå ihop till grej med delar som lista av sträng, separator som sträng returnera sträng
+    sätt slå ihop till grej med delar som lista av sträng, separator som sträng ger sträng
         sätt ut till tom text
         sätt först till SANT
         för varje d i delar
@@ -14,7 +14,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
             sätt ut till ut plus d
         ge ut
 
-    sätt samla namn till grej med startpos som heltal, stopptyp som heltal returnera lista av sträng
+    sätt samla namn till grej med startpos som heltal, stopptyp som heltal ger lista av sträng
         sätt delar till lista av sträng
         sätt pos till startpos
         medan pos är mindre än längd från tokens
@@ -29,7 +29,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
         sätt namn till slå ihop med delar, " "
         ge lista med namn, pos
 
-    sätt samla uttryck till grej med startpos som heltal returnera lista av basnod
+    sätt samla uttryck till grej med startpos som heltal ger lista av basnod
         sätt delar till lista av uttrycksdelnod
         sätt pos till startpos
         medan pos är mindre än längd från tokens
@@ -47,7 +47,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
         sätt nod till uttrycksdelarnod med delar
         ge lista med nod, pos
 
-    sätt parsa sats till grej med startpos som heltal returnera lista av basnod
+    sätt parsa sats till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
 
         medan pos är mindre än längd från tokens
@@ -115,7 +115,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
         öka pos med 1
         ge lista med inget av basnod, pos
 
-    sätt parsa block till grej med startpos som heltal returnera lista av basnod
+    sätt parsa block till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
 
         medan pos är mindre än längd från tokens
@@ -143,7 +143,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
 
         ge lista med stmts, pos
 
-    sätt parsa om till grej med startpos som heltal returnera lista av basnod
+    sätt parsa om till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
         öka pos med 1
 
@@ -177,7 +177,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
         sätt n till omnod med vl, annarsblock
         ge lista med n, pos
 
-    sätt parsa medan till grej med startpos som heltal returnera lista av basnod
+    sätt parsa medan till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
         öka pos med 1
 
@@ -192,7 +192,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
         sätt n till medannod med villkor, block
         ge lista med n, pos
 
-    sätt parsa sätt till grej med startpos som heltal returnera lista av basnod
+    sätt parsa sätt till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
         öka pos med 1
 
@@ -237,7 +237,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
         sätt n till tilldelningsnod med namn, värde
         ge lista med n, pos
 
-    sätt parsa grej till grej med startpos som heltal returnera lista av basnod
+    sätt parsa grej till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
         öka pos med 1
 
@@ -247,9 +247,9 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
             sätt tv till värde från t
             om tt är lika med medtoken
                 bryt
-            om tt är lika med returnerartoken
+            om tt är lika med gerrtoken
                 bryt
-            om tv är lika med "returnera"
+            om tv är lika med "ger"
                 bryt
             om tt är lika med nyradstoken
                 bryt
@@ -266,7 +266,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
                     sätt tt till tokentyp från t
                     sätt tv till värde från t
 
-                    om tt är lika med returnerartoken
+                    om tt är lika med gerrtoken
                         bryt
                     om tt är lika med nyradstoken
                         bryt
@@ -288,9 +288,9 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
                         om t4t är lika med kommatoken
                             öka pos med 1
                             bryt
-                        om t4t är lika med returnerartoken
+                        om t4t är lika med gerrtoken
                             bryt
-                        om t4v är lika med "returnera"
+                        om t4v är lika med "ger"
                             bryt
                         om t4t är lika med nyradstoken
                             bryt
@@ -305,9 +305,9 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
             sätt t till element pos från tokens
             sätt tt till tokentyp från t
             sätt tv till värde från t
-            om tt är lika med returnerartoken
+            om tt är lika med gerrtoken
                 öka pos med 1
-            annars om tv är lika med "returnera"
+            annars om tv är lika med "ger"
                 öka pos med 1
 
             sätt retdelar till lista av sträng
@@ -322,7 +322,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
                     bryt
                 om t2t är lika med medtoken
                     bryt
-                om t2t är lika med returnerartoken
+                om t2t är lika med gerrtoken
                     bryt
                 lägg till värde från t2 i retdelar
                 öka pos med 1
@@ -337,7 +337,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
         sätt fn till grejdefinitionsnod med paramnoder, blocknoder, lista av sträng, "grej", rettyp
         ge lista med fn, pos
 
-    sätt parsa skriv till grej med startpos som heltal returnera lista av basnod
+    sätt parsa skriv till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
         öka pos med 1
         sätt r till samla uttryck med pos
@@ -345,7 +345,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
         sätt n till skrivnod med element 0 från r
         ge lista med n, pos
 
-    sätt parsa ge till grej med startpos som heltal returnera lista av basnod
+    sätt parsa ge till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
         öka pos med 1
         sätt r till samla uttryck med pos
@@ -353,7 +353,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
         sätt n till genod med element 0 från r
         ge lista med n, pos
 
-    sätt parsa använd till grej med startpos som heltal returnera lista av basnod
+    sätt parsa använd till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
         öka pos med 1
         sätt r till samla uttryck med pos
@@ -361,7 +361,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
         sätt n till användnod med element 0 från r
         ge lista med n, pos
 
-    sätt parsa stäng till grej med startpos som heltal returnera lista av basnod
+    sätt parsa stäng till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
         öka pos med 1
         sätt r till samla uttryck med pos
@@ -369,7 +369,7 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
         sätt n till stängfilnod med element 0 från r
         ge lista med n, pos
 
-    sätt parsa mod till grej med startpos som heltal returnera lista av basnod
+    sätt parsa mod till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
         öka pos med 1
         sätt r till samla namn med pos, medtoken
@@ -421,14 +421,14 @@ sätt parsa till grej med tokens som lista av token returnera lista av basnod
 
     ge resultat
 
-sätt formatera till grej med noder som lista av basnod returnera lista av sträng
+sätt formatera till grej med noder som lista av basnod ger lista av sträng
     sätt ut till lista av sträng
     för varje n i noder
         sätt str till formatera en nod med n
         lägg till str i ut
     ge ut
 
-sätt formatera en nod till grej med n som basnod returnera sträng
+sätt formatera en nod till grej med n som basnod ger sträng
     sätt ht till typ av n
 
     om ht är lika med typ av strängnod
@@ -530,7 +530,7 @@ sätt formatera en nod till grej med n som basnod returnera sträng
 
     ge "nod"
 
-sätt formatera block till grej med block som lista av basnod returnera sträng
+sätt formatera block till grej med block som lista av basnod ger sträng
     sätt ut till "["
     sätt först till SANT
     för varje bn i block
@@ -542,7 +542,7 @@ sätt formatera block till grej med block som lista av basnod returnera sträng
     sätt ut till ut plus "]"
     ge ut
 
-sätt formatera paramer till grej med pm som lista av basnod returnera sträng
+sätt formatera paramer till grej med pm som lista av basnod ger sträng
     sätt ut till "["
     sätt pos till 0
     sätt först till SANT

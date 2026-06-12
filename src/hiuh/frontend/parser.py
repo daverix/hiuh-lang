@@ -717,7 +717,7 @@ class Parser:
         """
         if not self.peek() or self.peek().type != TOKEN_RETURNS:
             raise Exception(
-                "Funktionsdefinition saknar 'returnera typ' efter parametrar"
+                "Funktionsdefinition saknar 'ger typ' efter parametrar"
             )
         self.consume()  # consume 'returnera'
         # Parse return type (supports generics like 'lista av heltal')
@@ -729,7 +729,7 @@ class Parser:
             type_parts.append(self.consume().value)
         if not type_parts:
             raise Exception(
-                "Förväntade en typ efter 'returnera' (t.ex. 'returnera heltal')"
+                "Förväntade en typ efter 'ger' (t.ex. 'ger heltal')"
             )
         return_type = ' '.join(type_parts)
         # Clean up comma spacing

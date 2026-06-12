@@ -297,7 +297,7 @@ class _BaseParserTests:
         self.assertParseEqual(source, expected)
 
     def test_function_definition(self):
-        source = "sätt foo till grej med a som heltal, b som heltal returnera heltal\n    ge a plus b"
+        source = "sätt foo till grej med a som heltal, b som heltal ger heltal\n    ge a plus b"
         expected = [
             AssignNode(
                 name="foo",

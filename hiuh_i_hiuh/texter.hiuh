@@ -7,7 +7,7 @@ sätt startparantestecken till 40 som tecken
 sätt slutparantestecken till 41 som tecken
 
 . Helper function to get substring
-sätt delsträng till grej med text som sträng, start som heltal, längd som heltal returnera sträng
+sätt delsträng till grej med text som sträng, start som heltal, längd som heltal ger sträng
     sätt resultat till ""
     sätt pos till start
     sätt slut till start plus längd
@@ -17,7 +17,7 @@ sätt delsträng till grej med text som sträng, start som heltal, längd som he
     ge resultat
 
 . Convert a string to uppercase (a-z → A-Z)
-sätt versaler till grej med text som sträng returnera sträng
+sätt versaler till grej med text som sträng ger sträng
     sätt resultat till ""
     sätt pos till 0
     medan pos är mindre än längd från text
@@ -29,7 +29,7 @@ sätt versaler till grej med text som sträng returnera sträng
         öka pos med 1
     ge resultat
 
-sätt trimma till grej med text som sträng returnera sträng
+sätt trimma till grej med text som sträng ger sträng
     sätt start till 0
     sätt slut till längd från text minus 1
 

@@ -67,7 +67,7 @@ annars
     def test_function_definition_and_call(self):
         """Tests function scope and return values."""
         source = """
-sätt hälsa till grej med namn som sträng returnera sträng
+sätt hälsa till grej med namn som sträng ger sträng
     ge hej plus mellanrum plus namn
 
 sätt meddelande till hälsa med Hiuh
@@ -315,7 +315,7 @@ för varje mitt index i min lista
         # Create a helper module that exposes a function
         with open(module_filename, "w", encoding="utf-8") as f:
             f.write("""
-sätt hälsa till grej med namn som sträng returnera sträng
+sätt hälsa till grej med namn som sträng ger sträng
     ge Hej plus mellanrum plus namn
         """)
 
@@ -345,7 +345,7 @@ skriv hälsa med David
             f.write("""
 sätt meddelande till Hej fràn Hiuh
 sätt faktor till 10
-sätt hälsa till grej med namn som sträng returnera sträng
+sätt hälsa till grej med namn som sträng ger sträng
     ge Hej plus mellanrum plus namn
 """)
 
@@ -399,7 +399,7 @@ använd modul_b
         os.makedirs(dir_name, exist_ok=True)
         with open(module_filename, "w", encoding="utf-8") as f:
             f.write("""
-sätt addera till grej med a som heltal, b som heltal returnera heltal
+sätt addera till grej med a som heltal, b som heltal ger heltal
     ge a plus b
         """)
 
@@ -520,7 +520,7 @@ skriv genererat_dubbelcitat plus Hej plus genererat_mellanslag plus Världen plu
 använd listor
 
 . 1. Create a callback utility function to search for a specific name target
-sätt matchar_hiuh till grej med text_stycke som sträng returnera boolesk
+sätt matchar_hiuh till grej med text_stycke som sträng ger boolesk
     ge text_stycke lika med Hiuh
 
 . 2. Initialize a flat sample list dataset
@@ -601,7 +601,7 @@ skriv ålder från äldre
     def test_named_args_grej_function(self):
         """Test that grej functions support named arguments."""
         source = """
-sätt add till grej med a som heltal, b som heltal returnera heltal
+sätt add till grej med a som heltal, b som heltal ger heltal
     ge a plus b
 
 sätt resultat till add med a 5, b 3
@@ -614,7 +614,7 @@ skriv resultat
     def test_named_args_grej_positional_still_works(self):
         """Test that grej functions still support positional arguments."""
         source = """
-sätt add till grej med x som heltal, y som heltal returnera heltal
+sätt add till grej med x som heltal, y som heltal ger heltal
     ge x minus y
 
 sätt resultat till add med 10, 3
@@ -682,7 +682,7 @@ skriv indent_count
     def test_delstrang_function_call(self):
         """Verify that delsträng can be defined and called with text, start, length."""
         source = """
-sätt delsträng till grej med text som sträng, start som heltal, längd som heltal returnera sträng
+sätt delsträng till grej med text som sträng, start som heltal, längd som heltal ger sträng
     sätt resultat till ""
     sätt pos till start
     sätt slut till start plus längd
@@ -728,7 +728,7 @@ skriv finns druva
         """Verify that custom infix functions can be defined and used."""
         source = """
 . Define a custom infix function 'är del av'
-sätt är del av till infixgrej med del som heltal, helhet som lista av heltal returnera boolesk
+sätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk
     sätt x till 0
     medan x är mindre än längd från helhet
         om element x från helhet är lika med del
@@ -780,7 +780,7 @@ skriv element 1 från saker
     def test_element_assign_in_function(self):
         """Verify that element assignment works inside a function."""
         source = """
-sätt uppdatera till grej med lst som lista av heltal, idx som heltal, värde som heltal returnera lista av heltal
+sätt uppdatera till grej med lst som lista av heltal, idx som heltal, värde som heltal ger lista av heltal
     sätt element idx i lst till värde
     ge element idx från lst
 
@@ -941,7 +941,7 @@ sätt y till resten av ord delat med 2
         the parameter name 'tokens'.
         """
         source = """
-sätt my_func till grej med tokens som lista av heltal, pos som heltal returnera lista av heltal
+sätt my_func till grej med tokens som lista av heltal, pos som heltal ger lista av heltal
     ge element pos från tokens
 
 sätt tokens till lista med a, b, c
@@ -955,7 +955,7 @@ skriv resultat
     def test_verb_grej_user_defined(self):
         """User-defined verbgrej function works at runtime."""
         source = """
-sätt upprepa till verbgrej med ord som sträng, antal som heltal returnera sträng
+sätt upprepa till verbgrej med ord som sträng, antal som heltal ger sträng
     sätt resultat till ""
     sätt i till 0
     medan i är mindre än antal
@@ -974,7 +974,7 @@ skriv a
     def test_skicka_grej_user_defined(self):
         """User-defined skickagrej function works at runtime."""
         source = """
-sätt skicka till skickagrej med sak som sträng, mål som lista av sträng returnera lista av sträng
+sätt skicka till skickagrej med sak som sträng, mål som lista av sträng ger lista av sträng
     lägg till sak i mål
     ge mål
 
@@ -991,7 +991,7 @@ skriv element 1 från min lista
     def test_hämta_grej_user_defined(self):
         """User-defined hämtagrej function works at runtime."""
         source = """
-sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng returnera sträng
+sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng ger sträng
     ge element 0 från källa
 
 sätt frukter till lista av sträng med äpple, banan, citron

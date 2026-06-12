@@ -318,7 +318,7 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_body_property_access(self):
         """Verify that infix function bodies with property access are parsed correctly."""
-        source = "sätt innehåller till infixgrej med lista som lista av heltal, värde som heltal returnera boolesk\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"
+        source = "sätt innehåller till infixgrej med lista som lista av heltal, värde som heltal ger boolesk\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"
         expected = [
             AssignNode(
                 name="innehåller",
@@ -343,7 +343,7 @@ sätt z till resten av x delat på 4
 
     def test_normal_function_body_property_access(self):
         """Verify that normal function bodies with property access are parsed correctly."""
-        source = "sätt foo till grej med a som heltal, b som heltal returnera heltal\n    skriv a är mindre än längd från b"
+        source = "sätt foo till grej med a som heltal, b som heltal ger heltal\n    skriv a är mindre än längd från b"
         expected = [
             AssignNode(
                 name="foo",
@@ -366,7 +366,7 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_custom_definition(self):
         """Verify that custom infix function 'är del av' is defined correctly."""
-        source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal returnera boolesk\n    sätt x till 0\n    ge FALSKT"
+        source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk\n    sätt x till 0\n    ge FALSKT"
         expected = [
             AssignNode(
                 name="är del av",
@@ -385,7 +385,7 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_call_in_comparison(self):
         """Verify that infix function call in comparison is parsed correctly."""
-        source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal returnera boolesk\n    ge FALSKT\nom grön är del av färger\n    skriv Hittat"
+        source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk\n    ge FALSKT\nom grön är del av färger\n    skriv Hittat"
         expected = [
             AssignNode(
                 name="är del av",
@@ -413,7 +413,7 @@ sätt z till resten av x delat på 4
 
     def test_named_args_in_function_call(self):
         """Verify that named arguments in function calls are parsed correctly."""
-        source = "sätt beräkna till grej med a som heltal, b som heltal returnera heltal\n    ge 0\nsätt resultat till beräkna med a 5, b 3"
+        source = "sätt beräkna till grej med a som heltal, b som heltal ger heltal\n    ge 0\nsätt resultat till beräkna med a 5, b 3"
         expected = [
             AssignNode(
                 name="beräkna",
@@ -502,7 +502,7 @@ slutligen
     def test_infix_funktion_custom_definition(self):
         """Verify that custom infix function 'är del av' is defined and used correctly."""
         source = """
-sätt är del av till infixgrej med del som heltal, helhet som lista av heltal returnera boolesk
+sätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk
     sätt x till 0
     medan x är mindre än längd från helhet
         om element x från helhet är lika med del
@@ -604,7 +604,7 @@ skriv resultat"""
         source = """
 använd listor
 
-sätt matchar_hiuh till grej med text_stycke som sträng returnera boolesk
+sätt matchar_hiuh till grej med text_stycke som sträng ger boolesk
     ge text_stycke lika med Hiuh
 
 sätt namn_lista till lista med Java, Python, Hiuh, Kotlin
@@ -661,7 +661,7 @@ sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
     def test_named_args_grej_function(self):
         """Verify that grej functions support named arguments."""
         source = """
-sätt add till grej med a som heltal, b som heltal returnera heltal
+sätt add till grej med a som heltal, b som heltal ger heltal
     ge a plus b
 
 sätt resultat till add med a 5, b 3
@@ -729,7 +729,7 @@ sätt element x i lista till hello
     def test_element_assign_in_function(self):
         """Verify that element assignment works inside a function."""
         source = """
-sätt uppdatera till grej med lst som lista av heltal returnera heltal
+sätt uppdatera till grej med lst som lista av heltal ger heltal
     sätt element 0 i lst till 100
     ge element 0 från lst
         """
@@ -837,7 +837,7 @@ dela poäng med 2
     def test_delstrang_function_call_ast(self):
         """Verify the resolved AST of the delsträng definition and call."""
         source = """
-sätt delsträng till grej med text som sträng, start som heltal, längd som heltal returnera sträng
+sätt delsträng till grej med text som sträng, start som heltal, längd som heltal ger sträng
     sätt resultat till ""
     sätt pos till start
     sätt slut till start plus längd
@@ -950,7 +950,7 @@ sätt nästa_tecken till element pos plus 1 från innehåll
     def test_verb_grej_definition_and_call(self):
         """verbgrej declaration and call resolve correctly."""
         source = """
-sätt upprepa till verbgrej med ord som sträng, antal som heltal returnera sträng
+sätt upprepa till verbgrej med ord som sträng, antal som heltal ger sträng
     sätt resultat till ""
     sätt i till 0
     medan i är mindre än antal
@@ -1002,7 +1002,7 @@ upprepa a med 3
     def test_skicka_grej_definition_and_call(self):
         """skickagrej declaration and call resolve correctly."""
         source = """
-sätt lägg_till till skickagrej med sak som sträng, mål som lista av sträng returnera lista av sträng
+sätt lägg_till till skickagrej med sak som sträng, mål som lista av sträng ger lista av sträng
     lägg till sak i mål
     ge mål
 
@@ -1039,7 +1039,7 @@ lägg_till hej till min lista
     def test_hämta_grej_definition_and_call(self):
         """hämtagrej declaration and call resolve correctly."""
         source = """
-sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng returnera sträng
+sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng ger sträng
     ge element 0 från källa
 
 sätt frukter till lista av sträng med "äpple", "banan"

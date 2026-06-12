@@ -50,7 +50,7 @@ TOKEN_EACH = 47  # varje
 TOKEN_BREAK = 48  # bryt
 TOKEN_CONTINUE = 49  # fortsätt
 TOKEN_INHERITS = 50  # ärver
-TOKEN_RETURNS = 51  # returnera
+TOKEN_RETURNS = 51  # ger
 
 class Token:
     def __init__(self, type, value, line, column):
@@ -108,7 +108,7 @@ class Tokenizer:
             "bryt": TOKEN_BREAK,
             "fortsätt": TOKEN_CONTINUE,
             "ärver": TOKEN_INHERITS,
-            "returnera": TOKEN_RETURNS
+            "ger": TOKEN_RETURNS
         }
 
     def is_digit(self, char):

@@ -81,7 +81,7 @@ typ ordlista av nyckeltyp, värdetyp
 
     def test_generic_function_def(self):
         """sätt fn till grej av T1, T2 (no params)."""
-        source = """sätt make till grej av K, V returnera V
+        source = """sätt make till grej av K, V ger V
     ge lista av heltal"""
         expected = [
             AssignNode(
@@ -99,7 +99,7 @@ typ ordlista av nyckeltyp, värdetyp
 
     def test_generic_function_def_with_params(self):
         """sätt fn till grej av T1, T2 med x som T1."""
-        source = """sätt make till grej av K, V med key som K returnera V
+        source = """sätt make till grej av K, V med key som K ger V
     ge key"""
         expected = [
             AssignNode(
@@ -241,7 +241,7 @@ sätt x till lista av par av K, V"""
     def test_function_with_generic_call_defined(self):
         """ny tom ordlista is defined -> FunctionCallNode('ny tom ordlista', [])."""
         source = """
-sätt ny tom ordlista till grej returnera ordlista av sträng, heltal
+sätt ny tom ordlista till grej ger ordlista av sträng, heltal
     ge lista av heltal
 
 sätt x till ny tom ordlista av sträng, heltal
