@@ -1,0 +1,104 @@
+använd listor
+använd texter
+
+. Module registry types for hiuh bootstrapping.
+. Replaces src/hiuh/frontend/module_registry.py
+
+typ funktionssignatur
+    parametrar som lista av sträng
+    returtyp som sträng
+
+typ symbolelement
+    namn som sträng
+    sort som sträng
+    modul som sträng
+    signatur som resultat av funktionssignatur
+    mål som resultat av sträng
+
+typ modulelement
+    namn som sträng
+    sökväg som sträng
+    symboler som ordlista av symbolelement
+    importer som lista av sträng
+    exporter som lista av sträng
+
+. Create a new empty registry
+sätt nytt register till grej ger ordlista av modulelement
+    ge ordlista av sträng
+
+. skickagrej: adds a module to the registry (mutates registry in place)
+sätt registrera modul till skickagrej med modulnamn som sträng, sökväg som sträng, register som ordlista av modulelement ger ordlista av modulelement
+    om inte finns med modulnamn, register
+        sätt tom ordlista till ordlista av sträng
+        sätt modul till modulelement med namn modulnamn, sökväg sökväg, symboler tom ordlista, importer lista av sträng, exporter lista av sträng
+        putta modulnamn, modul till register
+    ge register
+
+. hämtagrej: gets a module from the registry
+sätt hämta modul till hämtagrej med modulnamn som sträng, register som ordlista av modulelement ger resultat av modulelement
+    om finns med modulnamn, register
+        sätt resultat till hämta med modulnamn, register
+        ge resultat
+    ge inget av modulelement
+
+. skickagrej: adds a symbol to a module in the registry
+sätt registrera symbol till skickagrej med modulnamn som sträng, element som symbolelement, register som ordlista av modulelement ger ordlista av modulelement
+    om finns med modulnamn, register
+        sätt modul till hämta med modulnamn, register
+        sätt symboler till symboler från modul
+        sätt symbolnamn till namn från element
+        putta symbolnamn, element till symboler
+        om inte symbolnamn finns i exporter från modul
+            sätt exp till exporter från modul
+            lägg till symbolnamn i exp
+    ge register
+
+. hämtagrej: gets a symbol from a module
+sätt hämta symbol till hämtagrej med symbolnamn som sträng, modulnamn som sträng, register som ordlista av modulelement ger resultat av symbolelement
+    om finns med modulnamn, register
+        sätt modul till hämta med modulnamn, register
+        sätt symboler till symboler från modul
+        om finns med symbolnamn, symboler
+            sätt resultat till hämta med symbolnamn, symboler
+            ge resultat
+    ge inget av symbolelement
+
+. hämtagrej: resolves a symbol through local + import chain
+sätt lös symbol till hämtagrej med symbolnamn som sträng, modulnamn som sträng, register som ordlista av modulelement ger resultat av symbolelement
+    . Check local first
+    sätt lokalt resultat till hämta symbol med symbolnamn, modulnamn, register
+    om lokalt resultat är inte lika med inget av symbolelement
+        ge lokalt resultat
+
+    . Check imported modules
+    om finns med modulnamn, register
+        sätt modul till hämta med modulnamn, register
+        för varje importerad i importer från modul
+            sätt resultat till hämta symbol med symbolnamn, importerad, register
+            om resultat är inte lika med inget av symbolelement
+                ge resultat
+
+    ge inget av symbolelement
+
+. skickagrej: records an import relationship
+sätt registrera import till skickagrej med modulnamn som sträng, importerat_namn som sträng, register som ordlista av modulelement ger ordlista av modulelement
+    om finns med modulnamn, register
+        sätt modul till hämta med modulnamn, register
+        sätt imp till importer från modul
+        om inte importerat_namn finns i imp
+            lägg till importerat_namn i imp
+    ge register
+
+. hämtagrej: checks if a name is a local variable in a module
+sätt är lokal variabel till hämtagrej med namn som sträng, modulnamn som sträng, register som ordlista av modulelement ger boolesk
+    sätt sym till hämta symbol med namn, modulnamn, register
+    om sym är inte lika med inget av symbolelement
+        ge sort från sym är lika med "var"
+    ge FALSKT
+
+. hämtagrej: checks if a name is a known function
+sätt är känd funktion till hämtagrej med namn som sträng, modulnamn som sträng, register som ordlista av modulelement ger boolesk
+    sätt sym till hämta symbol med namn, modulnamn, register
+    om sym är inte lika med inget av symbolelement
+        ge sort från sym är lika med "func"
+    ge FALSKT
