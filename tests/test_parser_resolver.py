@@ -1107,6 +1107,63 @@ sätt resultat till plocka banan från frukter
             f"got {type(assign_resultat.value).__name__}"
         )
 
+    def test_grej_allows_self_recursion(self):
+        """Both grej and rekgrej allow a function to call itself by name."""
+        source = (
+            "sätt nedräkning till grej med n som heltal ger heltal\n"
+            "    om n är mindre än 1\n"
+            "        ge 0\n"
+            "    sätt nästa till n minus 1\n"
+            "    ge nedräkning med nästa\n"
+        )
+        resolved = self.parse_source(source)
+        fn_def = resolved[0]
+        body = fn_def.value.body
+        return_stmt = body[-1]
+        self.assertIsInstance(
+            return_stmt.value, FunctionCallNode,
+            f"Self-call should be FunctionCallNode, got {type(return_stmt.value).__name__}"
+        )
+
+    def test_grej_blocks_forward_reference_to_sibling(self):
+        """Nested plain grej must NOT see sibling nested functions defined later."""
+        source = (
+            "sätt yttre till grej med x som heltal ger heltal\n"
+            "    sätt tidig till grej med v som heltal ger heltal\n"
+            "        ge sen med v\n"
+            "    sätt sen till grej med v som heltal ger heltal\n"
+            "        ge v gånger 2\n"
+            "    ge tidig med x\n"
+        )
+        resolved = self.parse_source(source)
+        yttre_body = resolved[0].value.body
+        tidig_def = next(s for s in yttre_body if isinstance(s, AssignNode) and s.name == 'tidig')
+        tidig_body = tidig_def.value.body
+        return_stmt = tidig_body[0]
+        self.assertIsInstance(
+            return_stmt.value, StringNode,
+            f"Forward ref to nested sibling with grej should be StringNode, got {type(return_stmt.value).__name__}"
+        )
+
+    def test_rekgrej_allows_mutual_recursion_between_siblings(self):
+        """Two rekgrej functions can call each other regardless of order."""
+        source = (
+            "sätt jämn till rekgrej med n som heltal ger boolesk\n"
+            "    om n är 0\n"
+            "        ge SANT\n"
+            "    ge udda med n minus 1\n"
+            "sätt udda till rekgrej med n som heltal ger boolesk\n"
+            "    om n är 0\n"
+            "        ge FALSKT\n"
+            "    ge jämn med n minus 1\n"
+        )
+        resolved = self.parse_source(source)
+        jämn_body = resolved[0].value.body
+        jämn_return = jämn_body[-1]
+        self.assertIsInstance(jämn_return.value, FunctionCallNode)
+        udda_body = resolved[1].value.body
+        udda_return = udda_body[-1]
+        self.assertIsInstance(udda_return.value, FunctionCallNode)
 
 class TestResolverReturnTypeValidation(unittest.TestCase):
     """Resolver must validate that 'ge' returns values matching the declared return type."""
@@ -1171,6 +1228,7 @@ class TestResolverReturnTypeValidation(unittest.TestCase):
             "    ge lista med \"hej\", x\n"
         )
         self._resolve(source)  # Must not raise
+
 
 
 if __name__ == '__main__':

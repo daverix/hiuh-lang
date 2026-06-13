@@ -142,6 +142,43 @@ outputs: `0`
 
 Note! The variable `min funktion` is called with parameters 1, 2, 3. `grej` defines the function. Parameters come after `med`. **Every function must declare its return type** using `returnera typ` on the same line as the declaration. The `returnera` keyword must be the last thing on the `grej` / `verbgrej` / `skickagrej` / `hämtagrej` line.
 
+### rekgrej — recursive functions
+
+`rekgrej` defines a function whose name is visible inside its own body
+and throughout the entire enclosing scope, enabling self-recursion and
+mutual recursion between sibling functions.  Plain `grej` only sees
+names defined above it.
+
+**Self-recursion:**
+
+```
+sätt fakultet till rekgrej med n som heltal ger heltal
+    om n är mindre än 2
+        ge 1
+    ge n gånger fakultet med n minus 1
+```
+
+Without `rekgrej`, `fakultet` would not be visible inside its own body.
+
+**Mutual recursion:**
+
+```
+sätt jämn till rekgrej med n som heltal ger boolesk
+    om n är 0
+        ge SANT
+    ge udda med n minus 1
+
+sätt udda till rekgrej med n som heltal ger boolesk
+    om n är 0
+        ge FALSKT
+    ge jämn med n minus 1
+```
+
+All mutually recursive functions in a scope must be marked `rekgrej`,
+including the outer function if its children reference each other.
+Only `rekgrej` functions incur the forward-declaration overhead;
+plain `grej` functions resolve in strict definition order.
+
 ### set typ variable
 
 `typ` works like structs in other languages. Define fields on separate indented lines

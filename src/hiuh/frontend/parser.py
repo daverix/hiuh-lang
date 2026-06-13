@@ -343,8 +343,11 @@ class Parser:
         is_hämtagrej = (
             self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value == 'hämtagrej'
         )
+        is_rekgrej = (
+            self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value == 'rekgrej'
+        )
         
-        if is_grej or is_infixgrej or is_verbgrej or is_skickagrej or is_hämtagrej:
+        if is_grej or is_infixgrej or is_verbgrej or is_skickagrej or is_hämtagrej or is_rekgrej:
             is_infix = False
             if is_infixgrej:
                 self.consume()  # consume 'infixgrej'
@@ -355,6 +358,8 @@ class Parser:
                 self.consume()  # consume 'skickagrej'
             elif is_hämtagrej:
                 self.consume()  # consume 'hämtagrej'
+            elif is_rekgrej:
+                self.consume()  # consume 'rekgrej'
             if is_grej:
                 self.consume()  # consume 'grej'
 
@@ -391,6 +396,8 @@ class Parser:
             if is_hämtagrej:
                 func_def.kind = 'hämta'
                 self.hämta_functions.add(name)
+            if is_rekgrej:
+                func_def.kind = 'rek'
             return AssignNode(name, func_def, target_type=None, token=assign_token)
         
         # Check for 'kopia av' pattern

@@ -869,6 +869,16 @@ class Resolver:
             return None
 
         med_idx = parts.index('med')
+
+        # If arithmetic/comparison operators appear before 'med', this is
+        # an expression like 'n gånger fakultet med n' — let _try_operator
+        # split on the operator first, then _try_function_call will be
+        # called on the right sub-expression.
+        pre_med = parts[:med_idx]
+        for op in ['plus', 'minus', 'gånger', 'delat', 'och', 'eller']:
+            if op in pre_med:
+                return None
+
         fn_name = ' '.join(parts[:med_idx])
 
         # Strip generic type params: 'lista av heltal med ...' -> fn_name='lista'
@@ -1831,10 +1841,14 @@ class Resolver:
                 name = p
             self._add_local_var(self._current_module, name)
 
-        # Forward-declaration pass: register all nested function/variable
-        # names before resolving bodies.  Required for mutually-recursive
-        # functions where A's body calls B and B's body calls A.
-        self._register_declarations_only(node.body)
+        # Forward-declaration pass for 'rekgrej' functions: register all
+        # nested names before resolving bodies so that mutually-recursive
+        # functions can reference each other.  Also register the function's
+        # own name so it can call itself (self-recursion).
+        if getattr(node, 'kind', None) == 'rek':
+            # The function's own name is not inside its body — it's on the
+            # AssignNode wrapper.  Register it here so self-calls resolve.
+            self._register_declarations_only(node.body)
 
         # Track return type for validation of 'ge' statements
         prev_return_type = self._current_return_type
