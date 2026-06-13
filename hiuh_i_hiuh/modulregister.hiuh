@@ -29,8 +29,10 @@ sätt nytt register till grej ger ordlista av modulelement
 . skickagrej: adds a module to the registry (mutates registry in place)
 sätt registrera modul till skickagrej med modulnamn som sträng, sökväg som sträng, register som ordlista av modulelement ger ordlista av modulelement
     om inte finns med modulnamn, register
-        sätt tom ordlista till ordlista av sträng
-        sätt modul till modulelement med namn modulnamn, sökväg sökväg, symboler tom ordlista, importer lista av sträng, exporter lista av sträng
+        sätt symboler till ordlista av sträng
+        sätt importer till lista av sträng
+        sätt exporter till lista av sträng
+        sätt modul till modulelement med modulnamn, sökväg, symboler, importer, exporter
         putta modulnamn, modul till register
     ge register
 
@@ -81,12 +83,12 @@ sätt lös symbol till hämtagrej med symbolnamn som sträng, modulnamn som str�
     ge inget av symbolelement
 
 . skickagrej: records an import relationship
-sätt registrera import till skickagrej med modulnamn som sträng, importerat_namn som sträng, register som ordlista av modulelement ger ordlista av modulelement
+sätt registrera import till skickagrej med modulnamn som sträng, importerat som sträng, register som ordlista av modulelement ger ordlista av modulelement
     om finns med modulnamn, register
         sätt modul till hämta med modulnamn, register
         sätt imp till importer från modul
-        om inte importerat_namn finns i imp
-            lägg till importerat_namn i imp
+        om inte importerat finns i imp
+            lägg till importerat i imp
     ge register
 
 . hämtagrej: checks if a name is a local variable in a module

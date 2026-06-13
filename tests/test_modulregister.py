@@ -53,7 +53,7 @@ class TestHiuhModulregister(unittest.TestCase):
         source = (
             "använd modulregister\n"
             "sätt reg till nytt register\n"
-            "registrera modul med \"testmodul\", \"sökväg\", reg\n"
+            "registrera modul med testmodul, sökväg, reg\n"
             "ge reg\n"
         )
         result = self._run_module(source)
@@ -66,8 +66,8 @@ class TestHiuhModulregister(unittest.TestCase):
         source = (
             "använd modulregister\n"
             "sätt reg till nytt register\n"
-            "registrera modul med \"test\", \"väg\", reg\n"
-            "sätt resultat till hämta modul med \"test\", reg\n"
+            "registrera modul med test, väg, reg\n"
+            "sätt resultat till hämta modul med test, reg\n"
             "ge resultat\n"
         )
         result = self._run_module(source)
@@ -78,7 +78,7 @@ class TestHiuhModulregister(unittest.TestCase):
         source = (
             "använd modulregister\n"
             "sätt reg till nytt register\n"
-            "sätt resultat till hämta modul med \"saknas\", reg\n"
+            "sätt resultat till hämta modul med saknas, reg\n"
             "ge resultat\n"
         )
         result = self._run_module(source)
@@ -89,10 +89,10 @@ class TestHiuhModulregister(unittest.TestCase):
         source = (
             "använd modulregister\n"
             "sätt reg till nytt register\n"
-            "registrera modul med \"minmodul\", \"väg\", reg\n"
-            "sätt sym till symbolelement med namn \"hej\", sort \"var\", modul \"minmodul\", signatur inget av funktionssignatur, mål inget av sträng\n"
-            "registrera symbol med \"minmodul\", sym, reg\n"
-            "sätt resultat till hämta symbol med \"hej\", \"minmodul\", reg\n"
+            "registrera modul med minmodul, väg, reg\n"
+            "sätt sym till symbolelement med hej, var, minmodul\n"
+            "registrera symbol med minmodul, sym, reg\n"
+            "sätt resultat till hämta symbol med hej, minmodul, reg\n"
             "ge resultat\n"
         )
         result = self._run_module(source)
