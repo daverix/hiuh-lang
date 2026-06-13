@@ -883,7 +883,9 @@ class Interpreter:
             raise err
 
     def visit_TypeDefNode(self, node):
-        # Build ordered field list: all parent fields first, then own fields
+        # Build ordered field list: all parent fields first, then own fields.
+        # This matches how parser.hiuh constructors pass positional args
+        # (rad, kolumn from BasNod always come first).
         all_fields = list(node.fields)
         seen_fields = set()
         if node.parent_types:

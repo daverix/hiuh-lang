@@ -4,7 +4,7 @@ använd tokeniserare
 sätt parsa till grej med tokens som lista av token ger lista av basnod
 
     sätt slå ihop till grej med delar som lista av sträng, separator som sträng ger sträng
-        sätt ut till tom text
+        sätt ut till ""
         sätt först till SANT
         för varje d i delar
             om först
@@ -32,6 +32,9 @@ sätt parsa till grej med tokens som lista av token ger lista av basnod
     sätt samla uttryck till grej med startpos som heltal ger lista av basnod
         sätt delar till lista av uttrycksdelnod
         sätt pos till startpos
+        sätt t0 till element startpos från tokens
+        sätt första rad till rad från t0
+        sätt första kolumn till kolumn från t0
         medan pos är mindre än längd från tokens
             sätt t till element pos från tokens
             sätt tt till tokentyp från t
@@ -44,156 +47,99 @@ sätt parsa till grej med tokens som lista av token ger lista av basnod
             sätt ud till uttrycksdelnod med rad från t, kolumn från t, värde från t, tt
             lägg till ud i delar
             öka pos med 1
-        sätt nod till uttrycksdelarnod med delar
+        sätt nod till uttrycksdelarnod med första rad, första kolumn, delar
         ge lista med nod, pos
 
-    sätt parsa sats till grej med startpos som heltal ger lista av basnod
+    sätt parsa skriv till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
-
-        medan pos är mindre än längd från tokens
-            sätt t till element pos från tokens
-            om tokentyp från t är lika med nyradstoken
-                öka pos med 1
-                fortsätt
-            bryt
-
-        om pos är större än eller lika med längd från tokens
-            ge lista med inget av basnod, pos
-
-        sätt t till element pos från tokens
-        sätt tt till tokentyp från t
-
-        om tt är lika med avindenteringstoken
-            ge lista med inget av basnod, pos
-        om tt är lika med indenteringstoken
-            ge lista med inget av basnod, pos
-
-        om tt är lika med sättoken
-            sätt r till parsa sätt med pos
-            ge r
-        om tt är lika med skrivtoken
-            sätt r till parsa skriv med pos
-            ge r
-        om tt är lika med getoken
-            sätt r till parsa ge med pos
-            ge r
-        om tt är lika med bryttoken
-            öka pos med 1
-            sätt n till brytnod med
-            ge lista med n, pos
-        om tt är lika med fortsättoken
-            öka pos med 1
-            sätt n till fortsättnod med
-            ge lista med n, pos
-        om tt är lika med användtoken
-            sätt r till parsa använd med pos
-            ge r
-        om tt är lika med stängtoken
-            sätt r till parsa stäng med pos
-            ge r
-        om tt är lika med omtoken
-            sätt r till parsa om med pos
-            ge r
-        om tt är lika med medantoken
-            sätt r till parsa medan med pos
-            ge r
-        om tt är lika med idtoken
-            sätt tv till värde från t
-            om tv är lika med "öka"
-                sätt r till parsa mod med pos
-                ge r
-            om tv är lika med "minska"
-                sätt r till parsa mod med pos
-                ge r
-            om tv är lika med "gångra"
-                sätt r till parsa mod med pos
-                ge r
-            om tv är lika med "dela"
-                sätt r till parsa mod med pos
-                ge r
-
+        sätt t0 till element startpos från tokens
+        sätt rad till rad från t0
+        sätt kolumn till kolumn från t0
         öka pos med 1
-        ge lista med inget av basnod, pos
-
-    sätt parsa block till grej med startpos som heltal ger lista av basnod
-        sätt pos till startpos
-
-        medan pos är mindre än längd från tokens
-            sätt t till element pos från tokens
-            om tokentyp från t är lika med nyradstoken
-                öka pos med 1
-                fortsätt
-            bryt
-
-        om pos är mindre än längd från tokens
-            sätt t till element pos från tokens
-            om tokentyp från t är lika med indenteringstoken
-                öka pos med 1
-
-        sätt stmts till lista av basnod
-        medan pos är mindre än längd från tokens
-            sätt t till element pos från tokens
-            om tokentyp från t är lika med avindenteringstoken
-                öka pos med 1
-                bryt
-            sätt r till parsa sats med pos
-            sätt nod till element 0 från r
-            sätt pos till element 1 från r
-            lägg till nod i stmts
-
-        ge lista med stmts, pos
-
-    sätt parsa om till grej med startpos som heltal ger lista av basnod
-        sätt pos till startpos
-        öka pos med 1
-
         sätt r till samla uttryck med pos
         sätt pos till element 1 från r
-        sätt villkor till element 0 från r
-
-        sätt r till parsa block med pos
-        sätt pos till element 1 från r
-        sätt block till element 0 från r
-
-        sätt annarsblock till lista av basnod
-
-        medan pos är mindre än längd från tokens
-            sätt t till element pos från tokens
-            om tokentyp från t är inte lika med nyradstoken
-                bryt
-            öka pos med 1
-
-        om pos är mindre än längd från tokens
-            sätt t till element pos från tokens
-            om tokentyp från t är lika med annarstoken
-                öka pos med 1
-                sätt r till parsa block med pos
-                sätt pos till element 1 från r
-                sätt annarsblock till element 0 från r
-
-        sätt ov till omvillkor med villkor, block
-        sätt vl till lista av omvillkor
-        lägg till ov i vl
-        sätt n till omnod med vl, annarsblock
+        sätt n till skrivnod med rad, kolumn, element 0 från r
         ge lista med n, pos
 
-    sätt parsa medan till grej med startpos som heltal ger lista av basnod
+    sätt parsa ge till grej med startpos som heltal ger lista av basnod
+        sätt pos till startpos
+        sätt t0 till element startpos från tokens
+        sätt rad till rad från t0
+        sätt kolumn till kolumn från t0
+        öka pos med 1
+        sätt r till samla uttryck med pos
+        sätt pos till element 1 från r
+        sätt n till genod med rad, kolumn, element 0 från r
+        ge lista med n, pos
+
+    sätt parsa använd till grej med startpos som heltal ger lista av basnod
+        sätt pos till startpos
+        sätt t0 till element startpos från tokens
+        sätt rad till rad från t0
+        sätt kolumn till kolumn från t0
+        öka pos med 1
+        sätt r till samla uttryck med pos
+        sätt pos till element 1 från r
+        sätt uttryck till element 0 från r
+        sätt delar till delar från uttryck
+        sätt första till element 0 från delar
+        sätt modnamn till värde från första
+        sätt n till användnod med rad, kolumn, modnamn
+        ge lista med n, pos
+
+    sätt parsa stäng till grej med startpos som heltal ger lista av basnod
+        sätt pos till startpos
+        sätt t0 till element startpos från tokens
+        sätt rad till rad från t0
+        sätt kolumn till kolumn från t0
+        öka pos med 1
+        sätt r till samla uttryck med pos
+        sätt pos till element 1 från r
+        sätt uttryck till element 0 från r
+        sätt delar till delar från uttryck
+        sätt första till element 0 från delar
+        sätt filnamn till värde från första
+        sätt n till stängfilnod med rad, kolumn, filnamn
+        ge lista med n, pos
+
+    sätt parsa mod till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
         öka pos med 1
+        sätt r till samla namn med pos, medtoken
+        sätt pos till element 1 från r
+        sätt msnamn till element 0 från r
+
+        om pos är mindre än längd från tokens
+            sätt t till element pos från tokens
+            om tokentyp från t är lika med medtoken
+                öka pos med 1
 
         sätt r till samla uttryck med pos
         sätt pos till element 1 från r
-        sätt villkor till element 0 från r
+        sätt valnod till element 0 från r
 
-        sätt r till parsa block med pos
-        sätt pos till element 1 från r
-        sätt block till element 0 från r
+        sätt t0 till element startpos från tokens
+        sätt rad till rad från t0
+        sätt kolumn till kolumn från t0
+        sätt msnod till strängnod med rad, kolumn, msnamn
 
-        sätt n till medannod med villkor, block
+        sätt tv0 till värde från t0
+        om tv0 är lika med "öka"
+            sätt n till ökanod med rad, kolumn, msnod, valnod
+        annars om tv0 är lika med "minska"
+            sätt n till minskanod med rad, kolumn, msnod, valnod
+        annars om tv0 är lika med "gångra"
+            sätt n till gångranod med rad, kolumn, msnod, valnod
+        annars
+            sätt n till delanod med rad, kolumn, msnod, valnod
+
         ge lista med n, pos
 
     sätt parsa sätt till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
+        sätt t0 till element startpos från tokens
+        sätt rad till rad från t0
+        sätt kolumn till kolumn från t0
         öka pos med 1
 
         sätt r till samla namn med pos, tilltoken
@@ -227,18 +173,21 @@ sätt parsa till grej med tokens som lista av token ger lista av basnod
                 sätt r till parsa grej med pos
                 sätt pos till element 1 från r
                 sätt fn till element 0 från r
-                sätt n till tilldelningsnod med namn, fn
+                sätt n till tilldelningsnod med rad, kolumn, namn, fn
                 ge lista med n, pos
 
         sätt r till samla uttryck med pos
         sätt pos till element 1 från r
         sätt värde till element 0 från r
 
-        sätt n till tilldelningsnod med namn, värde
+        sätt n till tilldelningsnod med rad, kolumn, namn, värde
         ge lista med n, pos
 
     sätt parsa grej till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
+        sätt t0 till element startpos från tokens
+        sätt rad till rad från t0
+        sätt kolumn till kolumn från t0
         öka pos med 1
 
         medan pos är mindre än längd från tokens
@@ -247,7 +196,7 @@ sätt parsa till grej med tokens som lista av token ger lista av basnod
             sätt tv till värde från t
             om tt är lika med medtoken
                 bryt
-            om tt är lika med gerrtoken
+            om tt är lika med gertoken
                 bryt
             om tv är lika med "ger"
                 bryt
@@ -266,12 +215,12 @@ sätt parsa till grej med tokens som lista av token ger lista av basnod
                     sätt tt till tokentyp från t
                     sätt tv till värde från t
 
-                    om tt är lika med gerrtoken
+                    om tt är lika med gertoken
                         bryt
                     om tt är lika med nyradstoken
                         bryt
 
-                    sätt pn till strängnod med tv
+                    sätt pn till strängnod med rad, kolumn, tv
                     öka pos med 1
                     lägg till pn i paramnoder
 
@@ -288,7 +237,7 @@ sätt parsa till grej med tokens som lista av token ger lista av basnod
                         om t4t är lika med kommatoken
                             öka pos med 1
                             bryt
-                        om t4t är lika med gerrtoken
+                        om t4t är lika med gertoken
                             bryt
                         om t4v är lika med "ger"
                             bryt
@@ -297,7 +246,7 @@ sätt parsa till grej med tokens som lista av token ger lista av basnod
                         lägg till t4v i typdelar
                         öka pos med 1
 
-                    sätt pt till strängnod med slå ihop med typdelar, " "
+                    sätt pt till strängnod med rad, kolumn, slå ihop med typdelar, " "
                     lägg till pt i paramnoder
 
         sätt rettyp till heltal
@@ -305,7 +254,7 @@ sätt parsa till grej med tokens som lista av token ger lista av basnod
             sätt t till element pos från tokens
             sätt tt till tokentyp från t
             sätt tv till värde från t
-            om tt är lika med gerrtoken
+            om tt är lika med gertoken
                 öka pos med 1
             annars om tv är lika med "ger"
                 öka pos med 1
@@ -322,7 +271,7 @@ sätt parsa till grej med tokens som lista av token ger lista av basnod
                     bryt
                 om t2t är lika med medtoken
                     bryt
-                om t2t är lika med gerrtoken
+                om t2t är lika med gertoken
                     bryt
                 lägg till värde från t2 i retdelar
                 öka pos med 1
@@ -334,71 +283,163 @@ sätt parsa till grej med tokens som lista av token ger lista av basnod
         sätt pos till element 1 från r
         sätt blocknoder till element 0 från r
 
-        sätt fn till grejdefinitionsnod med paramnoder, blocknoder, lista av sträng, "grej", rettyp
+        sätt fn till grejdefinitionsnod med rad, kolumn, paramnoder, blocknoder, lista av sträng, "grej", rettyp
         ge lista med fn, pos
 
-    sätt parsa skriv till grej med startpos som heltal ger lista av basnod
+    sätt parsa om till grej med startpos som heltal ger lista av basnod
         sätt pos till startpos
+        sätt t0 till element startpos från tokens
+        sätt rad till rad från t0
+        sätt kolumn till kolumn från t0
         öka pos med 1
+
         sätt r till samla uttryck med pos
         sätt pos till element 1 från r
-        sätt n till skrivnod med element 0 från r
-        ge lista med n, pos
+        sätt villkor till element 0 från r
 
-    sätt parsa ge till grej med startpos som heltal ger lista av basnod
-        sätt pos till startpos
-        öka pos med 1
-        sätt r till samla uttryck med pos
+        sätt r till parsa block med pos
         sätt pos till element 1 från r
-        sätt n till genod med element 0 från r
-        ge lista med n, pos
+        sätt block till element 0 från r
 
-    sätt parsa använd till grej med startpos som heltal ger lista av basnod
-        sätt pos till startpos
-        öka pos med 1
-        sätt r till samla uttryck med pos
-        sätt pos till element 1 från r
-        sätt n till användnod med element 0 från r
-        ge lista med n, pos
+        sätt annarsblock till lista av basnod
 
-    sätt parsa stäng till grej med startpos som heltal ger lista av basnod
-        sätt pos till startpos
-        öka pos med 1
-        sätt r till samla uttryck med pos
-        sätt pos till element 1 från r
-        sätt n till stängfilnod med element 0 från r
-        ge lista med n, pos
-
-    sätt parsa mod till grej med startpos som heltal ger lista av basnod
-        sätt pos till startpos
-        öka pos med 1
-        sätt r till samla namn med pos, medtoken
-        sätt pos till element 1 från r
-        sätt msnamn till element 0 från r
+        medan pos är mindre än längd från tokens
+            sätt t till element pos från tokens
+            om tokentyp från t är inte lika med nyradstoken
+                bryt
+            öka pos med 1
 
         om pos är mindre än längd från tokens
             sätt t till element pos från tokens
-            om tokentyp från t är lika med medtoken
+            om tokentyp från t är lika med annarstoken
                 öka pos med 1
+                sätt r till parsa block med pos
+                sätt pos till element 1 från r
+                sätt annarsblock till element 0 från r
+
+        sätt ov till omvillkor med villkor, block
+        sätt vl till lista av omvillkor
+        lägg till ov i vl
+        sätt n till omnod med rad, kolumn, vl, annarsblock
+        ge lista med n, pos
+
+    sätt parsa medan till grej med startpos som heltal ger lista av basnod
+        sätt pos till startpos
+        sätt t0 till element startpos från tokens
+        sätt rad till rad från t0
+        sätt kolumn till kolumn från t0
+        öka pos med 1
 
         sätt r till samla uttryck med pos
         sätt pos till element 1 från r
-        sätt valnod till element 0 från r
+        sätt villkor till element 0 från r
 
-        sätt msnod till strängnod med msnamn
+        sätt r till parsa block med pos
+        sätt pos till element 1 från r
+        sätt block till element 0 från r
 
-        sätt t0 till element startpos från tokens
-        sätt tv0 till värde från t0
-        om tv0 är lika med "öka"
-            sätt n till ökanod med msnod, valnod
-        annars om tv0 är lika med "minska"
-            sätt n till minskanod med msnod, valnod
-        annars om tv0 är lika med "gångra"
-            sätt n till gångranod med msnod, valnod
-        annars
-            sätt n till delanod med msnod, valnod
-
+        sätt n till medannod med rad, kolumn, villkor, block
         ge lista med n, pos
+
+    sätt parsa block till grej med startpos som heltal ger lista av basnod
+        sätt pos till startpos
+
+        medan pos är mindre än längd från tokens
+            sätt t till element pos från tokens
+            om tokentyp från t är lika med nyradstoken
+                öka pos med 1
+                fortsätt
+            bryt
+
+        om pos är mindre än längd från tokens
+            sätt t till element pos från tokens
+            om tokentyp från t är lika med indenteringstoken
+                öka pos med 1
+
+        sätt stmts till lista av basnod
+        medan pos är mindre än längd från tokens
+            sätt t till element pos från tokens
+            om tokentyp från t är lika med avindenteringstoken
+                öka pos med 1
+                bryt
+            om tokentyp från t är lika med nyradstoken
+                öka pos med 1
+                fortsätt
+            sätt r till parsa sats med pos
+            sätt nod till element 0 från r
+            sätt pos till element 1 från r
+            om nod är inte lika med inget av basnod
+                lägg till nod i stmts
+
+        ge lista med stmts, pos
+
+    sätt parsa sats till grej med startpos som heltal ger lista av basnod
+        sätt pos till startpos
+
+        medan pos är mindre än längd från tokens
+            sätt t till element pos från tokens
+            om tokentyp från t är lika med nyradstoken
+                öka pos med 1
+                fortsätt
+            bryt
+
+        om pos är större än eller lika med längd från tokens
+            ge lista med inget av basnod, pos
+
+        sätt t till element pos från tokens
+        sätt tt till tokentyp från t
+
+        om tt är lika med avindenteringstoken
+            ge lista med inget av basnod, pos
+        om tt är lika med indenteringstoken
+            ge lista med inget av basnod, pos
+
+        om tt är lika med sättoken
+            sätt r till parsa sätt med pos
+            ge r
+        om tt är lika med skrivtoken
+            sätt r till parsa skriv med pos
+            ge r
+        om tt är lika med getoken
+            sätt r till parsa ge med pos
+            ge r
+        om tt är lika med bryttoken
+            öka pos med 1
+            sätt n till brytnod med rad, kolumn
+            ge lista med n, pos
+        om tt är lika med fortsättoken
+            öka pos med 1
+            sätt n till fortsättnod med rad, kolumn
+            ge lista med n, pos
+        om tt är lika med användtoken
+            sätt r till parsa använd med pos
+            ge r
+        om tt är lika med stängtoken
+            sätt r till parsa stäng med pos
+            ge r
+        om tt är lika med omtoken
+            sätt r till parsa om med pos
+            ge r
+        om tt är lika med medantoken
+            sätt r till parsa medan med pos
+            ge r
+        om tt är lika med idtoken
+            sätt tv till värde från t
+            om tv är lika med "öka"
+                sätt r till parsa mod med pos
+                ge r
+            om tv är lika med "minska"
+                sätt r till parsa mod med pos
+                ge r
+            om tv är lika med "gångra"
+                sätt r till parsa mod med pos
+                ge r
+            om tv är lika med "dela"
+                sätt r till parsa mod med pos
+                ge r
+
+        öka pos med 1
+        ge lista med inget av basnod, pos
 
     sätt resultat till lista av basnod
     sätt pos till 0
@@ -436,8 +477,14 @@ sätt formatera en nod till grej med n som basnod ger sträng
 
     om ht är lika med typ av uttrycksdelarnod
         sätt delar till delar från n
-        sätt första till element 0 från delar
-        sätt txt till värde från första
+        sätt txt till ""
+        sätt först till SANT
+        för varje d i delar
+            om först
+                sätt först till FALSKT
+            annars
+                sätt txt till txt plus " "
+            sätt txt till txt plus värde från d
         ge "Expr(" plus txt plus ")"
 
     om ht är lika med typ av skrivnod
@@ -538,7 +585,8 @@ sätt formatera block till grej med block som lista av basnod ger sträng
             sätt först till FALSKT
         annars
             sätt ut till ut plus ", "
-        sätt ut till ut plus formatera en nod med bn
+        sätt formaterad till formatera en nod med bn
+        sätt ut till ut plus formaterad
     sätt ut till ut plus "]"
     ge ut
 
@@ -547,9 +595,11 @@ sätt formatera paramer till grej med pm som lista av basnod ger sträng
     sätt pos till 0
     sätt först till SANT
     medan pos är mindre än längd från pm
-        sätt namn till värde från element pos från pm
+        sätt elem till element pos från pm
+        sätt namn till värde från elem
         öka pos med 1
-        sätt typ till värde från element pos från pm
+        sätt elem till element pos från pm
+        sätt typ till värde från elem
         öka pos med 1
         om först
             sätt först till FALSKT

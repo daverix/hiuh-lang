@@ -814,6 +814,10 @@ class Resolver:
             elif med_idx < från_idx:
                 # 'med' is before 'från' - callback function call pattern
                 # Example: "anrop med element x från värden"
+                # Only match if no commas are present (commas indicate a
+                # regular multi-arg function call like "nod med arg1, arg2")
+                if ',' in parts:
+                    return None
                 fn_name = parts[:med_idx][0]  # 'anrop'
                 args_parts = parts[med_idx + 1:från_idx]  # ['element', 'x']
                 target_name = ' '.join(parts[från_idx + 1:])  # 'värden'
@@ -1594,6 +1598,13 @@ class Resolver:
                 
                 return PropertyAccessNode(property_name=prop_name, target=target_node, token=token)
 
+        # Check for type query: "typ av X" -> TypeOfNode
+        if len(parts) >= 3 and parts[0] == 'typ' and parts[1] == 'av':
+            inner_parts = parts[2:]
+            inner_node = ExpressionPartsNode(inner_parts, token=token)
+            inner_result = self.visit(inner_node)
+            return TypeOfNode(inner_result, token=token)
+
         # No operator found, return as single value
         return self._part_to_node(' '.join(parts), token)
 
@@ -1814,6 +1825,11 @@ class Resolver:
             else:
                 name = p
             self._add_local_var(self._current_module, name)
+
+        # Forward-declaration pass: register all nested function/variable
+        # names before resolving bodies.  Required for mutually-recursive
+        # functions where A's body calls B and B's body calls A.
+        self._register_declarations_only(node.body)
 
         body = self._visit_nodes(node.body)
         if body is node.body:
