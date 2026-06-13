@@ -9,6 +9,7 @@ from hiuh.frontend.module_registry import ModuleRegistry
 from hiuh.frontend.parser import Parser
 from hiuh.frontend.resolver import Resolver
 from hiuh.frontend.tokenizer import Tokenizer
+from tests.ast_format import ast_to_string
 
 
 class _BaseResolverTests:
@@ -1157,21 +1158,62 @@ class TestPythonResolver(_BaseResolverTests, unittest.TestCase):
 
 
 class TestHiuhResolver(_BaseResolverTests, unittest.TestCase):
-    """Tests using the Hiuh resolver (via interpreter).
-
-    Not yet implemented — will be filled in as resolver.hiuh grows.
-    """
+    """Tests using the Hiuh tokeniserare + parser + resolver + formatera."""
 
     def setUp(self):
         self.tokenizer = Tokenizer()
         self._repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        raise unittest.SkipTest("Hiuh resolver not yet implemented")
 
     def resolve(self, source, modules=None):
-        raise unittest.SkipTest("Hiuh resolver not yet implemented")
+        """Run source through full hiuh pipeline, return formatted strings."""
+        from hiuh.backend.interpreter.interpreter import Interpreter, ReturnException
+        from hiuh.frontend.module_registry import ModuleRegistry
+        from hiuh.frontend.resolver import Resolver
+
+        lines = source.split("\n")
+        line_strings = ", ".join(f'"{line}"' for line in lines)
+
+        hiuh_source = (
+            "använd parser\n"
+            "använd tokeniserare\n"
+            "använd resolver\n"
+            "använd testinterop\n"
+            "\n"
+            f"sätt källkod till lista med {line_strings}\n"
+            "\n"
+            "sätt tokens till tokenisera med källkod\n"
+            "sätt rå ast till parsa med tokens\n"
+            "sätt löst ast till lös med rå ast\n"
+            "ge formatera med löst ast\n"
+        )
+
+        mr = ModuleRegistry("/tmp/hiuh_resolver_test")
+        resolver_py = Resolver(mr, os.path.join(self._repo_root, "hiuh_i_hiuh"))
+
+        tokens_py = self.tokenizer.tokenize(hiuh_source)
+        parser_py = Parser(tokens_py)
+        ast = parser_py.parse()
+
+        resolver_py.discover_modules_from_ast("main", ast, self._repo_root)
+        resolver_py.discover_imports("main")
+        resolver_py.resolve_all()
+        ast = resolver_py.get_ast("main")
+
+        interp = Interpreter(mr)
+        interp.modules = resolver_py.modules
+        try:
+            interp.execute(ast)
+        except ReturnException as e:
+            result = e.value
+            if isinstance(result, list):
+                return result
+        return []
 
     def assertResolvedEqual(self, source, expected_ast_nodes, modules=None):
-        raise unittest.SkipTest("Hiuh resolver not yet implemented")
+        actual = self.resolve(source)
+        # formatera returns one string per AST node; ast_to_string returns one string for the list
+        expected = [ast_to_string([n]) for n in expected_ast_nodes]
+        self.assertEqual(actual, expected)
 
     def assertEqual(self, a, b, msg=None):
         unittest.TestCase.assertEqual(self, a, b, msg)

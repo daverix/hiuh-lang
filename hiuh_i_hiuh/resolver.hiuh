@@ -1,29 +1,8 @@
 använd ast
-använd modulregister
-använd listor
 
 . Hiuh resolver — replaces src/hiuh/frontend/resolver.py
-. Uses modulregister.hiuh for module/symbol storage.
 
-. === Public API ===
-
-. skickagrej: register a module from pre-parsed AST
-sätt registrera modul till skickagrej med modulnamn som sträng, sökväg som sträng, noder som lista av basnod, register som ordlista av modulelement ger ordlista av modulelement
-    lägg till modul med modulnamn, sökväg, register
-    . TODO: scan AST for declarations and add symbols
-    ge register
-
-. hämtagrej: get the resolved AST for a module
-sätt hämta ast till hämtagrej med modulnamn som sträng, register som ordlista av modulelement ger lista av basnod
-    sätt modul till hämta modul med modulnamn, register
-    om modul är inte lika med inget av modulelement
-        . TODO: return resolved AST
-        ge lista av basnod
-    ge lista av basnod
-
-. === Internal helpers ===
-
-sätt samla deklarationer till grej med noder som lista av basnod, modulnamn som sträng, register som ordlista av modulelement ger ordlista av modulelement
-    för varje nod i noder
-        . TODO: extract declarations and add as symbols
-    ge register
+. Resolve raw AST nodes into their proper types.
+. For now this is a passthrough — returns nodes unchanged.
+sätt lös till grej med noder som lista av basnod ger lista av basnod
+    ge noder
