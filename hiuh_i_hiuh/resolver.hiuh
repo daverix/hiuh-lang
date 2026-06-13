@@ -105,13 +105,17 @@ sätt lös till rekgrej med noder som lista av basnod ger lista av basnod
         sätt text till slå ihop delar mellan med delar, 0, antal
         ge strängnod med 1, 1, text
 
+    . === Visitor dispatch (om chain — hiuh equivalent of visit_* methods) ===
+
     sätt lös nod till grej med nod som sträng ger sträng
         sätt ht till typ av nod
 
+        . visit_ExpressionPartsNode
         om ht är lika med typ av uttrycksdelarnod
             sätt delar till delar från nod
             ge lös uttryck med delar
 
+        . visit_AssignNode
         om ht är lika med typ av tilldelningsnod
             sätt r till rad från nod
             sätt k till kolumn från nod
@@ -122,6 +126,7 @@ sätt lös till rekgrej med noder som lista av basnod ger lista av basnod
             sätt nynod till tilldelningsnod med r, k, nm, lv, mt
             ge nynod
 
+        . visit_PrintNode
         om ht är lika med typ av skrivnod
             sätt r till rad från nod
             sätt k till kolumn från nod
