@@ -1,0 +1,151 @@
+använd ast
+
+. Shared formatting functions for tests.
+. Formats AST nodes to canonical strings for cross-backend comparison.
+
+sätt formatera till grej med noder som lista av basnod ger lista av sträng
+    sätt ut till lista av sträng
+    för varje n i noder
+        sätt str till formatera en nod med n
+        lägg till str i ut
+    ge ut
+
+sätt formatera en nod till grej med n som basnod ger sträng
+    sätt ht till typ av n
+
+    om ht är lika med typ av strängnod
+        ge värde från n
+
+    om ht är lika med typ av uttrycksdelarnod
+        sätt delar till delar från n
+        sätt txt till ""
+        sätt först till SANT
+        för varje d i delar
+            om först
+                sätt först till FALSKT
+            annars
+                sätt txt till txt plus " "
+            sätt txt till txt plus värde från d
+        ge "Expr(" plus txt plus ")"
+
+    om ht är lika med typ av skrivnod
+        sätt vn till värde från n
+        sätt vs till formatera en nod med vn
+        ge "PrintNode(" plus vs plus ")"
+
+    om ht är lika med typ av tilldelningsnod
+        sätt nnamn till namn från n
+        sätt vn till värde från n
+        sätt vs till formatera en nod med vn
+        ge "AssignNode(" plus nnamn plus ", " plus vs plus ")"
+
+    om ht är lika med typ av genod
+        sätt vn till värde från n
+        sätt vs till formatera en nod med vn
+        ge "ReturnNode(" plus vs plus ")"
+
+    om ht är lika med typ av brytnod
+        ge "BreakNode()"
+
+    om ht är lika med typ av fortsättnod
+        ge "ContinueNode()"
+
+    om ht är lika med typ av användnod
+        sätt mn till namn från n
+        ge "ImportNode(" plus mn plus ")"
+
+    om ht är lika med typ av stängfilnod
+        sätt mn till variabel från n
+        ge "CloseFileNode(" plus mn plus ")"
+
+    om ht är lika med typ av ökanod
+        sätt msn till mål från n
+        sätt vn till värde från n
+        sätt ms till värde från msn
+        sätt vs till formatera en nod med vn
+        ge "AddAssignNode(" plus ms plus ", " plus vs plus ")"
+
+    om ht är lika med typ av minskanod
+        sätt msn till mål från n
+        sätt vn till värde från n
+        sätt ms till värde från msn
+        sätt vs till formatera en nod med vn
+        ge "SubAssignNode(" plus ms plus ", " plus vs plus ")"
+
+    om ht är lika med typ av gångranod
+        sätt msn till mål från n
+        sätt vn till värde från n
+        sätt ms till värde från msn
+        sätt vs till formatera en nod med vn
+        ge "MultiplyAssignNode(" plus ms plus ", " plus vs plus ")"
+
+    om ht är lika med typ av delanod
+        sätt msn till mål från n
+        sätt vn till värde från n
+        sätt ms till värde från msn
+        sätt vs till formatera en nod med vn
+        ge "DivideAssignNode(" plus ms plus ", " plus vs plus ")"
+
+    om ht är lika med typ av omnod
+        sätt vl till villkor från n
+        sätt ov till element 0 från vl
+        sätt test till test från ov
+        sätt block till block från ov
+        sätt ts till formatera en nod med test
+        sätt blockstr till formatera block med block
+        sätt utstr till "IfNode(IfCond(" plus ts plus ", " plus blockstr plus ")"
+        sätt eb till ellerblock från n
+        om längd från eb är större än 0
+            sätt annarsstr till formatera block med eb
+            sätt utstr till utstr plus ", Else(" plus annarsstr plus ")"
+        sätt utstr till utstr plus ")"
+        ge utstr
+
+    om ht är lika med typ av medannod
+        sätt villkor till villkor från n
+        sätt block till block från n
+        sätt vs till formatera en nod med villkor
+        sätt blockstr till formatera block med block
+        ge "WhileNode(" plus vs plus ", " plus blockstr plus ")"
+
+    om ht är lika med typ av grejdefinitionsnod
+        sätt pm till parametrar från n
+        sätt block till block från n
+        sätt rt till returtyp från n
+        sätt paramsstr till formatera paramer med pm
+        sätt blockstr till formatera block med block
+        ge "FunctionDefNode(" plus paramsstr plus ", " plus blockstr plus ", return_type='" plus rt plus "')"
+
+    ge "nod"
+
+sätt formatera block till grej med block som lista av basnod ger sträng
+    sätt ut till "["
+    sätt först till SANT
+    för varje bn i block
+        om först
+            sätt först till FALSKT
+        annars
+            sätt ut till ut plus ", "
+        sätt formaterad till formatera en nod med bn
+        sätt ut till ut plus formaterad
+    sätt ut till ut plus "]"
+    ge ut
+
+sätt formatera paramer till grej med pm som lista av basnod ger sträng
+    sätt ut till "["
+    sätt pos till 0
+    sätt först till SANT
+    medan pos är mindre än längd från pm
+        sätt elem till element pos från pm
+        sätt namn till värde från elem
+        öka pos med 1
+        sätt elem till element pos från pm
+        sätt typ till värde från elem
+        öka pos med 1
+        om först
+            sätt först till FALSKT
+        annars
+            sätt ut till ut plus ", "
+        sätt ut till ut plus "('" plus namn plus "', '" plus typ plus "')"
+    sätt ut till ut plus "]"
+    ge ut

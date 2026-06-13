@@ -292,6 +292,7 @@ class TestHiuhParser(_BaseParserTests, unittest.TestCase):
         hiuh_source = (
             "använd parser\n"
             "använd tokeniserare\n"
+            "använd testinterop\n"
             "\n"
             f"sätt källkod till lista med {line_strings}\n"
             "\n"
