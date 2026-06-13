@@ -42,6 +42,10 @@ class Resolver:
         # Store original parts for expressions (keyed by node id) for stringification
         self._original_parts = {}  # node_id -> {'left': [...], 'op': '...', 'right': [...]}
 
+        # Track current function's return type for validation
+        self._current_return_type = None  # e.g. 'basnod', 'lista av basnod', or None
+        self._var_types = {}  # variable_name -> type_name (simple type tracking)
+
         self._register_builtins()
 
     def _parts_to_str(self, parts):
@@ -1822,6 +1826,7 @@ class Resolver:
             if isinstance(p, tuple):
                 name, type_str = p
                 self._validate_type_annotation(type_str, f"parametern '{name}'")
+                self._var_types[name] = type_str
             else:
                 name = p
             self._add_local_var(self._current_module, name)
@@ -1831,7 +1836,16 @@ class Resolver:
         # functions where A's body calls B and B's body calls A.
         self._register_declarations_only(node.body)
 
+        # Track return type for validation of 'ge' statements
+        prev_return_type = self._current_return_type
+        prev_var_types = dict(self._var_types)
+        self._current_return_type = node.return_type
+
         body = self._visit_nodes(node.body)
+
+        self._current_return_type = prev_return_type
+        self._var_types = prev_var_types
+
         if body is node.body:
             return node
         return FunctionDefNode(
@@ -1962,9 +1976,121 @@ class Resolver:
 
     def visit_ReturnNode(self, node):
         value = self.visit(node.value)
+        if self._current_return_type:
+            self._validate_return_value(value, self._current_return_type, node)
         if value is node.value:
             return node
         return ReturnNode(value=value, token=node)
+
+    def _validate_return_value(self, value, declared_type, node):
+        """Validate that the returned value matches the declared return type.
+
+        declared_type examples: 'basnod', 'lista av basnod', 'heltal', 'sträng'
+        """
+        # Parse the declared type
+        parsed = self._parse_type_annotation(declared_type)
+        if parsed is None:
+            return  # Can't validate complex types yet
+
+        type_name, type_args = parsed
+
+        if type_name == 'lista':
+            self._validate_list_return(value, type_args, node)
+
+    def _validate_list_return(self, value, element_types, node):
+        """Validate that value is a list where all elements match element_types.
+
+        Currently checks FunctionCallNode('lista', args) patterns.
+        """
+        if not isinstance(value, FunctionCallNode):
+            # Can't statically validate non-literal list returns
+            return
+        if value.name != 'lista':
+            return
+
+        element_type = element_types[0] if element_types else None
+        if element_type is None:
+            return
+
+        for arg in value.args:
+            if isinstance(arg, NamedArgNode):
+                arg = arg.value
+            self._validate_element_type(arg, element_type, node)
+
+    def _validate_element_type(self, arg, expected_type, node):
+        """Validate that arg is compatible with expected_type."""
+        # 'inget av basnod' → null value of basnod, always valid
+        if isinstance(arg, StringNode) and arg.value.startswith('inget av '):
+            # TODO: check that the type after 'inget av' matches expected_type
+            return
+
+        # VarAccessNode → check if the variable name is a known type
+        # For now, we primarily check for heltal (int) mixed into basnod lists
+        inferred = self._infer_type(arg)
+        if inferred and inferred != expected_type:
+            # Check if inferred is a subtype of expected_type
+            if not self._is_subtype(inferred, expected_type):
+                raise Exception(
+                    f"Typfel: 'ge' returnerar '{inferred}' men funktionen "
+                    f"är deklarerad att returnera 'lista av {expected_type}'"
+                )
+
+    def _infer_type(self, node):
+        """Infer the type of an AST node."""
+        if isinstance(node, VarAccessNode):
+            name = node.name
+            # Check tracked variable types (from params/assignments)
+            if name in self._var_types:
+                return self._var_types[name]
+            # Check if it's a known type name
+            if name in self._get_all_known_types():
+                return name
+            return None
+        if isinstance(node, StringNode):
+            return 'sträng'
+        if isinstance(node, IntNode):
+            return 'heltal'
+        if isinstance(node, FloatNode):
+            return 'flyttal'
+        if isinstance(node, BoolNode):
+            return 'boolesk'
+        if isinstance(node, FunctionCallNode):
+            if node.name == 'lista':
+                return 'lista'
+        return None
+
+    def _is_subtype(self, type_name, parent_type):
+        """Check if type_name is a subtype of parent_type."""
+        if type_name == parent_type:
+            return True
+        # Check type hierarchy via type definitions in AST
+        for mod_info in self.modules.values():
+            if mod_info.ast:
+                for n in mod_info.ast:
+                    if hasattr(n, 'name') and n.name == type_name:
+                        if hasattr(n, 'parent_types') and n.parent_types:
+                            for pt in n.parent_types:
+                                if pt[0] == parent_type:
+                                    return True
+                                if self._is_subtype(pt[0], parent_type):
+                                    return True
+        return False
+
+    def _parse_type_annotation(self, type_str):
+        """Parse a type annotation string into (type_name, [type_args]).
+
+        Examples:
+            'heltal' -> ('heltal', [])
+            'lista av basnod' -> ('lista', ['basnod'])
+            'lista av heltal' -> ('lista', ['heltal'])
+        """
+        if not type_str:
+            return None
+        parts = type_str.split()
+        if 'av' in parts:
+            av_idx = parts.index('av')
+            return (parts[0], parts[av_idx + 1:])
+        return (type_str, [])
 
     # === Statement nodes - transform children ===
 
@@ -2019,6 +2145,12 @@ class Resolver:
         self._add_local_var(self._current_module, node.name)
 
         value = self.visit(node.value)
+
+        # Propagate type info: if we can infer the value's type, track it
+        inferred = self._infer_type(value)
+        if inferred:
+            self._var_types[node.name] = inferred
+
         if value is node.value:
             return node
         return AssignNode(name=node.name, value=value, target_type=node.target_type, token=node)
