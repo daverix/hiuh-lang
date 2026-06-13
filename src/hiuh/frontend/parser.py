@@ -83,6 +83,8 @@ class Parser:
         if t.type == TOKEN_CONTINUE:
             token = self.consume()
             return ContinueNode(token=token)
+        if t.type == TOKEN_IDENTIFIER and t.value == "grejtyp":
+            return self.parse_grejtyp()
         if t.type == TOKEN_TYPE: return self.parse_type_def()
         if t.type == TOKEN_TRY: return self.parse_try_catch()
         if t.type == TOKEN_THROW:
@@ -794,6 +796,21 @@ class Parser:
 
         return TypeDefNode(name, fields, token=type_def_token, type_params=type_params,
                           parent_types=parent_types)
+
+    def parse_grejtyp(self):
+        """Parse a function type declaration: grejtyp namn med params ger returtyp"""
+        from hiuh.frontend.ast import FunctionTypeNode
+        token = self.consume()  # consume 'grejtyp'
+        name = self.consume(TOKEN_IDENTIFIER).value
+
+        params = []
+        if self.peek() and self.peek().type == TOKEN_WITH:
+            self.consume()  # consume 'med'
+            params = self._parse_typed_params()
+
+        return_type = self._parse_return_type()
+
+        return FunctionTypeNode(name, params, return_type, token=token)
 
     def _parse_type_def_body(self, type_params):
         """Parse a multi-line typ body where each line is a field declaration.

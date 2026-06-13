@@ -203,6 +203,10 @@ class Resolver:
             elif isinstance(node, TypeDefNode):
                 self.module_registry.modules[self._current_module].add_symbol(node.name, "type")
                 self._add_local_var(self._current_module, node.name)
+
+            elif isinstance(node, FunctionTypeNode):
+                self.module_registry.modules[self._current_module].add_symbol(node.name, "type")
+                self._add_local_var(self._current_module, node.name)
                 
             elif isinstance(node, ImportNode):
                 # Record the import so we can check imported symbols later
@@ -991,7 +995,7 @@ class Resolver:
         for mod_info in self.modules.values():
             if mod_info.ast:
                 for n in mod_info.ast:
-                    if hasattr(n, 'name') and hasattr(n, 'fields'):
+                    if hasattr(n, 'name') and (hasattr(n, 'fields') or hasattr(n, 'params')):
                         types.add(n.name)
                     # Also add type params declared on generic types
                     if hasattr(n, 'type_params'):

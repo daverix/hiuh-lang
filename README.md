@@ -179,6 +179,29 @@ including the outer function if its children reference each other.
 Only `rekgrej` functions incur the forward-declaration overhead;
 plain `grej` functions resolve in strict definition order.
 
+### grejtyp — function types
+
+`grejtyp` declares a function type signature that can be used in parameter
+annotations with `som`:
+
+```
+grejtyp mingrej med x som heltal ger heltal
+
+sätt anropa till grej med fn som mingrej ger heltal
+    ge fn med 42
+
+sätt dubblera till grej med x som heltal ger heltal
+    ge x gånger 2
+
+sätt r till anropa med dubblera
+ge r
+```
+
+outputs: `84`
+
+The `grejtyp` declaration defines the expected parameter and return types.
+Functions passed to a `som mingrej` parameter must match the signature.
+
 ### set typ variable
 
 `typ` works like structs in other languages. Define fields on separate indented lines

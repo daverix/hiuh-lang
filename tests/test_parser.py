@@ -257,6 +257,15 @@ class _BaseParserTests:
         ]
         self.assertParseEqual(source, expected)
 
+    def test_grejtyp_declaration(self):
+        """grejtyp declares a function type signature."""
+        if self.__class__.__name__ == "TestHiuhParser":
+            raise unittest.SkipTest("grejtyp needs FunctionTypeNode in ast.hiuh + parser.hiuh handler")
+        source = "grejtyp mingrej med x som heltal ger heltal"
+        from hiuh.frontend.ast import FunctionTypeNode
+        expected = [FunctionTypeNode(name="mingrej", params=[("x", "heltal")], return_type="heltal")]
+        self.assertParseEqual(source, expected)
+
 
 class TestPythonParser(_BaseParserTests, unittest.TestCase):
     """Parser tests using the Python Tokenizer+Parser."""

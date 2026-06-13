@@ -383,3 +383,12 @@ class ExpressionPartsNode(ASTNode):
     def __init__(self, parts, token=None):
         super().__init__(token.line if token else None, token.column if token else None)
         self.parts = parts
+
+
+class FunctionTypeNode(ASTNode):
+    """Function type declaration: grejtyp namn med params ger returtyp"""
+    def __init__(self, name, params, return_type, token=None):
+        super().__init__(token.line if token else None, token.column if token else None)
+        self.name = name
+        self.params = params  # list of (name, type) tuples
+        self.return_type = return_type

@@ -1,13 +1,24 @@
 använd ast
 
-. Hiuh resolver — replaces src/hiuh/frontend/resolver.py
-
 sätt lös till rekgrej med noder som lista av basnod ger lista av basnod
 
-    sätt lös uttryck till grej med delar som lista av uttrycksdelnod ger basnod
+    sätt slå ihop delar mellan till grej med delar som sträng, start som sträng, slut som sträng ger sträng
+        sätt text till ""
+        sätt först till SANT
+        sätt idx till start
+        medan idx är mindre än slut
+            sätt d till element idx från delar
+            om först
+                sätt först till FALSKT
+            annars
+                sätt text till text plus " "
+            sätt text till text plus värde från d
+            öka idx med 1
+        ge text
+
+    sätt lös uttryck till grej med delar som sträng ger sträng
         sätt antal till längd från delar
 
-        . Single part: literal
         om antal är lika med 1
             sätt del till element 0 från delar
             sätt tv till värde från del
@@ -17,11 +28,9 @@ sätt lös till rekgrej med noder som lista av basnod ger lista av basnod
                 ge boolesknod med 1, 1, FALSKT
             ge strängnod med 1, 1, tv
 
-        . X som Y → CastNode (3 parts: value, som, type)
         om antal är lika med 3
             sätt andra till element 1 från delar
-            sätt andrav till värde från andra
-            om andrav är lika med "som"
+            om värde från andra är lika med "som"
                 sätt första till element 0 från delar
                 sätt tredje till element 2 från delar
                 sätt värdetext till värde från första
@@ -30,18 +39,73 @@ sätt lös till rekgrej med noder som lista av basnod ger lista av basnod
                 sätt n till somnod med 1, 1, värdenod, typtext
                 ge n
 
-        . Fallthrough: return parts joined as string
-        sätt text till ""
-        sätt först till SANT
+        sätt har med till FALSKT
+        sätt medpos till 0
         för varje d i delar
-            om först
-                sätt först till FALSKT
+            om värde från d är lika med "med"
+                sätt har med till SANT
+                bryt
+            öka medpos med 1
+        om har med
+            sätt fnnamn till slå ihop delar mellan med delar, 0, medpos
+            sätt antal till längd från delar
+            sätt argstart till medpos plus 1
+
+            om argstart är större än eller lika med antal
+                sätt n till grejanropsnod med 1, 1, fnnamn, lista av sträng
+                ge n
+
+            sätt argdelar till lista av sträng
+            sätt idx till argstart
+            medan idx är mindre än antal
+                sätt elem till element idx från delar
+                lägg till elem i argdelar
+                öka idx med 1
+
+            sätt argantal till längd från argdelar
+            sätt argnod till strängnod med 1, 1, ""
+            om argantal är lika med 1
+                sätt del till element 0 från argdelar
+                sätt tv till värde från del
+                om tv är lika med "SANT"
+                    sätt argnod till boolesknod med 1, 1, SANT
+                annars om tv är lika med "FALSKT"
+                    sätt argnod till boolesknod med 1, 1, FALSKT
+                annars
+                    sätt argnod till strängnod med 1, 1, tv
             annars
-                sätt text till text plus " "
-            sätt text till text plus värde från d
+                sätt argtext till slå ihop delar mellan med argdelar, 0, argantal
+                sätt argnod till strängnod med 1, 1, argtext
+
+            sätt arglista till lista av sträng
+            lägg till argnod i arglista
+            sätt n till grejanropsnod med 1, 1, fnnamn, arglista
+            ge n
+
+        sätt har komma till FALSKT
+        för varje d i delar
+            om värde från d är lika med ","
+                sätt har komma till SANT
+                bryt
+        sätt har från till FALSKT
+        om inte har komma
+            sätt frånpos till 0
+            för varje d i delar
+                om värde från d är lika med "från"
+                    sätt har från till SANT
+                    bryt
+                öka frånpos med 1
+            om har från
+                sätt propnamn till slå ihop delar mellan med delar, 0, frånpos
+                sätt målnamn till slå ihop delar mellan med delar, frånpos plus 1, antal
+                sätt målnod till variabelnod med 1, 1, målnamn, inget av basnod
+                sätt n till egenskapsåtkomstnod med 1, 1, propnamn, målnod
+                ge n
+
+        sätt text till slå ihop delar mellan med delar, 0, antal
         ge strängnod med 1, 1, text
 
-    sätt lös nod till grej med nod som basnod ger basnod
+    sätt lös nod till grej med nod som sträng ger sträng
         sätt ht till typ av nod
 
         om ht är lika med typ av uttrycksdelarnod
@@ -49,27 +113,27 @@ sätt lös till rekgrej med noder som lista av basnod ger lista av basnod
             ge lös uttryck med delar
 
         om ht är lika med typ av tilldelningsnod
-            sätt rad till rad från nod
-            sätt kolumn till kolumn från nod
-            sätt namn till namn från nod
+            sätt r till rad från nod
+            sätt k till kolumn från nod
+            sätt nm till namn från nod
             sätt vn till värde från nod
             sätt mt till måltyp från nod
-            sätt löst värde till lös nod med vn
-            sätt nynod till tilldelningsnod med rad, kolumn, namn, löst värde, mt
+            sätt lv till lös nod med vn
+            sätt nynod till tilldelningsnod med r, k, nm, lv, mt
             ge nynod
 
         om ht är lika med typ av skrivnod
-            sätt rad till rad från nod
-            sätt kolumn till kolumn från nod
+            sätt r till rad från nod
+            sätt k till kolumn från nod
             sätt vn till värde från nod
-            sätt löst värde till lös nod med vn
-            sätt nynod till skrivnod med rad, kolumn, löst värde
+            sätt lv till lös nod med vn
+            sätt nynod till skrivnod med r, k, lv
             ge nynod
 
         ge nod
 
-    sätt resultat till lista av basnod
+    sätt resultat till lista av sträng
     för varje nod i noder
-        sätt löst nodvärde till lös nod med nod
-        lägg till löst nodvärde i resultat
+        sätt lvnod till lös nod med nod
+        lägg till lvnod i resultat
     ge resultat
