@@ -1,4 +1,6 @@
-"""Parser and Resolver tests - tests AST output after resolver transformation."""
+"""Resolver tests — tests AST output after resolver transformation.
+Runs all tests against both the Python resolver and the Hiuh resolver."""
+
 import os
 import unittest
 
@@ -9,67 +11,21 @@ from hiuh.frontend.resolver import Resolver
 from hiuh.frontend.tokenizer import Tokenizer
 
 
-class TestParserResolverAST(unittest.TestCase):
-    """Test parser and resolver together - verifies AST output after resolver transformation."""
-    
-    def setUp(self):
-        self.tokenizer = Tokenizer()
-        self.repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.hiuh_folder = os.path.join(self.repo_root, "hiuh_i_hiuh")
-        self.module_registry = ModuleRegistry(os.path.join(self.repo_root, "build", "symbols"))
-        self.resolver = Resolver(self.module_registry, self.hiuh_folder)
+class _BaseResolverTests:
+    """Mixin with resolver tests. Subclasses provide resolve(source)."""
 
-    def parse_source(self, source, modules=None):
-        """Parse source and run resolver to get transformed AST."""
-        tokens = self.tokenizer.tokenize(source)
-        parser = Parser(tokens)
-        ast = parser.parse()
-        
-        self.resolver.discover_modules_from_ast("main", ast, self.hiuh_folder)
-        
-        if modules:
-            for name, module_source in modules.items():
-                self.resolver.register_module_source(name, module_source)
+    def resolve(self, source, modules=None):
+        raise NotImplementedError
 
-        self.resolver.discover_imports("main")
-        self.resolver.resolve_all()
-        
-        return self.resolver.get_ast("main")
+    def assertResolvedEqual(self, source, expected_ast_nodes, modules=None):
+        raise NotImplementedError
 
-    def strip_locations(self, node):
-        if isinstance(node, list):
-            return [self.strip_locations(child) for child in node]
+    def assertEqual(self, a, b, msg=None):
+        raise NotImplementedError
 
-        if isinstance(node, ExpressionPart):
-            return str(node)
-
-        if not hasattr(node, '__dict__'):
-            return node
-
-        result = {}
-        for key, value in node.__dict__.items():
-            if key in ('line', 'column', 'token', 'kind'):
-                continue
-            result[key] = self.strip_locations(value)
-        return result
-
-    def _strip_return_type(self, node):
-        """Remove return_type keys from dict representation for comparison."""
-        if isinstance(node, dict):
-            return {k: self._strip_return_type(v) for k, v in node.items() if k != 'return_type'}
-        if isinstance(node, list):
-            return [self._strip_return_type(x) for x in node]
-        return node
-
-    def assertNodesEqual(self, actual, expected):
-        actual_stripped = self.strip_locations(actual)
-        expected_stripped = self.strip_locations(expected)
-        actual_stripped = self._strip_return_type(actual_stripped)
-        expected_stripped = self._strip_return_type(expected_stripped)
-        self.assertEqual(actual_stripped, expected_stripped)
+    # === Test cases ===
 
     def test_casting_to_type(self):
-        """Verify that 'X som Y' creates a CastNode."""
         source = "sätt x till 5 som text"
         expected = [
             AssignNode(
@@ -77,10 +33,9 @@ class TestParserResolverAST(unittest.TestCase):
                 value=CastNode(value=IntNode("5"), target_type="text")
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_casting_to_character(self):
-        """Verify that 'X som tecken' creates a CastNode."""
         source = "sätt x till 65 som tecken"
         expected = [
             AssignNode(
@@ -88,10 +43,9 @@ class TestParserResolverAST(unittest.TestCase):
                 value=CastNode(value=IntNode("65"), target_type="tecken")
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_casting_som_text(self):
-        """Verify that 'X som text' creates a CastNode."""
         source = "sätt x till 123 som text"
         expected = [
             AssignNode(
@@ -99,18 +53,16 @@ class TestParserResolverAST(unittest.TestCase):
                 value=CastNode(value=IntNode("123"), target_type="text")
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_file_close(self):
-        """Verify that 'stäng X' creates CloseFileNode."""
         source = "stäng fil"
         expected = [
             CloseFileNode(target_var="fil")
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_list_length(self):
-        """Verify that 'längd från lista' creates a PropertyAccessNode."""
         source = "sätt frukt till lista med äpple\nskriv längd från frukt"
         expected = [
             AssignNode(
@@ -127,10 +79,9 @@ class TestParserResolverAST(unittest.TestCase):
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_element_access(self):
-        """Verify that 'element 0 från lista' creates an ElementAccessNode."""
         source = "skriv element 0 från lista"
         expected = [
             PrintNode(
@@ -140,10 +91,9 @@ class TestParserResolverAST(unittest.TestCase):
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_list_membership_contains(self):
-        """Verify that 'lista innehåller värde' creates an InfixCallNode."""
         source = """använd listor
 
 sätt färger till lista med röd, grön
@@ -185,10 +135,9 @@ om färger innehåller blå
                 ]
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_comparison_with_property_target(self):
-        """Verify that comparisons with property access on the right are parsed correctly."""
         source = "sätt frukt till lista med äpple\nom x är mindre än längd från frukt\n    skriv hej"
         expected = [
             AssignNode(
@@ -210,13 +159,9 @@ om färger innehåller blå
                 ]
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_är_comparison_with_defined_variable(self):
-        """Verify that 'är' is preserved in comparisons when variable is defined.
-
-        'x är mindre än 5' should be parsed as ComparisonNode, not StringNode.
-        """
         source = """
 sätt x till 10
 om x är mindre än 5
@@ -239,21 +184,16 @@ om x är mindre än 5
                 ]
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_är_comparison_with_unresolved_variable(self):
-        """'är' should be preserved in stringified comparisons.
-
-        'x är mindre än 5' with unresolved 'x' should stringify with 'är' preserved.
-        """
         source = "skriv x är mindre än 5"
         expected = [
             PrintNode(value=StringNode("x är mindre än 5"))
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_not_equal_comparison(self):
-        """Verify that 'är inte' and 'är inte lika med' compile directly to NotEqualNode."""
         source = """
 sätt x till 10
 om x är inte 5
@@ -280,10 +220,9 @@ om x är inte lika med 3
                 ]
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_modulo_resolver(self):
-        """Verify that 'resten av x delat med y' compiles to ModNode."""
         source = """
 sätt x till 10
 sätt y till resten av x delat med 3
@@ -300,10 +239,9 @@ sätt z till resten av x delat på 4
                 value=ModNode(left=VarAccessNode("x"), right=IntNode("4"))
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_modulo_with_nested_expressions(self):
-        """Verify that modulo handles nested expressions correctly on left and right sides."""
         source = "sätt x till resten av 3 gånger 2 delat på 4"
         expected = [
             AssignNode(
@@ -314,10 +252,9 @@ sätt z till resten av x delat på 4
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_infix_function_body_property_access(self):
-        """Verify that infix function bodies with property access are parsed correctly."""
         source = "sätt innehåller till infixgrej med lista som lista av heltal, värde som heltal ger boolesk\n    sätt x till 0\n    medan x är mindre än längd från lista\n        ge SANT"
         expected = [
             AssignNode(
@@ -339,10 +276,9 @@ sätt z till resten av x delat på 4
                 ),
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_normal_function_body_property_access(self):
-        """Verify that normal function bodies with property access are parsed correctly."""
         source = "sätt foo till grej med a som heltal, b som heltal ger heltal\n    skriv a är mindre än längd från b"
         expected = [
             AssignNode(
@@ -362,10 +298,9 @@ sätt z till resten av x delat på 4
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_infix_function_custom_definition(self):
-        """Verify that custom infix function 'är del av' is defined correctly."""
         source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk\n    sätt x till 0\n    ge FALSKT"
         expected = [
             AssignNode(
@@ -381,10 +316,9 @@ sätt z till resten av x delat på 4
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_infix_function_call_in_comparison(self):
-        """Verify that infix function call in comparison is parsed correctly."""
         source = "sätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk\n    ge FALSKT\nom grön är del av färger\n    skriv Hittat"
         expected = [
             AssignNode(
@@ -409,10 +343,9 @@ sätt z till resten av x delat på 4
                 ]
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_named_args_in_function_call(self):
-        """Verify that named arguments in function calls are parsed correctly."""
         source = "sätt beräkna till grej med a som heltal, b som heltal ger heltal\n    ge 0\nsätt resultat till beräkna med a 5, b 3"
         expected = [
             AssignNode(
@@ -435,10 +368,9 @@ sätt z till resten av x delat på 4
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_try_catch_finally(self):
-        """Verify that try-catch-finally error handling is parsed correctly."""
         source = """
 försök
     kasta Ojdå
@@ -455,13 +387,9 @@ slutligen
                 finally_block=[PrintNode(AddNode(VarAccessNode("mellanrum"), StringNode("och hejdå")))]
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_for_each_loop(self):
-        """Verify that for-each loops are resolved correctly with multi-word variable.
-
-        The resolved tree transforms ExpressionPartsNode into proper nodes.
-        """
         source = "sätt min lista till lista med a, b, c\nför varje mitt index i min lista\n    skriv mitt index"
         expected = [
             AssignNode(
@@ -479,10 +407,9 @@ slutligen
                 ]
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_try_finally(self):
-        """Verify that try-finally (no catch) error handling is parsed correctly."""
         source = """
 försök
     skriv hej
@@ -497,10 +424,9 @@ slutligen
                 finally_block=[PrintNode(AddNode(VarAccessNode("mellanrum"), StringNode("och hejdå")))]
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_infix_funktion_custom_definition(self):
-        """Verify that custom infix function 'är del av' is defined and used correctly."""
         source = """
 sätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk
     sätt x till 0
@@ -597,10 +523,9 @@ skriv resultat"""
             ),
             PrintNode(value=VarAccessNode("resultat"))
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_listor_utility_callbacks(self):
-        """Verify that listor.hiuh high-order functions are parsed and used correctly."""
         source = """
 använd listor
 
@@ -656,10 +581,9 @@ sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_named_args_grej_function(self):
-        """Verify that grej functions support named arguments."""
         source = """
 sätt add till grej med a som heltal, b som heltal ger heltal
     ge a plus b
@@ -694,10 +618,9 @@ skriv resultat
             ),
             PrintNode(value=VarAccessNode("resultat"))
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_element_assign_int_index(self):
-        """Verify that element assignment with integer index is parsed correctly."""
         source = """
 sätt element 0 i lista till 42
         """
@@ -708,10 +631,9 @@ sätt element 0 i lista till 42
                 value=IntNode("42")
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_element_assign_variable_index(self):
-        """Verify that element assignment with variable index is parsed correctly."""
         source = """
 sätt x till 2
 sätt element x i lista till hello
@@ -724,10 +646,9 @@ sätt element x i lista till hello
                 value=StringNode("hello")
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_element_assign_in_function(self):
-        """Verify that element assignment works inside a function."""
         source = """
 sätt uppdatera till grej med lst som lista av heltal ger heltal
     sätt element 0 i lst till 100
@@ -755,14 +676,9 @@ sätt uppdatera till grej med lst som lista av heltal ger heltal
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_längd_från_property_minus_expression(self):
-        """Verify that 'längd från värden minus 1' is parsed correctly as arithmetic expression.
-
-        The expression should be parsed as: (längd från värden) minus 1
-        NOT: längd från (värden minus 1)
-        """
         source = """
 sätt värden till lista av heltal
 sätt x till längd från värden minus 1
@@ -783,19 +699,17 @@ sätt x till längd från värden minus 1
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_cannot_reassign_builtin_function(self):
-        """Verify that trying to reassign a built-in function raises an error."""
         source = """
 sätt lista till lista med 10, 20
 """
         with self.assertRaises(Exception) as context:
-            self.parse_source(source)
+            self.resolve(source)
         self.assertIn("Kan inte omdefiniera inbyggd funktion 'lista'", str(context.exception))
 
     def test_resolver_increment_decrement(self):
-        """Verify that resolver correctly resolves increment/decrement expression values."""
         source = """
 sätt poäng till 10
 öka poäng med 5 plus 2
@@ -812,10 +726,9 @@ minska poäng med 1
                 value=IntNode("1")
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_resolver_multiply_divide_assign(self):
-        """Verify that resolver correctly resolves multiply/divide assign expression values."""
         source = """
 sätt poäng till 10
 gångra poäng med 3 plus 1
@@ -832,10 +745,9 @@ dela poäng med 2
                 value=IntNode("2")
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_delstrang_function_call_ast(self):
-        """Verify the resolved AST of the delsträng definition and call."""
         source = """
 sätt delsträng till grej med text som sträng, start som heltal, längd som heltal ger sträng
     sätt resultat till ""
@@ -900,10 +812,9 @@ skriv res
             ),
             PrintNode(value=VarAccessNode("res"))
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_element_access_with_arithmetic_index_ast(self):
-        """Verify that 'element <expr> från Y' correctly resolves the index expression with arithmetic."""
         source = """
 sätt pos till 1
 sätt innehåll till "hejsan"
@@ -920,24 +831,21 @@ sätt nästa_tecken till element pos plus 1 från innehåll
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_lista_no_type_fails(self):
-        """lista without type should raise an error."""
         source = "sätt x till lista"
         with self.assertRaises(Exception) as ctx:
-            self.parse_source(source)
+            self.resolve(source)
         self.assertIn("okänd_typ", str(ctx.exception))
 
     def test_lista_av_unknown_type_fails(self):
-        """lista av okänd_typ should raise an error."""
         source = "sätt x till lista av okänd_typ"
         with self.assertRaises(Exception) as ctx:
-            self.parse_source(source)
+            self.resolve(source)
         self.assertIn("okänd_typ", str(ctx.exception))
 
     def test_lista_av_known_type_passes(self):
-        """lista av heltal should resolve to FunctionCallNode."""
         source = "sätt x till lista av heltal"
         expected = [
             AssignNode(
@@ -945,10 +853,9 @@ sätt nästa_tecken till element pos plus 1 från innehåll
                 value=FunctionCallNode(name="lista", args=[])
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_verb_grej_definition_and_call(self):
-        """verbgrej declaration and call resolve correctly."""
         source = """
 sätt upprepa till verbgrej med ord som sträng, antal som heltal ger sträng
     sätt resultat till ""
@@ -997,10 +904,9 @@ upprepa a med 3
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_skicka_grej_definition_and_call(self):
-        """skickagrej declaration and call resolve correctly."""
         source = """
 sätt lägg_till till skickagrej med sak som sträng, mål som lista av sträng ger lista av sträng
     lägg till sak i mål
@@ -1034,15 +940,14 @@ lägg_till hej till min lista
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
+        self.assertResolvedEqual(source, expected)
 
     def test_hämta_grej_definition_and_call(self):
-        """hämtagrej declaration and call resolve correctly."""
         source = """
 sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng ger sträng
     ge element 0 från källa
 
-sätt frukter till lista av sträng med "äpple", "banan"
+sätt frukter till lista av sträng med äpple, banan
 sätt resultat till plocka banan från frukter
 """
         expected = [
@@ -1073,16 +978,9 @@ sätt resultat till plocka banan från frukter
                 )
             )
         ]
-        self.assertNodesEqual(self.parse_source(source), expected)
-
+        self.assertResolvedEqual(source, expected)
 
     def test_nested_function_call_resolves_correctly(self):
-        """Calls to nested functions defined earlier in the same scope must resolve.
-
-        Hiuh requires functions to be defined before use (no forward references).
-        This test verifies that when functions are in dependency order, calls
-        resolve to FunctionCallNode instead of being stringified.
-        """
         source = (
             "sätt yttre till grej med x som heltal ger heltal\n"
             "    sätt dubblera till grej med v som heltal ger heltal\n"
@@ -1090,11 +988,8 @@ sätt resultat till plocka banan från frukter
             "    sätt resultat till dubblera med x\n"
             "    ge resultat\n"
         )
-
-        ast = self.parse_source(source)
-
-        # Walk into yttre's body to find 'sätt resultat till dubblera med x'
-        yttre_def = ast[0]
+        resolved = self.resolve(source)
+        yttre_def = resolved[0]
         self.assertIsInstance(yttre_def, AssignNode)
         yttre_body = yttre_def.value.body
         assign_resultat = next(
@@ -1107,8 +1002,46 @@ sätt resultat till plocka banan från frukter
             f"got {type(assign_resultat.value).__name__}"
         )
 
+    def test_struct_field_wrong_type_raises(self):
+        source = (
+            "typ mittresultat\n"
+            "    nod som heltal\n"
+            "    pos som heltal\n"
+            "sätt foo till grej med x som sträng ger mittresultat\n"
+            "    ge mittresultat med nod x, pos 0\n"
+        )
+        with self.assertRaises(Exception) as ctx:
+            self.resolve(source)
+        self.assertIn("Typfel", str(ctx.exception))
+        self.assertIn("nod", str(ctx.exception))
+
+    def test_struct_field_correct_type_passes(self):
+        source = (
+            "typ mittresultat\n"
+            "    nod som heltal\n"
+            "    pos som heltal\n"
+            "sätt foo till grej med x som heltal ger mittresultat\n"
+            "    ge mittresultat med nod x, pos 0\n"
+        )
+        self.resolve(source)  # Must not raise
+
+    def test_list_wrong_element_type_raises(self):
+        source = (
+            "sätt foo till grej med x som heltal ger lista av sträng\n"
+            "    ge lista med \"hej\", x\n"
+        )
+        with self.assertRaises(Exception) as ctx:
+            self.resolve(source)
+        self.assertIn("Typfel", str(ctx.exception))
+
+    def test_list_correct_element_type_passes(self):
+        source = (
+            "sätt foo till grej med x som sträng ger lista av sträng\n"
+            "    ge lista med \"hej\", x\n"
+        )
+        self.resolve(source)  # Must not raise
+
     def test_grej_allows_self_recursion(self):
-        """Both grej and rekgrej allow a function to call itself by name."""
         source = (
             "sätt nedräkning till grej med n som heltal ger heltal\n"
             "    om n är mindre än 1\n"
@@ -1116,7 +1049,7 @@ sätt resultat till plocka banan från frukter
             "    sätt nästa till n minus 1\n"
             "    ge nedräkning med nästa\n"
         )
-        resolved = self.parse_source(source)
+        resolved = self.resolve(source)
         fn_def = resolved[0]
         body = fn_def.value.body
         return_stmt = body[-1]
@@ -1126,7 +1059,6 @@ sätt resultat till plocka banan från frukter
         )
 
     def test_grej_blocks_forward_reference_to_sibling(self):
-        """Nested plain grej must NOT see sibling nested functions defined later."""
         source = (
             "sätt yttre till grej med x som heltal ger heltal\n"
             "    sätt tidig till grej med v som heltal ger heltal\n"
@@ -1135,7 +1067,7 @@ sätt resultat till plocka banan från frukter
             "        ge v gånger 2\n"
             "    ge tidig med x\n"
         )
-        resolved = self.parse_source(source)
+        resolved = self.resolve(source)
         yttre_body = resolved[0].value.body
         tidig_def = next(s for s in yttre_body if isinstance(s, AssignNode) and s.name == 'tidig')
         tidig_body = tidig_def.value.body
@@ -1146,7 +1078,6 @@ sätt resultat till plocka banan från frukter
         )
 
     def test_rekgrej_allows_mutual_recursion_between_siblings(self):
-        """Two rekgrej functions can call each other regardless of order."""
         source = (
             "sätt jämn till rekgrej med n som heltal ger boolesk\n"
             "    om n är 0\n"
@@ -1157,7 +1088,7 @@ sätt resultat till plocka banan från frukter
             "        ge FALSKT\n"
             "    ge jämn med n minus 1\n"
         )
-        resolved = self.parse_source(source)
+        resolved = self.resolve(source)
         jämn_body = resolved[0].value.body
         jämn_return = jämn_body[-1]
         self.assertIsInstance(jämn_return.value, FunctionCallNode)
@@ -1166,51 +1097,84 @@ sätt resultat till plocka banan från frukter
         self.assertIsInstance(udda_return.value, FunctionCallNode)
 
 
-    def test_struct_field_wrong_type_raises(self):
-        """Passing sträng to a struct field declared as heltal must raise Typfel."""
-        source = (
-            "typ mittresultat\n"
-            "    nod som heltal\n"
-            "    pos som heltal\n"
-            "sätt foo till grej med x som sträng ger mittresultat\n"
-            "    ge mittresultat med nod x, pos 0\n"
-        )
-        with self.assertRaises(Exception) as ctx:
-            self.parse_source(source)
-        self.assertIn("Typfel", str(ctx.exception))
-        self.assertIn("nod", str(ctx.exception))
-        self.assertIn("sträng", str(ctx.exception))
-        self.assertIn("heltal", str(ctx.exception))
+class TestPythonResolver(_BaseResolverTests, unittest.TestCase):
+    """Tests using the Python resolver."""
 
-    def test_struct_field_correct_type_passes(self):
-        """Passing heltal to a struct field declared as heltal must not raise."""
-        source = (
-            "typ mittresultat\n"
-            "    nod som heltal\n"
-            "    pos som heltal\n"
-            "sätt foo till grej med x som heltal ger mittresultat\n"
-            "    ge mittresultat med nod x, pos 0\n"
-        )
-        self.parse_source(source)  # Must not raise
+    def setUp(self):
+        self.tokenizer = Tokenizer()
+        self.repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.hiuh_folder = os.path.join(self.repo_root, "hiuh_i_hiuh")
+        self.module_registry = ModuleRegistry(os.path.join(self.repo_root, "build", "symbols"))
+        self.resolver = Resolver(self.module_registry, self.hiuh_folder)
 
-    def test_list_wrong_element_type_raises(self):
-        """Passing heltal in a lista av sträng must raise Typfel."""
-        source = (
-            "sätt foo till grej med x som heltal ger lista av sträng\n"
-            "    ge lista med \"hej\", x\n"
-        )
-        with self.assertRaises(Exception) as ctx:
-            self.parse_source(source)
-        self.assertIn("Typfel", str(ctx.exception))
+    def resolve(self, source, modules=None):
+        tokens = self.tokenizer.tokenize(source)
+        parser = Parser(tokens)
+        ast = parser.parse()
 
-    def test_list_correct_element_type_passes(self):
-        """Passing sträng in a lista av sträng must not raise."""
-        source = (
-            "sätt foo till grej med x som sträng ger lista av sträng\n"
-            "    ge lista med \"hej\", x\n"
-        )
-        self.parse_source(source)  # Must not raise
+        self.resolver.discover_modules_from_ast("main", ast, self.hiuh_folder)
 
+        if modules:
+            for name, module_source in modules.items():
+                self.resolver.register_module_source(name, module_source)
+
+        self.resolver.discover_imports("main")
+        self.resolver.resolve_all()
+
+        return self.resolver.get_ast("main")
+
+    def assertResolvedEqual(self, source, expected_ast_nodes, modules=None):
+        actual = self.resolve(source, modules)
+        actual_stripped = self._strip(actual)
+        expected_stripped = self._strip(expected_ast_nodes)
+        actual_stripped = self._strip_return_type(actual_stripped)
+        expected_stripped = self._strip_return_type(expected_stripped)
+        self.assertEqual(actual_stripped, expected_stripped)
+
+    def _strip(self, node):
+        if isinstance(node, list):
+            return [self._strip(child) for child in node]
+        if isinstance(node, ExpressionPart):
+            return str(node)
+        if not hasattr(node, '__dict__'):
+            return node
+        result = {}
+        for key, value in node.__dict__.items():
+            if key in ('line', 'column', 'token', 'kind'):
+                continue
+            result[key] = self._strip(value)
+        return result
+
+    def _strip_return_type(self, node):
+        if isinstance(node, dict):
+            return {k: self._strip_return_type(v) for k, v in node.items() if k != 'return_type'}
+        if isinstance(node, list):
+            return [self._strip_return_type(x) for x in node]
+        return node
+
+    def assertEqual(self, a, b, msg=None):
+        unittest.TestCase.assertEqual(self, a, b, msg)
+
+
+class TestHiuhResolver(_BaseResolverTests, unittest.TestCase):
+    """Tests using the Hiuh resolver (via interpreter).
+
+    Not yet implemented — will be filled in as resolver.hiuh grows.
+    """
+
+    def setUp(self):
+        self.tokenizer = Tokenizer()
+        self._repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        raise unittest.SkipTest("Hiuh resolver not yet implemented")
+
+    def resolve(self, source, modules=None):
+        raise unittest.SkipTest("Hiuh resolver not yet implemented")
+
+    def assertResolvedEqual(self, source, expected_ast_nodes, modules=None):
+        raise unittest.SkipTest("Hiuh resolver not yet implemented")
+
+    def assertEqual(self, a, b, msg=None):
+        unittest.TestCase.assertEqual(self, a, b, msg)
 
 
 if __name__ == '__main__':
