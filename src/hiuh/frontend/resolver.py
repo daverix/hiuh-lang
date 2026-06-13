@@ -1997,15 +1997,22 @@ class Resolver:
         return ReturnNode(value=value, token=node)
 
     def _validate_return_value(self, value, declared_type, node):
-        """Validate that the returned value matches the declared return type.
-
-        declared_type examples: 'basnod', 'lista av basnod', 'heltal', 'parsningsresultat'
-        """
+        """Validate that the returned value matches the declared return type."""
         parsed = self._parse_type_annotation(declared_type)
         if parsed is None:
             return
 
         type_name, type_args = parsed
+
+        # Resolve variable references to their inferred types
+        if isinstance(value, VarAccessNode):
+            inferred = self._infer_type(value)
+            if inferred and not self._types_compatible(inferred, declared_type):
+                raise Exception(
+                    f"Typfel: 'ge' returnerar '{inferred}' men funktionen "
+                    f"är deklarerad att returnera '{declared_type}'"
+                )
+            return
 
         if type_name == 'lista':
             self._validate_list_return(value, type_args, node)

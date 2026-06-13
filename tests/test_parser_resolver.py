@@ -1078,6 +1078,26 @@ sätt resultat till plocka banan från frukter
             f"Forward ref to nested sibling with grej should be StringNode, got {type(return_stmt.value).__name__}"
         )
 
+    def test_return_variable_type_mismatch_raises(self):
+        """Returning a variable of wrong type must raise Typfel."""
+        source = (
+            "sätt foo till grej med ger heltal\n"
+            "    sätt x till lista av sträng\n"
+            "    ge x\n"
+        )
+        with self.assertRaises(Exception) as ctx:
+            self.resolve(source)
+        self.assertIn("Typfel", str(ctx.exception))
+
+    def test_return_variable_correct_type_passes(self):
+        """Returning a variable of correct type must pass."""
+        source = (
+            "sätt foo till grej med ger lista av sträng\n"
+            "    sätt x till lista av sträng\n"
+            "    ge x\n"
+        )
+        self.resolve(source)  # Must not raise
+
     def test_rekgrej_allows_mutual_recursion_between_siblings(self):
         source = (
             "sätt jämn till rekgrej med n som heltal ger boolesk\n"
