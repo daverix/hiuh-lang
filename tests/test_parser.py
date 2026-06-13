@@ -9,89 +9,7 @@ import unittest
 from hiuh.frontend.ast import *
 from hiuh.frontend.parser import Parser
 from hiuh.frontend.tokenizer import Tokenizer
-
-
-def _ast_to_string(node, indent=0):
-    """Convert an AST node to a canonical string for cross-backend comparison."""
-    if isinstance(node, list):
-        items = ", ".join(_ast_to_string(n, indent) for n in node)
-        return "[" + items + "]"
-
-    if isinstance(node, ExpressionPartsNode):
-        return "Expr(" + " ".join(node.parts) + ")"
-
-    classname = type(node).__name__
-
-    if isinstance(node, (IntNode, FloatNode)):
-        return f"{classname}({node.value})"
-    if isinstance(node, StringNode):
-        return f"{classname}({repr(node.value)})"
-    if isinstance(node, BoolNode):
-        return f"{classname}({node.value})"
-    if isinstance(node, VarAccessNode):
-        return f"{classname}({node.name})"
-    if isinstance(node, (BreakNode, ContinueNode)):
-        return f"{classname}()"
-
-    if isinstance(node, PrintNode):
-        return f"{classname}({_ast_to_string(node.value)})"
-    if isinstance(node, ReturnNode):
-        return f"{classname}({_ast_to_string(node.value)})"
-    if isinstance(node, AssignNode):
-        return f"{classname}({node.name}, {_ast_to_string(node.value)})"
-    if isinstance(node, AddAssignNode):
-        return f"{classname}({node.target}, {_ast_to_string(node.value)})"
-    if isinstance(node, SubAssignNode):
-        return f"{classname}({node.target}, {_ast_to_string(node.value)})"
-    if isinstance(node, MultiplyAssignNode):
-        return f"{classname}({node.target}, {_ast_to_string(node.value)})"
-    if isinstance(node, DivideAssignNode):
-        return f"{classname}({node.target}, {_ast_to_string(node.value)})"
-    if isinstance(node, ImportNode):
-        return f"{classname}({node.module_name})"
-    if isinstance(node, CloseFileNode):
-        return f"{classname}({node.target_var})"
-
-    if isinstance(node, WhileNode):
-        cond = _ast_to_string(node.condition)
-        body = _ast_to_string(node.body)
-        return f"{classname}({cond}, {body})"
-    if isinstance(node, ForEachNode):
-        var = node.variable
-        it = _ast_to_string(node.iterable)
-        body = _ast_to_string(node.body)
-        return f"{classname}({var}, {it}, {body})"
-
-    if isinstance(node, IfNode):
-        conds = ", ".join(
-            f"IfCond({_ast_to_string(c.test)}, {_ast_to_string(c.block)})"
-            for c in node.conditions
-        )
-        if node.else_block:
-            conds += ", Else(" + _ast_to_string(node.else_block) + ")"
-        return f"IfNode({conds})"
-
-    if isinstance(node, TryCatchNode):
-        parts = [f"Try({_ast_to_string(node.try_block)})"]
-        if node.catch_block:
-            parts.append(f"Catch({node.error_var}, {_ast_to_string(node.catch_block)})")
-        if node.finally_block:
-            parts.append(f"Finally({_ast_to_string(node.finally_block)})")
-        return "TryCatchNode(" + ", ".join(parts) + ")"
-
-    if isinstance(node, UnaryOpNode):
-        return f"UnaryOpNode({node.op}, {_ast_to_string(node.operand)})"
-    if isinstance(node, FunctionDefNode):
-        params = str(node.params)
-        body = _ast_to_string(node.body)
-        infix = ", infix=True" if getattr(node, 'is_infix', False) else ""
-        ret = f", return_type={node.return_type!r}" if getattr(node, 'return_type', None) else ""
-        return f"{classname}({params}, {body}{infix}{ret})"
-    if isinstance(node, ElementAssignNode):
-        return f"{classname}({_ast_to_string(node.index)}, {node.target}, {_ast_to_string(node.value)})"
-
-    # Generic fallback
-    return f"{classname}(...)" 
+from tests.ast_format import ast_to_string
 
 
 class _StringWrapper:
@@ -118,7 +36,7 @@ class _BaseParserTests:
         if isinstance(actual, list) and actual and isinstance(actual[0], _StringWrapper):
             # Hiuh backend: compare strings
             actual_strs = [w.value for w in actual]
-            expected_strs = [_ast_to_string(n) for n in expected_ast_nodes]
+            expected_strs = [ast_to_string(n) for n in expected_ast_nodes]
             self.assertEqual(actual_strs, expected_strs)
         else:
             # Python backend: compare AST objects (strip locations)
