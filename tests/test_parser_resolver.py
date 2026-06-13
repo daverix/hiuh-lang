@@ -1165,24 +1165,6 @@ sätt resultat till plocka banan från frukter
         udda_return = udda_body[-1]
         self.assertIsInstance(udda_return.value, FunctionCallNode)
 
-class TestResolverReturnTypeValidation(unittest.TestCase):
-    """Resolver must validate that 'ge' returns values matching the declared return type."""
-
-    def setUp(self):
-        self.tokenizer = Tokenizer()
-        self.repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.hiuh_folder = os.path.join(self.repo_root, "hiuh_i_hiuh")
-
-    def _resolve(self, source):
-        tokens = self.tokenizer.tokenize(source)
-        parser = Parser(tokens)
-        ast = parser.parse()
-        mr = ModuleRegistry(os.path.join(self.repo_root, "build", "symbols"))
-        resolver = Resolver(mr, self.hiuh_folder)
-        resolver.discover_modules_from_ast("main", ast, self.hiuh_folder)
-        resolver.discover_imports("main")
-        resolver.resolve_all()
-        return resolver.get_ast("main")
 
     def test_struct_field_wrong_type_raises(self):
         """Passing sträng to a struct field declared as heltal must raise Typfel."""
@@ -1194,7 +1176,7 @@ class TestResolverReturnTypeValidation(unittest.TestCase):
             "    ge mittresultat med nod x, pos 0\n"
         )
         with self.assertRaises(Exception) as ctx:
-            self._resolve(source)
+            self.parse_source(source)
         self.assertIn("Typfel", str(ctx.exception))
         self.assertIn("nod", str(ctx.exception))
         self.assertIn("sträng", str(ctx.exception))
@@ -1209,7 +1191,7 @@ class TestResolverReturnTypeValidation(unittest.TestCase):
             "sätt foo till grej med x som heltal ger mittresultat\n"
             "    ge mittresultat med nod x, pos 0\n"
         )
-        self._resolve(source)  # Must not raise
+        self.parse_source(source)  # Must not raise
 
     def test_list_wrong_element_type_raises(self):
         """Passing heltal in a lista av sträng must raise Typfel."""
@@ -1218,7 +1200,7 @@ class TestResolverReturnTypeValidation(unittest.TestCase):
             "    ge lista med \"hej\", x\n"
         )
         with self.assertRaises(Exception) as ctx:
-            self._resolve(source)
+            self.parse_source(source)
         self.assertIn("Typfel", str(ctx.exception))
 
     def test_list_correct_element_type_passes(self):
@@ -1227,7 +1209,7 @@ class TestResolverReturnTypeValidation(unittest.TestCase):
             "sätt foo till grej med x som sträng ger lista av sträng\n"
             "    ge lista med \"hej\", x\n"
         )
-        self._resolve(source)  # Must not raise
+        self.parse_source(source)  # Must not raise
 
 
 
