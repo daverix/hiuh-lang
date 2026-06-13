@@ -1076,5 +1076,53 @@ sätt resultat till plocka banan från frukter
         self.assertNodesEqual(self.parse_source(source), expected)
 
 
+    def test_resolver_registers_nested_functions(self):
+        """Resolver must handle forward-references to nested functions.
+
+        Reproduces the bug behind test_boolean_literals: parser.hiuh defines
+        nested functions like 'parsa sats' early in 'parsa', but those
+        functions call other nested functions ('parsa om', 'parsa medan')
+        that are defined LATER.  The resolver visits bodies in source order,
+        so 'parsa sats med pos' is resolved before 'parsa om' is registered,
+        causing stringification.
+
+        This test defines 'tidig' first (which calls 'sen'), then 'sen'.
+        The call 'sen med x' inside 'tidig' must resolve to FunctionCallNode.
+        """
+        source = (
+            "sätt yttre till grej med x som heltal ger heltal\n"
+            "    sätt tidig till grej med v som heltal ger heltal\n"
+            "        sätt resultat till sen med v\n"
+            "        ge resultat\n"
+            "    sätt sen till grej med v som heltal ger heltal\n"
+            "        ge v gånger 2\n"
+            "    sätt resultat till tidig med x\n"
+            "    ge resultat\n"
+        )
+
+        ast = self.parse_source(source)
+
+        # Walk into yttre's body to find 'tidig's body and check 'sen med v'
+        yttre_def = ast[0]
+        self.assertIsInstance(yttre_def, AssignNode)
+        yttre_body = yttre_def.value.body
+
+        # Find 'tidig' definition and walk into its body
+        tidig_def = next(
+            s for s in yttre_body
+            if isinstance(s, AssignNode) and s.name == "tidig"
+        )
+        tidig_body = tidig_def.value.body
+        assign_resultat = next(
+            s for s in tidig_body
+            if isinstance(s, AssignNode) and s.name == "resultat"
+        )
+        self.assertIsInstance(
+            assign_resultat.value, FunctionCallNode,
+            f"Forward-ref call to 'sen med v' must be FunctionCallNode, "
+            f"got {type(assign_resultat.value).__name__}"
+        )
+
+
 if __name__ == '__main__':
     unittest.main()
