@@ -1042,6 +1042,14 @@ sätt resultat till plocka banan från frukter
         )
         self.resolve(source)  # Must not raise
 
+    def test_bool_literals_resolve(self):
+        source = "skriv SANT\nskriv FALSKT"
+        expected = [
+            PrintNode(value=BoolNode(True)),
+            PrintNode(value=BoolNode(False)),
+        ]
+        self.assertResolvedEqual(source, expected)
+
     def test_grej_allows_self_recursion(self):
         source = (
             "sätt nedräkning till grej med n som heltal ger heltal\n"

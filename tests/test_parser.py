@@ -140,6 +140,16 @@ class _BaseParserTests:
         ]
         self.assertParseEqual(source, expected)
 
+    def test_bool_literal_sant(self):
+        source = "skriv SANT"
+        expected = [PrintNode(value=ExpressionPartsNode(parts=["SANT"]))]
+        self.assertParseEqual(source, expected)
+
+    def test_bool_literal_falskt(self):
+        source = "skriv FALSKT"
+        expected = [PrintNode(value=ExpressionPartsNode(parts=["FALSKT"]))]
+        self.assertParseEqual(source, expected)
+
     def test_negation(self):
         source = "om inte x\n    skriv falskt"
         expected = [

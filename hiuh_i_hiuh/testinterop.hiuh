@@ -21,6 +21,11 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt v till värde från n
         ge "IntNode(" plus v plus ")"
 
+    om ht är lika med typ av boolesknod
+        om värde från n
+            ge "BoolNode(True)"
+        ge "BoolNode(False)"
+
     om ht är lika med typ av grejanropsnod
         sätt fnnamn till namn från n
         sätt arg till argument från n

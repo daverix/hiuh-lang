@@ -239,7 +239,6 @@ class Interpreter:
     def visit_IntNode(self, node): return int(node.value)
     def visit_FloatNode(self, node): return float(node.value)
     def visit_BoolNode(self, node):
-        # Return Swedish boolean strings matching source code capitalization
         return "SANT" if node.value else "FALSKT"
     def visit_StringNode(self, node): return node.value
 
