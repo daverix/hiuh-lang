@@ -16,6 +16,16 @@ sätt formatera en nod till grej med n som basnod ger sträng
     om ht är lika med typ av strängnod
         ge värde från n
 
+    om ht är lika med typ av heltalsnod
+        sätt v till värde från n
+        ge "IntNode(" plus v plus ")"
+
+    om ht är lika med typ av somnod
+        sätt vn till värde från n
+        sätt vs till formatera en nod med vn
+        sätt mt till måltyp från n
+        ge "CastNode(" plus vs plus ", '" plus mt plus "')"
+
     om ht är lika med typ av uttrycksdelarnod
         sätt delar till delar från n
         sätt txt till ""

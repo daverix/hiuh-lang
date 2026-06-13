@@ -2,7 +2,74 @@ använd ast
 
 . Hiuh resolver — replaces src/hiuh/frontend/resolver.py
 
-. Resolve raw AST nodes into their proper types.
-. For now this is a passthrough — returns nodes unchanged.
-sätt lös till grej med noder som lista av basnod ger lista av basnod
-    ge noder
+sätt lös till rekgrej med noder som lista av basnod ger lista av basnod
+
+    sätt lös uttryck till grej med delar som lista av uttrycksdelnod ger basnod
+        sätt antal till längd från delar
+
+        . Single part: literal
+        om antal är lika med 1
+            sätt del till element 0 från delar
+            sätt tv till värde från del
+            om tv är lika med "SANT"
+                ge boolesknod med 1, 1, SANT
+            om tv är lika med "FALSKT"
+                ge boolesknod med 1, 1, FALSKT
+            ge strängnod med 1, 1, tv
+
+        . X som Y → CastNode (3 parts: value, som, type)
+        om antal är lika med 3
+            sätt andra till element 1 från delar
+            sätt andrav till värde från andra
+            om andrav är lika med "som"
+                sätt första till element 0 från delar
+                sätt tredje till element 2 från delar
+                sätt värdetext till värde från första
+                sätt typtext till värde från tredje
+                sätt värdenod till heltalsnod med 1, 1, värdetext
+                sätt n till somnod med 1, 1, värdenod, typtext
+                ge n
+
+        . Fallthrough: return parts joined as string
+        sätt text till ""
+        sätt först till SANT
+        för varje d i delar
+            om först
+                sätt först till FALSKT
+            annars
+                sätt text till text plus " "
+            sätt text till text plus värde från d
+        ge strängnod med 1, 1, text
+
+    sätt lös nod till grej med nod som basnod ger basnod
+        sätt ht till typ av nod
+
+        om ht är lika med typ av uttrycksdelarnod
+            sätt delar till delar från nod
+            ge lös uttryck med delar
+
+        om ht är lika med typ av tilldelningsnod
+            sätt rad till rad från nod
+            sätt kolumn till kolumn från nod
+            sätt namn till namn från nod
+            sätt vn till värde från nod
+            sätt mt till måltyp från nod
+            sätt löst värde till lös nod med vn
+            sätt nynod till tilldelningsnod med rad, kolumn, namn, löst värde, mt
+            ge nynod
+
+        om ht är lika med typ av skrivnod
+            sätt rad till rad från nod
+            sätt kolumn till kolumn från nod
+            sätt vn till värde från nod
+            sätt löst värde till lös nod med vn
+            sätt nynod till skrivnod med rad, kolumn, löst värde
+            ge nynod
+
+        ge nod
+
+    sätt resultat till lista av basnod
+    för varje nod i noder
+        sätt löst nodvärde till lös nod med nod
+        lägg till löst nodvärde i resultat
+    ge resultat

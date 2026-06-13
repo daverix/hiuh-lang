@@ -1211,8 +1211,10 @@ class TestHiuhResolver(_BaseResolverTests, unittest.TestCase):
 
     def assertResolvedEqual(self, source, expected_ast_nodes, modules=None):
         actual = self.resolve(source)
-        # formatera returns one string per AST node; ast_to_string returns one string for the list
+        # formatera returns one string per AST node; match against ast_to_string per node
         expected = [ast_to_string([n]) for n in expected_ast_nodes]
+        # Strip outer brackets from ast_to_string(list) — formatera gives individual strings
+        expected = [s[1:-1] if s.startswith('[') and s.endswith(']') else s for s in expected]
         self.assertEqual(actual, expected)
 
     def assertEqual(self, a, b, msg=None):
