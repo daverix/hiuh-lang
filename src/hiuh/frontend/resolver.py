@@ -1985,17 +1985,62 @@ class Resolver:
     def _validate_return_value(self, value, declared_type, node):
         """Validate that the returned value matches the declared return type.
 
-        declared_type examples: 'basnod', 'lista av basnod', 'heltal', 'sträng'
+        declared_type examples: 'basnod', 'lista av basnod', 'heltal', 'parsningsresultat'
         """
-        # Parse the declared type
         parsed = self._parse_type_annotation(declared_type)
         if parsed is None:
-            return  # Can't validate complex types yet
+            return
 
         type_name, type_args = parsed
 
         if type_name == 'lista':
             self._validate_list_return(value, type_args, node)
+        else:
+            self._validate_struct_return(value, type_name, node)
+
+    def _validate_struct_return(self, value, type_name, node):
+        """Validate that value matches the struct type."""
+        # Only check FunctionCallNode patterns
+        if not isinstance(value, FunctionCallNode):
+            return
+        if value.name != type_name:
+            # Wrong constructor called — but might be a variable, skip
+            return
+
+        # Get the struct's field definitions
+        field_defs = self._get_type_field_definitions(type_name)
+        if not field_defs:
+            return
+
+        # Build a map of field name -> declared type
+        field_types = {}
+        for f in field_defs:
+            if isinstance(f, tuple):
+                field_types[f[0]] = f[1]
+            else:
+                field_types[f] = None
+
+        for arg in value.args:
+            if isinstance(arg, NamedArgNode):
+                field_name = arg.name
+                arg_value = arg.value
+                expected = field_types.get(field_name)
+                if expected:
+                    inferred = self._infer_type(arg_value)
+                    if inferred and not self._types_compatible(inferred, expected):
+                        raise Exception(
+                            f"Typfel: fältet '{field_name}' i '{type_name}' "
+                            f"har typen '{inferred}' men förväntade '{expected}'"
+                        )
+
+    def _get_type_field_definitions(self, type_name):
+        """Get the raw field definitions for a type, including type annotations."""
+        for mod_info in self.modules.values():
+            if mod_info.ast:
+                for n in mod_info.ast:
+                    if hasattr(n, 'name') and n.name == type_name and hasattr(n, 'fields'):
+                        return n.fields
+        return None
 
     def _validate_list_return(self, value, element_types, node):
         """Validate that value is a list where all elements match element_types.
@@ -2027,13 +2072,11 @@ class Resolver:
         # VarAccessNode → check if the variable name is a known type
         # For now, we primarily check for heltal (int) mixed into basnod lists
         inferred = self._infer_type(arg)
-        if inferred and inferred != expected_type:
-            # Check if inferred is a subtype of expected_type
-            if not self._is_subtype(inferred, expected_type):
-                raise Exception(
-                    f"Typfel: 'ge' returnerar '{inferred}' men funktionen "
-                    f"är deklarerad att returnera 'lista av {expected_type}'"
-                )
+        if inferred and not self._types_compatible(inferred, expected_type):
+            raise Exception(
+                f"Typfel: 'ge' returnerar '{inferred}' men funktionen "
+                f"är deklarerad att returnera 'lista av {expected_type}'"
+            )
 
     def _infer_type(self, node):
         """Infer the type of an AST node."""
@@ -2058,6 +2101,18 @@ class Resolver:
             if node.name == 'lista':
                 return 'lista'
         return None
+
+    def _types_compatible(self, inferred, expected):
+        """Check if inferred type is compatible with expected type."""
+        if inferred == expected:
+            return True
+        # Unparameterized 'lista' is compatible with 'lista av X' for any X
+        inferred_parsed = self._parse_type_annotation(inferred)
+        expected_parsed = self._parse_type_annotation(expected)
+        if inferred_parsed and expected_parsed:
+            if inferred_parsed[0] == expected_parsed[0] == 'lista':
+                return True  # lista is compatible with lista av X
+        return self._is_subtype(inferred, expected)
 
     def _is_subtype(self, type_name, parent_type):
         """Check if type_name is a subtype of parent_type."""
