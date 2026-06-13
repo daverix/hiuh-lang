@@ -14,11 +14,27 @@ sätt formatera en nod till grej med n som basnod ger sträng
     sätt ht till typ av n
 
     om ht är lika med typ av strängnod
-        ge värde från n
+        sätt v till värde från n
+        ge "StringNode('" plus v plus "')"
 
     om ht är lika med typ av heltalsnod
         sätt v till värde från n
         ge "IntNode(" plus v plus ")"
+
+    om ht är lika med typ av grejanropsnod
+        sätt fnnamn till namn från n
+        sätt arg till argument från n
+        sätt argstr till formatera block med arg
+        ge "FunctionCallNode('" plus fnnamn plus "', " plus argstr plus ")"
+
+    om ht är lika med typ av egenskapsåtkomstnod
+        sätt pn till namn från n
+        sätt mn till mål från n
+        sätt ms till formatera en nod med mn
+        ge "PropertyAccessNode('" plus pn plus "', " plus ms plus ")"
+
+    om ht är lika med typ av variabelnod
+        ge "VarAccessNode(" plus namn från n plus ")"
 
     om ht är lika med typ av somnod
         sätt vn till värde från n
