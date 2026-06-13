@@ -106,5 +106,8 @@ def ast_to_string(node):
         return f"NamedArgNode({node.name!r}, {ast_to_string(node.value)})"
     if isinstance(node, AppendNode):
         return f"AppendNode({ast_to_string(node.value)}, {node.target_list!r})"
+    if isinstance(node, FunctionTypeNode):
+        params = str(node.params)
+        return f"FunctionTypeNode(name={node.name!r}, params={params}, return_type={node.return_type!r})"
 
     return f"{classname}(...)"

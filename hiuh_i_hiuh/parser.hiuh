@@ -114,6 +114,66 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
         sätt n till stängfilnod med rad, kolumn, filnamn
         ge parsningsresultat med nod n, pos pos
 
+    sätt parsa grejtyp till grej med startpos som heltal ger parsningsresultat
+        sätt pos till startpos
+        sätt t0 till element startpos från tokens
+        sätt rad till rad från t0
+        sätt kolumn till kolumn från t0
+        öka pos med 1
+
+        sätt r till samla namn med pos, medtoken
+        sätt pos till pos från r
+        sätt namn till namn från r
+
+        sätt t till element pos från tokens
+        om tokentyp från t är lika med medtoken
+            öka pos med 1
+
+        sätt paramnoder till lista av basnod
+        sätt t till element pos från tokens
+        sätt tt till tokentyp från t
+        sätt tv till värde från t
+
+        medan tt är inte lika med gertoken och tt är inte lika med nyradstoken
+            sätt pn till strängnod med rad från t, kolumn från t, tv
+            öka pos med 1
+            lägg till pn i paramnoder
+
+            om pos är mindre än längd från tokens
+                sätt t3 till element pos från tokens
+                om tokentyp från t3 är lika med somtoken
+                    öka pos med 1
+
+            sätt t till element pos från tokens
+            sätt tt till tokentyp från t
+            sätt tv till värde från t
+
+            om tt är lika med kommatoken
+                öka pos med 1
+                sätt t till element pos från tokens
+                sätt tt till tokentyp från t
+                sätt tv till värde från t
+
+        . Parse return type
+        sätt rettyp till heltal
+        om tt är lika med gertoken
+            öka pos med 1
+
+            sätt retdelar till lista av sträng
+            medan pos är mindre än längd från tokens
+                sätt t2 till element pos från tokens
+                sätt t2t till tokentyp från t2
+                om t2t är lika med nyradstoken
+                    bryt
+                lägg till värde från t2 i retdelar
+                öka pos med 1
+
+            om längd från retdelar är större än 0
+                sätt rettyp till slå ihop med retdelar, " "
+
+        sätt n till grejtypnod med rad, kolumn, namn, paramnoder, rettyp
+        ge parsningsresultat med nod n, pos pos
+
     sätt parsa mod till grej med startpos som heltal ger parsningsresultat
         sätt pos till startpos
         öka pos med 1
@@ -448,6 +508,9 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
                 ge r
             om tv är lika med "dela"
                 sätt r till parsa mod med pos
+                ge r
+            om tv är lika med "grejtyp"
+                sätt r till parsa grejtyp med pos
                 ge r
 
         öka pos med 1

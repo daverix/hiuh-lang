@@ -266,3 +266,9 @@ typ uttrycksdelnod ärver basnod
 . ExpressionPartsNode in ast.py
 typ uttrycksdelarnod ärver basnod
     delar som lista av uttrycksdelnod
+
+. FunctionTypeNode in ast.py
+typ grejtypnod ärver basnod
+    namn som sträng
+    parametrar som lista av basnod
+    returtyp som sträng
