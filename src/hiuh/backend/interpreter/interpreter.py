@@ -937,6 +937,10 @@ class Interpreter:
         make_constructor._hiuhtyp = h
         self._hiuhtyp_registry[node.name] = h
 
+    def visit_FunctionTypeNode(self, node):
+        """grejtyp declaration — no-op at runtime, type info for resolver."""
+        return None
+
     def visit_TypeOfNode(self, node):
         """typ av X — returns a hiuhtyp object with namn and föräldrar."""
         val = self.visit(node.value)
