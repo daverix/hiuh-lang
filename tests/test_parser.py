@@ -44,6 +44,8 @@ class _BaseParserTests:
     def _strip_locations(self, node):
         if isinstance(node, list):
             return [self._strip_locations(child) for child in node]
+        if isinstance(node, tuple):
+            return tuple(self._strip_locations(child) for child in node)
         if isinstance(node, ExpressionPart):
             return str(node)
         if not hasattr(node, '__dict__'):
@@ -225,6 +227,150 @@ annars
         source = "grejtyp mingrej med x som heltal ger heltal"
         from hiuh.frontend.ast import FunctionTypeNode
         expected = [FunctionTypeNode(None, None, name='mingrej', params=[('x', 'heltal')], return_type='heltal')]
+        self.assertParseEqual(source, expected)
+
+# --- append (lägg till) ---
+    def test_append_statement(self):
+        source = "lägg till hej i lista"
+        expected = [AppendNode(None, None, value=ExpressionPartsNode(None, None, parts=['hej']), target_list='lista')]
+        self.assertParseEqual(source, expected)
+
+# --- remove (ta bort) ---
+    def test_remove_value_statement(self):
+        source = "ta bort hej från lista"
+        expected = [RemoveValueNode(None, None, value=ExpressionPartsNode(None, None, parts=['hej']), target_list='lista')]
+        self.assertParseEqual(source, expected)
+
+    def test_remove_index_statement(self):
+        source = "ta bort element 0 från lista"
+        expected = [RemoveIndexNode(None, None, index=ExpressionPartsNode(None, None, parts=['0']), target_list='lista')]
+        self.assertParseEqual(source, expected)
+
+# --- skicka call (putta X till Y) ---
+    def test_skicka_call(self):
+        source = "putta hej till min lista"
+        expected = [AssignNode(None, None, name='min lista', value=FunctionCallNode(None, None, name='putta', args=[ExpressionPartsNode(None, None, parts=['hej']), VarAccessNode(None, None, 'min lista')]))]
+        self.assertParseEqual(source, expected)
+
+# --- for_each ---
+    def test_for_each_loop(self):
+        source = """\
+för varje x i lista
+    skriv x"""
+        expected = [ForEachNode(None, None, variable='x', iterable=ExpressionPartsNode(None, None, parts=['lista']), body=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['x']))])]
+        self.assertParseEqual(source, expected)
+
+    def test_for_each_multipart_variable(self):
+        source = """\
+för varje mitt index i lista
+    skriv mitt index"""
+        expected = [ForEachNode(None, None, variable='mitt index', iterable=ExpressionPartsNode(None, None, parts=['lista']), body=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['mitt', 'index']))])]
+        self.assertParseEqual(source, expected)
+
+# --- try/catch/finally ---
+    def test_try_catch(self):
+        source = """\
+försök
+    skriv hej
+fånga fel
+    skriv fel"""
+        expected = [TryCatchNode(None, None, try_block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['hej']))], error_var='fel', catch_block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['fel']))])]
+        self.assertParseEqual(source, expected)
+
+    def test_try_finally(self):
+        source = """\
+försök
+    skriv hej
+slutligen
+    skriv klart"""
+        expected = [TryCatchNode(None, None, try_block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['hej']))], error_var=None, catch_block=None, finally_block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['klart']))])]
+        self.assertParseEqual(source, expected)
+
+    def test_try_catch_finally(self):
+        source = """\
+försök
+    skriv hej
+fånga fel
+    skriv fel
+slutligen
+    skriv klart"""
+        expected = [TryCatchNode(None, None, try_block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['hej']))], error_var='fel', catch_block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['fel']))], finally_block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['klart']))])]
+        self.assertParseEqual(source, expected)
+
+# --- throw (kasta) ---
+    def test_throw_statement(self):
+        source = "kasta något fel"
+        expected = [UnaryOpNode(None, None, op='kasta', operand=ExpressionPartsNode(None, None, parts=['något', 'fel']))]
+        self.assertParseEqual(source, expected)
+
+# --- type definition (typ) ---
+    def test_type_definition(self):
+        source = """\
+typ person
+    namn som sträng
+    ålder som heltal"""
+        expected = [TypeDefNode(None, None, name='person', fields=[('namn', 'sträng'), ('ålder', 'heltal')])]
+        self.assertParseEqual(source, expected)
+
+# --- element assignment (sätt element X i Y till Z) ---
+    def test_element_assign_int_index(self):
+        source = "sätt element 0 i lista till 42"
+        expected = [ElementAssignNode(None, None, index='0', target='lista', value=ExpressionPartsNode(None, None, parts=['42']))]
+        self.assertParseEqual(source, expected)
+
+    def test_element_assign_variable_index(self):
+        source = "sätt element x i lista till hej"
+        expected = [ElementAssignNode(None, None, index='x', target='lista', value=ExpressionPartsNode(None, None, parts=['hej']))]
+        self.assertParseEqual(source, expected)
+
+# --- function kinds ---
+    def test_infixgrej_definition(self):
+        source = """\
+sätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk
+    ge FALSKT"""
+        expected = [AssignNode(None, None, name='är del av', value=FunctionDefNode(None, None, params=[('del', 'heltal'), ('helhet', 'lista av heltal')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=['FALSKT']))], is_infix=True, return_type='boolesk'))]
+        self.assertParseEqual(source, expected)
+
+    def test_verbgrej_definition(self):
+        source = """\
+sätt upprepa till verbgrej med ord som sträng, antal som heltal ger sträng
+    ge ord"""
+        expected = [AssignNode(None, None, name='upprepa', value=FunctionDefNode(None, None, params=[('ord', 'sträng'), ('antal', 'heltal')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=['ord']))], is_infix=False, return_type='sträng'))]
+        self.assertParseEqual(source, expected)
+
+    def test_skickagrej_definition(self):
+        source = """\
+sätt lägg_till till skickagrej med sak som sträng, mål som lista av sträng ger lista av sträng
+    ge mål"""
+        expected = [AssignNode(None, None, name='lägg_till', value=FunctionDefNode(None, None, params=[('sak', 'sträng'), ('mål', 'lista av sträng')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=['mål']))], is_infix=False, return_type='lista av sträng'))]
+        self.assertParseEqual(source, expected)
+
+    def test_hämtagrej_definition(self):
+        source = """\
+sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng ger sträng
+    ge element 0 från källa"""
+        expected = [AssignNode(None, None, name='plocka', value=FunctionDefNode(None, None, params=[('namn', 'sträng'), ('källa', 'lista av sträng')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=['element', '0', 'från', 'källa']))], is_infix=False, return_type='sträng'))]
+        self.assertParseEqual(source, expected)
+
+    def test_rekgrej_definition(self):
+        source = """\
+sätt fakultet till rekgrej med n som heltal ger heltal
+    om n är mindre än 2
+        ge 1
+    ge n gånger fakultet med n minus 1"""
+        expected = [AssignNode(None, None, name='fakultet', value=FunctionDefNode(None, None, params=[('n', 'heltal')], body=[IfNode(None, None, conditions=[IfCondition(None, None, test=ExpressionPartsNode(None, None, parts=['n', 'är', 'mindre', 'än', '2']), block=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=['1']))])]), ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=['n', 'gånger', 'fakultet', 'med', 'n', 'minus', '1']))], is_infix=False, return_type='heltal'))]
+        self.assertParseEqual(source, expected)
+
+# --- open file ---
+    def test_open_file(self):
+        source = "öppna fil.txt som input"
+        expected = [AssignNode(None, None, name='input', value=FunctionCallNode(None, None, name='öppna', args=[VarAccessNode(None, None, 'fil.txt'), StringNode(None, None, 'läsning')]))]
+        self.assertParseEqual(source, expected)
+
+# --- kopia av ---
+    def test_kopia_av(self):
+        source = "sätt uppdaterad till kopia av p med ålder 40"
+        expected = [CopyWithPropNode(None, None, name='uppdaterad', source='p', updates=[('ålder', IntNode(None, None, '40'))])]
         self.assertParseEqual(source, expected)
 
 class TestPythonParser(_BaseParserTests, unittest.TestCase):
