@@ -174,7 +174,7 @@ sätt tokenisera till grej med rader som lista av sträng ger lista av token
             sätt har siffertecken till falskt
             om är siffra med tecken
                 sätt har siffertecken till sant
-            annars om tecken är lika med minustecken och är siffra med nästa_tecken
+            annars om tecken är lika med minustecken och är siffra med nästa tecken
                 sätt har siffertecken till sant
 
             om har siffertecken

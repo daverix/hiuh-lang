@@ -1623,6 +1623,35 @@ class Resolver:
             inner_result = self.visit(inner_node)
             return TypeOfNode(token.line, token.column, inner_result)
 
+        # Check for function call: "fn med arg1, arg2" -> FunctionCallNode
+        if 'med' in parts:
+            med_idx = parts.index('med')
+            pre_med = parts[:med_idx]
+            # Only if no arithmetic/comparison operators appear before 'med'
+            has_op_before = any(op in pre_med for op in ['plus', 'minus', 'gånger', 'delat', 'och', 'eller'])
+            if not has_op_before:
+                fn_name = ' '.join(pre_med)
+                # Check if the function name is a known callable
+                symbol = self.module_registry.resolve_symbol(fn_name, self._current_module)
+                is_callable = symbol is not None and symbol.type in ('func', 'type')
+                if not is_callable:
+                    is_callable = self._is_local_var(fn_name) or self._is_builtin_function(fn_name)
+                if is_callable:
+                    # Parse args after 'med', split by commas
+                    args_parts = parts[med_idx + 1:]
+                    args = []
+                    current = []
+                    for p in args_parts:
+                        if p == ',':
+                            if current:
+                                args.append(self._resolve_precedence(current, token=token))
+                            current = []
+                        else:
+                            current.append(p)
+                    if current:
+                        args.append(self._resolve_precedence(current, token=token))
+                    return FunctionCallNode(token.line, token.column, fn_name, args)
+
         # No operator found, return as single value
         return self._part_to_node(' '.join(parts), token)
 
