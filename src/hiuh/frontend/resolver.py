@@ -2210,8 +2210,8 @@ class Resolver:
         if not type_str:
             return None
         parts = type_str.split()
-        if self._part_in(parts, 'av'):
-            av_idx = self._index_of_part(parts, 'av')
+        if 'av' in parts:
+            av_idx = parts.index('av')
             return (parts[0], parts[av_idx + 1:])
         return (type_str, [])
 
