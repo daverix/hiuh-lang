@@ -457,54 +457,54 @@ class Resolver:
         right = self.visit(node.right)
         if left is node.left and right is node.right:
             return node
-        return AddNode(left=left, right=right, token=node)
+        return AddNode(node.line, node.column, left=left, right=right)
 
     def visit_SubNode(self, node):
         left = self.visit(node.left)
         right = self.visit(node.right)
         if left is node.left and right is node.right:
             return node
-        return SubNode(left=left, right=right, token=node)
+        return SubNode(node.line, node.column, left=left, right=right)
 
     def visit_MulNode(self, node):
         left = self.visit(node.left)
         right = self.visit(node.right)
         if left is node.left and right is node.right:
             return node
-        return MulNode(left=left, right=right, token=node)
+        return MulNode(node.line, node.column, left=left, right=right)
 
     def visit_DivNode(self, node):
         left = self.visit(node.left)
         right = self.visit(node.right)
         if left is node.left and right is node.right:
             return node
-        return DivNode(left=left, right=right, token=node)
+        return DivNode(node.line, node.column, left=left, right=right)
 
     def visit_ModNode(self, node):
         left = self.visit(node.left)
         right = self.visit(node.right)
         if left is node.left and right is node.right:
             return node
-        return ModNode(left=left, right=right, token=node)
+        return ModNode(node.line, node.column, left=left, right=right)
 
     def visit_NotNode(self, node):
         condition = self.visit(node.condition)
         if condition is node.condition:
             return node
-        return NotNode(condition=condition, token=node)
+        return NotNode(node.line, node.column, condition=condition)
 
     def visit_UnaryOpNode(self, node):
         operand = self.visit(node.operand)
         if operand is node.operand:
             return node
-        return UnaryOpNode(op=node.op, operand=operand, token=node)
+        return UnaryOpNode(node.line, node.column, op=node.op, operand=operand)
 
     def visit_ExpressionPartsNode(self, node):
         """Transform ExpressionPartsNode to the correct node type based on parts."""
         parts = node.parts
 
         if len(parts) == 0:
-            return self.visit(StringNode('', token=node))
+            return self.visit(StringNode(node.line, node.column, ''))
 
         # Check for file write pattern: "X till var" when in print context
         if self._in_print_context and 'till' in parts:
@@ -517,7 +517,7 @@ class Resolver:
                     self._print_write_to_file = target_var
                     if len(value_parts) == 1:
                         return self._part_to_node(value_parts[0], node)
-                    return self.visit(ExpressionPartsNode(value_parts, token=node))
+                    return self.visit(ExpressionPartsNode(node.line, node.column, value_parts))
 
         # Single part - convert to appropriate node
         if len(parts) == 1:
@@ -529,20 +529,20 @@ class Resolver:
             # Check if it is a function with no required parameters (grej without params)
             # Check AST directly for robustness
             if self._is_function_def_with_empty_params(full_name, self._current_module):
-                return FunctionCallNode(full_name, [], token=node)
-            return VarAccessNode(full_name, target=None, token=node)
+                return FunctionCallNode(node.line, node.column, full_name, [])
+            return VarAccessNode(node.line, node.column, full_name, target=None)
 
         # Special case: "ny rad" -> newline string (two tokens)
         if len(parts) == 2 and parts[0] == 'ny' and parts[1] == 'rad':
-            return self.visit(StringNode('\n', token=node))
+            return self.visit(StringNode(node.line, node.column, '\n'))
 
         # Check for negation: "inte X" -> NotNode(X)
         if parts[0] == 'inte':
             inner_parts = parts[1:]
             if inner_parts:
-                inner_node = ExpressionPartsNode(inner_parts, token=node)
+                inner_node = ExpressionPartsNode(node.line, node.column, inner_parts)
                 inner_result = self.visit(inner_node)
-                return NotNode(inner_result, token=node)
+                return NotNode(node.line, node.column, inner_result)
 
         # Check for type casting: "X som Y" -> CastNode(value=X, target_type=Y)
         # But don't create CastNode if:
@@ -553,16 +553,16 @@ class Resolver:
             value_parts = parts[:som_idx]
             target_parts = parts[som_idx + 1:]
             if value_parts and target_parts:
-                value_node = self.visit(ExpressionPartsNode(value_parts, token=node))
+                value_node = self.visit(ExpressionPartsNode(node.line, node.column, value_parts))
                 target_type = ' '.join(target_parts)
-                return CastNode(value=value_node, target_type=target_type, token=node)
+                return CastNode(node.line, node.column, value=value_node, target_type=target_type)
 
         # Check for type query: "typ av X" -> TypeOfNode
         if len(parts) >= 3 and parts[0] == 'typ' and parts[1] == 'av':
             inner_parts = parts[2:]
-            inner_node = ExpressionPartsNode(inner_parts, token=node)
+            inner_node = ExpressionPartsNode(node.line, node.column, inner_parts)
             inner_result = self.visit(inner_node)
-            return TypeOfNode(inner_result, token=node)
+            return TypeOfNode(node.line, node.column, inner_result)
 
         # Check for hämta-style call: "fn thing från source" where fn has kind='hämta'
         result = self._try_hämta_call(parts, node)
@@ -594,7 +594,7 @@ class Resolver:
         # Clean up comma spacing: "a , b" -> "a, b"
         while ' ,' in joined:
             joined = joined.replace(' ,', ',')
-        return self.visit(StringNode(joined, token=node))
+        return self.visit(StringNode(node.line, node.column, joined))
 
     def _part_to_node(self, s, token):
         """Convert a string (or ExpressionPart) to the appropriate AST node."""
@@ -606,19 +606,19 @@ class Resolver:
         # Check for known literals
         if token_type == TOKEN_STRING:
             # Original token was a quoted string — always treat as string
-            return StringNode(s, token=token)
+            return StringNode(token.line, token.column, s)
         elif s.lower() == 'sant':
-            return BoolNode(True, token=token)
+            return BoolNode(token.line, token.column, True)
         elif s.lower() == 'falskt':
-            return BoolNode(False, token=token)
+            return BoolNode(token.line, token.column, False)
         elif s.isdigit():
-            return IntNode(s, token=token)
+            return IntNode(token.line, token.column, s)
         elif self._is_float(s):
             # Handle both '.' and ',' as decimal separator
             value = float(s.replace(',', '.'))
-            return FloatNode(value, token=token)
+            return FloatNode(token.line, token.column, value)
         elif s.startswith('"') or s.startswith("'"):
-            return StringNode(s[1:-1], token=token)
+            return StringNode(token.line, token.column, s[1:-1])
         # Check if it's a defined function (with no arguments)
         elif self._is_defined(s, self._current_module):
             # Check if it's a built-in function that should be called (like 'lista')
@@ -640,18 +640,18 @@ class Resolver:
                         f"okänd_typ: '{s}' kräver en typ-parameter. "
                         f"Använd '{s} av <typ>' (t.ex. '{s} av heltal')"
                     )
-                return FunctionCallNode(s, [], token=token)
+                return FunctionCallNode(token.line, token.column, s, [])
             
             # Check if it's a user-defined function with no required parameters
             # Grej functions with empty params should be called automatically
             # Check AST directly for robustness
             if self._is_function_def_with_empty_params(s, self._current_module):
-                return FunctionCallNode(s, [], token=token)
+                return FunctionCallNode(token.line, token.column, s, [])
             
-            return VarAccessNode(s, target=None, token=token)
+            return VarAccessNode(token.line, token.column, s, target=None)
         else:
             # Undefined - treat as string
-            return StringNode(s, token=token)
+            return StringNode(token.line, token.column, s)
 
     def _is_function_def_with_empty_params(self, name, module_name):
         """Check if a name is defined as a FunctionDefNode with empty params in the AST."""
@@ -764,10 +764,10 @@ class Resolver:
             
             # Create index node - convert to appropriate node type
             if len(idx_parts) == 1 and idx_parts[0].isdigit():
-                idx_node = IntNode(idx_parts[0], token=node)
+                idx_node = IntNode(node.line, node.column, idx_parts[0])
             elif len(idx_parts) == 1:
                 # Single variable - use VarAccessNode directly
-                idx_node = VarAccessNode(idx_parts[0], target=None, token=node)
+                idx_node = VarAccessNode(node.line, node.column, idx_parts[0], target=None)
             else:
                 # Multi-word expression - resolve precedence
                 idx_node = self._resolve_precedence(idx_parts, token=node)
@@ -776,11 +776,11 @@ class Resolver:
             target_name = ' '.join(target_parts)
             # If it's a defined local variable, use VarAccessNode (not built-in FunctionCallNode)
             if self._is_defined(target_name, self._current_module):
-                target_node = VarAccessNode(target_name, target=None, token=node)
+                target_node = VarAccessNode(node.line, node.column, target_name, target=None)
             else:
                 target_node = self._part_to_node(target_name, node)
             
-            return ElementAccessNode(index=idx_node, target=target_node, token=node)
+            return ElementAccessNode(node.line, node.column, index=idx_node, target=target_node)
 
         # Check if this is a function call: "fn med args från target"
         # This handles callbacks like "anrop med element x från värden"
@@ -797,9 +797,9 @@ class Resolver:
                 
                 # Create function reference
                 if mod_name:
-                    fn_ref = VarAccessNode(fn_name, target=mod_name, token=node)
+                    fn_ref = VarAccessNode(node.line, node.column, fn_name, target=mod_name)
                 else:
-                    fn_ref = VarAccessNode(fn_name, target=None, token=node)
+                    fn_ref = VarAccessNode(node.line, node.column, fn_name, target=None)
                 
                 # Parse arguments
                 args = []
@@ -815,9 +815,9 @@ class Resolver:
                     while i < len(args_parts) and args_parts[i] != ',':
                         current_arg.append(args_parts[i])
                         i += 1
-                    args.append(ExpressionPartsNode(current_arg, token=node))
+                    args.append(ExpressionPartsNode(node.line, node.column, current_arg))
                 
-                return FunctionCallNode(name=fn_ref, args=args, token=node)
+                return FunctionCallNode(node.line, node.column, name=fn_ref, args=args)
             
             elif med_idx < från_idx:
                 # 'med' is before 'från' - callback function call pattern
@@ -831,23 +831,23 @@ class Resolver:
                 target_name = ' '.join(parts[från_idx + 1:])  # 'värden'
                 
                 # Create function reference (no module)
-                fn_ref = VarAccessNode(fn_name, target=None, token=node)
+                fn_ref = VarAccessNode(node.line, node.column, fn_name, target=None)
                 
                 # Parse argument - handle element access pattern
                 if len(args_parts) >= 2 and args_parts[0] == 'element':
                     # "element x från target" -> ElementAccessNode
                     index_name = args_parts[1]
-                    index_node = IntNode(index_name, token=node) if index_name.isdigit() else VarAccessNode(index_name, target=None, token=node)
-                    target_node = VarAccessNode(target_name, target=None, token=node)
-                    arg = ElementAccessNode(index=index_node, target=target_node, token=node)
+                    index_node = IntNode(node.line, node.column, index_name) if index_name.isdigit() else VarAccessNode(node.line, node.column, index_name, target=None)
+                    target_node = VarAccessNode(node.line, node.column, target_name, target=None)
+                    arg = ElementAccessNode(node.line, node.column, index=index_node, target=target_node)
                 elif len(args_parts) == 1 and args_parts[0].isdigit():
-                    arg = IntNode(args_parts[0], token=node)
+                    arg = IntNode(node.line, node.column, args_parts[0])
                 elif len(args_parts) == 1:
-                    arg = VarAccessNode(args_parts[0], target=None, token=node)
+                    arg = VarAccessNode(node.line, node.column, args_parts[0], target=None)
                 else:
-                    arg = ExpressionPartsNode(args_parts, token=node)
+                    arg = ExpressionPartsNode(node.line, node.column, args_parts)
                 
-                return FunctionCallNode(name=fn_ref, args=[arg], token=node)
+                return FunctionCallNode(node.line, node.column, name=fn_ref, args=[arg])
 
         # Handle property access: "X från Y" -> PropertyAccessNode
         prop_name = ' '.join(left_parts)
@@ -861,11 +861,11 @@ class Resolver:
         target_name = ' '.join(right_parts)
         # If it's a defined local variable, use VarAccessNode (not built-in FunctionCallNode)
         if self._is_defined(target_name, self._current_module):
-            target_node = VarAccessNode(target_name, target=None, token=node)
+            target_node = VarAccessNode(node.line, node.column, target_name, target=None)
         else:
             target_node = self._part_to_node(target_name, node)
 
-        return PropertyAccessNode(property_name=prop_name, target=target_node, token=node)
+        return PropertyAccessNode(node.line, node.column, property_name=prop_name, target=target_node)
 
     def _try_function_call(self, parts, node):
         """Try to parse as function call: 'fn med arg1, arg2' -> FunctionCallNode"""
@@ -973,7 +973,7 @@ class Resolver:
 
             if all_named and part in known_param_names and i + 1 < len(args_parts):
                 value = self._part_to_node(args_parts[i + 1], node)
-                args.append(NamedArgNode(part, value, token=node))
+                args.append(NamedArgNode(node.line, node.column, part, value))
                 i += 2
                 continue
 
@@ -983,9 +983,9 @@ class Resolver:
             while i < len(args_parts) and args_parts[i] != ',':
                 arg_parts.append(args_parts[i])
                 i += 1
-            args.append(ExpressionPartsNode(arg_parts, token=node))
+            args.append(ExpressionPartsNode(node.line, node.column, arg_parts))
 
-        return FunctionCallNode(fn_name, args, token=node)
+        return FunctionCallNode(node.line, node.column, fn_name, args)
 
     def _get_all_known_types(self):
         """Return set of all known type names (built-in + user-defined + type params)."""
@@ -1048,21 +1048,21 @@ class Resolver:
         for p in thing_parts:
             if p == ',':
                 if current:
-                    args.append(ExpressionPartsNode(current, token=node))
+                    args.append(ExpressionPartsNode(node.line, node.column, current))
                 current = []
             else:
                 current.append(p)
         if current:
-            args.append(ExpressionPartsNode(current, token=node))
+            args.append(ExpressionPartsNode(node.line, node.column, current))
         # Add source as last arg
         if len(source_parts) == 1:
             if self._is_defined(source_parts[0], self._current_module):
-                args.append(VarAccessNode(source_parts[0], token=node))
+                args.append(VarAccessNode(node.line, node.column, source_parts[0]))
             else:
-                args.append(StringNode(' '.join(source_parts), token=node))
+                args.append(StringNode(node.line, node.column, ' '.join(source_parts)))
         else:
-            args.append(ExpressionPartsNode(source_parts, token=node))
-        return FunctionCallNode(fn_name, args, token=node)
+            args.append(ExpressionPartsNode(node.line, node.column, source_parts))
+        return FunctionCallNode(node.line, node.column, fn_name, args)
 
     def _try_generic_call(self, parts, node):
         """Try to parse as generic function call: 'fn av T1, T2' -> FunctionCallNode(fn, []).
@@ -1125,7 +1125,7 @@ class Resolver:
                 is_callable = True
 
         if is_callable:
-            return FunctionCallNode(fn_name, [], token=node)
+            return FunctionCallNode(node.line, node.column, fn_name, [])
 
         return None
 
@@ -1151,12 +1151,12 @@ class Resolver:
                     if len(right_parts) == 1:
                         target_name = right_parts[0]
                         if self._is_defined(target_name, self._current_module):
-                            target_node = VarAccessNode(target_name, target=None, token=node)
+                            target_node = VarAccessNode(node.line, node.column, target_name, target=None)
                         else:
                             target_node = self._part_to_node(target_name, node)
                     else:
                         target_node = self._resolve_precedence(right_parts, token=node)
-                    return ElementAccessNode(index=idx_node, target=target_node, token=node)
+                    return ElementAccessNode(node.line, node.column, index=idx_node, target=target_node)
         # Level 2: 'och' and 'eller' - checked first to respect lowest precedence
         # Only match if both operands are booleans or comparison results
         for i, part in enumerate(parts):
@@ -1176,7 +1176,7 @@ class Resolver:
                     right_is_bool_like = isinstance(right_node, (BoolNode, ComparisonNodes))
                     if left_is_bool_like and right_is_bool_like:
                         node_class = AndNode if part == 'och' else OrNode
-                        return node_class(left_node, right_node, token=node)
+                        return node_class(node.line, node.column, left_node, right_node)
 
         # Find the lowest precedence operator
         # Precedence (low to high):
@@ -1262,7 +1262,7 @@ class Resolver:
                 if left_parts and right_parts:
                     left_node = self._resolve_precedence(left_parts, token=node)
                     right_node = self._resolve_precedence(right_parts, token=node)
-                    return ModNode(left_node, right_node, token=node)
+                    return ModNode(node.line, node.column, left_node, right_node)
 
         for i, part in enumerate(parts):
             if part == 'gånger':
@@ -1307,7 +1307,7 @@ class Resolver:
             # Resolve any operators in operands with proper precedence
             left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
             right_expr = self._resolve_precedence(right_parts, token=node)
-            return arithmetic_ops[op](left_expr, right_expr, token=node)
+            return arithmetic_ops[op](node.line, node.column, left_expr, right_expr)
 
         comparison_ops = {
             'är inte': NotEqualNode,
@@ -1330,7 +1330,7 @@ class Resolver:
         if op in ['och', 'eller']:
             left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
             right_expr = self._resolve_precedence(right_parts, token=node)
-            return comparison_ops[op](left_expr, right_expr, token=node)
+            return comparison_ops[op](node.line, node.column, left_expr, right_expr)
 
         # Infix functions create InfixCallNode (check if operator is defined as infix)
         # Check if this operator is an infix function definition
@@ -1338,7 +1338,7 @@ class Resolver:
         if is_infix:
             left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
             right_expr = self._resolve_precedence(right_parts, token=node)
-            return InfixCallNode(left_expr, op, right_expr, token=node)
+            return InfixCallNode(node.line, node.column, left_expr, op, right_expr)
 
         # For comparison operators, proceed if left base variable is defined
         # or if it looks like an identifier (not a string literal)
@@ -1346,7 +1346,7 @@ class Resolver:
         left_is_identifier = left_base and left_base[0].isalpha() and left_base.replace(' ', '').isalnum()
         if not self._is_defined(left_base, self._current_module) and not left_is_identifier:
             left_str = ' '.join(left_parts) if left_parts else left_base
-            return StringNode(f"{left_str} {op} {' '.join(right_parts)}", token=node)
+            return StringNode(node.line, node.column, f"{left_str} {op} {' '.join(right_parts)}")
 
         # Check if left_parts contains an element access pattern: "element X från Y"
         # This handles cases like "element x från helhet är lika med del"
@@ -1363,20 +1363,20 @@ class Resolver:
                 
                 # Create index node
                 if len(idx_parts) == 1 and idx_parts[0].isdigit():
-                    idx_node = IntNode(idx_parts[0], token=node)
+                    idx_node = IntNode(node.line, node.column, idx_parts[0])
                 else:
                     idx_node = self._resolve_precedence(idx_parts, token=node)
                 
                 # Create target node
                 target_name = ' '.join(target_parts)
                 if self._is_defined(target_name, self._current_module):
-                    target_node = VarAccessNode(target_name, target=None, token=node)
+                    target_node = VarAccessNode(node.line, node.column, target_name, target=None)
                 else:
                     target_node = self._part_to_node(target_name, node)
                 
-                left_expr = ElementAccessNode(index=idx_node, target=target_node, token=node)
+                left_expr = ElementAccessNode(node.line, node.column, index=idx_node, target=target_node)
                 right_expr = self._resolve_precedence(right_parts, token=node)
-                result = comparison_ops[op](left_expr, right_expr, token=node)
+                result = comparison_ops[op](node.line, node.column, left_expr, right_expr)
                 self._original_parts[id(result)] = {
                     'left': original_left_parts,
                     'op': original_op,
@@ -1388,13 +1388,13 @@ class Resolver:
         # For comparison operators, always use VarAccessNode for single identifiers
         # even if they're not defined (let interpreter handle undefined vars)
         if len(left_parts) == 1 and left_parts[0].isidentifier():
-            left_expr = VarAccessNode(left_parts[0], target=None, token=node)
+            left_expr = VarAccessNode(node.line, node.column, left_parts[0], target=None)
         else:
             left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
         
         right_expr = self._resolve_precedence(right_parts, token=node)
 
-        result = comparison_ops[op](left_expr, right_expr, token=node)
+        result = comparison_ops[op](node.line, node.column, left_expr, right_expr)
         # Store original parts in resolver for stringification
         self._original_parts[id(result)] = {
             'left': original_left_parts,
@@ -1421,7 +1421,7 @@ class Resolver:
             'och': AndNode,
             'eller': OrNode,
         }
-        result = comparison_ops[op](left_expr, right_expr, token=token)
+        result = comparison_ops[op](token.line, token.column, left_expr, right_expr)
         self._original_parts[id(result)] = original_parts
         return result
 
@@ -1438,7 +1438,7 @@ class Resolver:
         Returns an AST node.
         """
         if not parts or len(parts) == 0:
-            return StringNode('', token=token)
+            return StringNode(token.line, token.column, '')
 
         if len(parts) == 1:
             return self._part_to_node(parts[0], token)
@@ -1465,7 +1465,7 @@ class Resolver:
                     if left_parts and right_parts:
                         left = self._resolve_precedence(left_parts, token=token)
                         right = self._resolve_precedence(right_parts, token=token)
-                        return OrNode(left, right, token=token)
+                        return OrNode(token.line, token.column, left, right)
 
         # Level 2: 'och'
         for op in ['och']:
@@ -1476,7 +1476,7 @@ class Resolver:
                 if left_parts and right_parts:
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
-                    return AndNode(left, right, token=token)
+                    return AndNode(token.line, token.column, left, right)
 
         # Level 3: comparisons (är, etc.)
         multi_word_ops = [
@@ -1510,9 +1510,9 @@ class Resolver:
                         'mindre än eller lika med': LessThanOrEqualNode,
                         'är mindre än eller lika med': LessThanOrEqualNode,
                     }
-                    return comparison_ops[op_str](left, right, token=token)
+                    return comparison_ops[op_str](token.line, token.column, left, right)
                     node_class = comparison_ops[op_str]
-                    return node_class(left, right, token=token)
+                    return node_class(token.line, token.column, left, right)
 
         # Check for infix functions dynamically
         # Get all registered infix function names
@@ -1526,7 +1526,7 @@ class Resolver:
                 if left_parts and right_parts:
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
-                    return InfixCallNode(left, op_str, right, token=token)
+                    return InfixCallNode(token.line, token.column, left, op_str, right)
 
 
 
@@ -1553,9 +1553,9 @@ class Resolver:
                 left = self._resolve_precedence(left_parts, token=token)
                 right = self._resolve_precedence(right_parts, token=token)
                 if op == 'plus':
-                    return AddNode(left, right, token=token)
+                    return AddNode(token.line, token.column, left, right)
                 else:
-                    return SubNode(left, right, token=token)
+                    return SubNode(token.line, token.column, left, right)
 
         # Level 5: multiplication/division (highest)
         for op in ['gånger', 'delat']:
@@ -1573,9 +1573,9 @@ class Resolver:
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
                     if op == 'gånger':
-                        return MulNode(left, right, token=token)
+                        return MulNode(token.line, token.column, left, right)
                     else:
-                        return DivNode(left, right, token=token)
+                        return DivNode(token.line, token.column, left, right)
 
         # Check for property access: "X från Y" -> PropertyAccessNode / ElementAccessNode
         if 'från' in parts:
@@ -1586,21 +1586,21 @@ class Resolver:
                 if left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
                     idx_parts = left_parts[1:]
                     if len(idx_parts) == 1 and idx_parts[0].isdigit():
-                        idx_node = IntNode(idx_parts[0], token=token)
+                        idx_node = IntNode(token.line, token.column, idx_parts[0])
                     elif len(idx_parts) == 1:
-                        idx_node = VarAccessNode(idx_parts[0], target=None, token=token)
+                        idx_node = VarAccessNode(token.line, token.column, idx_parts[0], target=None)
                     else:
                         idx_node = self._resolve_precedence(idx_parts, token=token)
                     
                     if len(right_parts) == 1:
                         target_name = right_parts[0]
                         if self._is_defined(target_name, self._current_module):
-                            target_node = VarAccessNode(target_name, target=None, token=token)
+                            target_node = VarAccessNode(token.line, token.column, target_name, target=None)
                         else:
                             target_node = self._part_to_node(target_name, token)
                     else:
                         target_node = self._resolve_precedence(right_parts, token=token)
-                    return ElementAccessNode(index=idx_node, target=target_node, token=token)
+                    return ElementAccessNode(token.line, token.column, index=idx_node, target=target_node)
 
                 prop_name = ' '.join(left_parts)
                 
@@ -1608,20 +1608,20 @@ class Resolver:
                 if len(right_parts) == 1:
                     target_name = right_parts[0]
                     if self._is_defined(target_name, self._current_module):
-                        target_node = VarAccessNode(target_name, target=None, token=token)
+                        target_node = VarAccessNode(token.line, token.column, target_name, target=None)
                     else:
                         target_node = self._part_to_node(target_name, token)
                 else:
                     target_node = self._resolve_precedence(right_parts, token=token)
                 
-                return PropertyAccessNode(property_name=prop_name, target=target_node, token=token)
+                return PropertyAccessNode(token.line, token.column, property_name=prop_name, target=target_node)
 
         # Check for type query: "typ av X" -> TypeOfNode
         if len(parts) >= 3 and parts[0] == 'typ' and parts[1] == 'av':
             inner_parts = parts[2:]
-            inner_node = ExpressionPartsNode(inner_parts, token=token)
+            inner_node = ExpressionPartsNode(token.line, token.column, inner_parts)
             inner_result = self.visit(inner_node)
-            return TypeOfNode(inner_result, token=token)
+            return TypeOfNode(token.line, token.column, inner_result)
 
         # No operator found, return as single value
         return self._part_to_node(' '.join(parts), token)
@@ -1775,11 +1775,11 @@ class Resolver:
                 parts = self._original_parts[node_id]
                 left_str = ' '.join(parts['left']) if parts['left'] else ''
                 right_str = ' '.join(parts['right']) if parts['right'] else ''
-                return StringNode(f"{left_str} {parts['op']} {right_str}".strip(), token=node)
+                return StringNode(node.line, node.column, f"{left_str} {parts['op']} {right_str}".strip())
             # Fallback: stringify using node values
             left_str = self._get_string_value(left)
             right_str = self._get_string_value(self.visit(right))
-            return StringNode(f"{left_str} {op_str} {right_str}".strip(), token=node)
+            return StringNode(node.line, node.column, f"{left_str} {op_str} {right_str}".strip())
 
         # If right is unresolved and looks like an identifier (not a number), treat it as
         # a string literal and keep the comparison for evaluation
@@ -1789,9 +1789,9 @@ class Resolver:
             # Right is an unresolved identifier - treat as string literal
             # Keep comparison, but transform right to a StringNode
             return node_class(
+                node.line, node.column,
                 left=self.visit(left),
-                right=StringNode(right.name, token=right),
-                token=node
+                right=StringNode(right.line, right.column, right.name),
             )
 
         # Normal case - transform children only if they're resolved
@@ -1801,7 +1801,7 @@ class Resolver:
         if new_left is left and new_right is right:
             return node
 
-        return node_class(left=new_left, right=new_right, token=node)
+        return node_class(node.line, node.column, left=new_left, right=new_right)
 
     def visit_EqualNode(self, node):
         return self._visit_comparison(node, 'lika med', EqualNode)
@@ -1823,14 +1823,14 @@ class Resolver:
         right = self.visit(node.right)
         if left is node.left and right is node.right:
             return node
-        return AndNode(left=left, right=right, token=node)
+        return AndNode(node.line, node.column, left=left, right=right)
 
     def visit_OrNode(self, node):
         left = self.visit(node.left)
         right = self.visit(node.right)
         if left is node.left and right is node.right:
             return node
-        return OrNode(left=left, right=right, token=node)
+        return OrNode(node.line, node.column, left=left, right=right)
 
     # === Function nodes ===
 
@@ -1866,11 +1866,9 @@ class Resolver:
 
         if body is node.body:
             return node
-        return FunctionDefNode(
+        return FunctionDefNode(node.line, node.column, 
             params=node.params,
             body=body,
-            line=node.line,
-            column=node.column,
             is_infix=getattr(node, 'is_infix', False),
             type_params=getattr(node, 'type_params', []),
             kind=getattr(node, 'kind', None),
@@ -1903,13 +1901,13 @@ class Resolver:
             if param_names:
                 transformed = self._transform_named_args_to_positional(node.args, param_names)
                 if transformed:
-                    return FunctionCallNode(name=node.name, args=transformed, token=node)
+                    return FunctionCallNode(node.line, node.column, name=node.name, args=transformed)
         
         # Normal processing
         args = self._visit_nodes(node.args)
         if args is node.args:
             return node
-        return FunctionCallNode(name=node.name, args=args, token=node)
+        return FunctionCallNode(node.line, node.column, name=node.name, args=args)
 
     def _transform_named_args_to_positional(self, args, field_names):
         """Transform named arguments to positional based on field order.
@@ -1963,7 +1961,7 @@ class Resolver:
                     prop_name = words[0]
                     if len(words) > 1:
                         value_str = ' '.join(words[1:])
-                        value_by_field[prop_name] = StringNode(value_str, token=arg)
+                        value_by_field[prop_name] = StringNode(arg.line, arg.column, value_str)
                     i += 1
                     continue
             
@@ -1998,7 +1996,7 @@ class Resolver:
             self._validate_return_value(value, self._current_return_type, node)
         if value is node.value:
             return node
-        return ReturnNode(value=value, token=node)
+        return ReturnNode(node.line, node.column, value=value)
 
     def _validate_return_value(self, value, declared_type, node):
         """Validate that the returned value matches the declared return type."""
@@ -2180,7 +2178,7 @@ class Resolver:
         value = self.visit(node.value)
         if value is node.value:
             return node
-        return AddAssignNode(target=node.target, value=value, token=node)
+        return AddAssignNode(node.line, node.column, target=node.target, value=value)
 
     def visit_SubAssignNode(self, node):
         if self._registering:
@@ -2188,7 +2186,7 @@ class Resolver:
         value = self.visit(node.value)
         if value is node.value:
             return node
-        return SubAssignNode(target=node.target, value=value, token=node)
+        return SubAssignNode(node.line, node.column, target=node.target, value=value)
 
     def visit_MultiplyAssignNode(self, node):
         if self._registering:
@@ -2196,7 +2194,7 @@ class Resolver:
         value = self.visit(node.value)
         if value is node.value:
             return node
-        return MultiplyAssignNode(target=node.target, value=value, token=node)
+        return MultiplyAssignNode(node.line, node.column, target=node.target, value=value)
 
     def visit_DivideAssignNode(self, node):
         if self._registering:
@@ -2204,7 +2202,7 @@ class Resolver:
         value = self.visit(node.value)
         if value is node.value:
             return node
-        return DivideAssignNode(target=node.target, value=value, token=node)
+        return DivideAssignNode(node.line, node.column, target=node.target, value=value)
 
     def visit_AssignNode(self, node):
         if self._registering:
@@ -2233,26 +2231,26 @@ class Resolver:
 
         if value is node.value:
             return node
-        return AssignNode(name=node.name, value=value, target_type=node.target_type, token=node)
+        return AssignNode(node.line, node.column, name=node.name, value=value, target_type=node.target_type)
 
     def visit_ElementAssignNode(self, node):
         """Resolve an element assignment node."""
         # Resolve the index - convert to appropriate node type
         if node.index.isdigit():
-            idx = IntNode(node.index, token=node)
+            idx = IntNode(node.line, node.column, node.index)
         else:
-            idx = VarAccessNode(node.index, target=None, token=node)
+            idx = VarAccessNode(node.line, node.column, node.index, target=None)
         
         # Resolve the target list
         if self._is_defined(node.target, self._current_module):
-            target = VarAccessNode(node.target, target=None, token=node)
+            target = VarAccessNode(node.line, node.column, node.target, target=None)
         else:
             target = self._part_to_node(node.target, node)
         
         # Resolve the value
         value = self.visit(node.value)
         
-        return ElementAssignNode(index=idx, target=target, value=value, token=node)
+        return ElementAssignNode(node.line, node.column, index=idx, target=target, value=value)
 
     def visit_PrintNode(self, node):
         # Set context for expression resolution
@@ -2268,11 +2266,11 @@ class Resolver:
         if self._print_write_to_file:
             target_var = self._print_write_to_file
             self._print_write_to_file = None
-            return FileWriteNode(value=value, target_var=target_var, token=node)
+            return FileWriteNode(node.line, node.column, value=value, target_var=target_var)
         
         if value is node.value:
             return node
-        return PrintNode(value=value, token=node)
+        return PrintNode(node.line, node.column, value=value)
 
     def visit_IfNode(self, node):
         # Resolve each condition-block pair
@@ -2280,12 +2278,12 @@ class Resolver:
         for cond_block in node.conditions:
             resolved_test = self.visit(cond_block.test)
             resolved_block = self._visit_nodes(cond_block.block)
-            resolved_conditions.append(IfCondition(resolved_test, resolved_block, line=cond_block.line, column=cond_block.column))
+            resolved_conditions.append(IfCondition(cond_block.line, cond_block.column, resolved_test, resolved_block))
         
         # Resolve else block
         resolved_else = self._visit_nodes(node.else_block) if node.else_block else None
 
-        return IfNode(resolved_conditions, resolved_else, line=node.line, column=node.column)
+        return IfNode(node.line, node.column, resolved_conditions, resolved_else)
 
     def visit_WhileNode(self, node):
         condition = self.visit(node.condition)
@@ -2294,7 +2292,7 @@ class Resolver:
         if condition is node.condition and body is node.body:
             return node
 
-        return WhileNode(condition=condition, body=body, line=node.line, column=node.column)
+        return WhileNode(node.line, node.column, condition=condition, body=body)
 
     def visit_ForEachNode(self, node):
         """Resolve a for-each loop.
@@ -2314,7 +2312,7 @@ class Resolver:
         if iterable is node.iterable and body is node.body:
             return node
 
-        return ForEachNode(variable=node.variable, iterable=iterable, body=body, token=node)
+        return ForEachNode(node.line, node.column, variable=node.variable, iterable=iterable, body=body)
 
     def visit_BreakNode(self, node):
         return node
@@ -2333,13 +2331,10 @@ class Resolver:
         if try_block is node.try_block and catch_block is node.catch_block and finally_block is node.finally_block:
             return node
 
-        return TryCatchNode(
-            try_block=try_block,
+        return TryCatchNode(node.line, node.column, try_block=try_block,
             error_var=node.error_var,
             catch_block=catch_block,
-            finally_block=finally_block,
-            token=node
-        )
+            finally_block=finally_block)
 
     def visit_TypeDefNode(self, node):
         if self._registering:
@@ -2446,31 +2441,31 @@ class Resolver:
         value = self.visit(node.value)
         if value is node.value:
             return node
-        return CastNode(value=value, target_type=node.target_type, token=node)
+        return CastNode(node.line, node.column, value=value, target_type=node.target_type)
 
     def visit_AppendNode(self, node):
         value = self.visit(node.value)
         if value is node.value:
             return node
-        return AppendNode(target_list=node.target_list, value=value, token=node)
+        return AppendNode(node.line, node.column, target_list=node.target_list, value=value)
 
     def visit_RemoveIndexNode(self, node):
         index = self.visit(node.index)
         if index is node.index:
             return node
-        return RemoveIndexNode(target_list=node.target_list, index=index, token=node)
+        return RemoveIndexNode(node.line, node.column, target_list=node.target_list, index=index)
 
     def visit_RemoveValueNode(self, node):
         value = self.visit(node.value)
         if value is node.value:
             return node
-        return RemoveValueNode(target_list=node.target_list, value=value, token=node)
+        return RemoveValueNode(node.line, node.column, target_list=node.target_list, value=value)
 
     def visit_FileWriteNode(self, node):
         value = self.visit(node.value)
         if value is node.value:
             return node
-        return FileWriteNode(target_var=node.target_var, value=value, token=node)
+        return FileWriteNode(node.line, node.column, target_var=node.target_var, value=value)
 
     def visit_CloseFileNode(self, node):
         return node  # No transformation needed
@@ -2526,7 +2521,7 @@ class Resolver:
             # Check __main__ for built-in variables like 'argument'
             if '__main__' in self.module_registry.modules and node.target in self.module_registry.modules['__main__'].symbols:
                 return node
-            return StringNode(f"{node.target}.{node.name}", token=node)
+            return StringNode(node.line, node.column, f"{node.target}.{node.name}")
 
         symbol = self.module_registry.resolve_symbol(node.name, self._current_module)
         if symbol:
@@ -2548,7 +2543,7 @@ class Resolver:
                 return node
 
         # Unknown symbol - transform to string literal
-        return StringNode(node.name, token=node)
+        return StringNode(node.line, node.column, node.name)
 
     def get_ast(self, module_name: str = None) -> list:
         """Get the AST for a module."""

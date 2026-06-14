@@ -1,13 +1,10 @@
 """Tests for modulregister.hiuh through the interpreter."""
-
 import os
 import unittest
-
 from hiuh.frontend.module_registry import ModuleRegistry
 from hiuh.frontend.parser import Parser
 from hiuh.frontend.resolver import Resolver
 from hiuh.frontend.tokenizer import Tokenizer
-
 
 class TestHiuhModulregister(unittest.TestCase):
     """Test modulregister.hiuh functions through the interpreter."""
@@ -18,19 +15,15 @@ class TestHiuhModulregister(unittest.TestCase):
 
     def _run_module(self, source):
         from hiuh.backend.interpreter.interpreter import Interpreter, ReturnException
-
         mr = ModuleRegistry("/tmp/test_modulregister")
         resolver = Resolver(mr, os.path.join(self._repo_root, "hiuh_i_hiuh"))
-
         tokens_py = self.tokenizer.tokenize(source)
         parser = Parser(tokens_py)
         ast = parser.parse()
-
         resolver.discover_modules_from_ast("main", ast, self._repo_root)
         resolver.discover_imports("main")
         resolver.resolve_all()
         ast = resolver.get_ast("main")
-
         interp = Interpreter(mr)
         interp.modules = resolver.modules
         try:
@@ -40,22 +33,13 @@ class TestHiuhModulregister(unittest.TestCase):
         return None
 
     def test_nytt_register_creates_empty_dict(self):
-        source = (
-            "använd modulregister\n"
-            "sätt reg till nytt register\n"
-            "ge reg\n"
-        )
+        source = 'använd modulregister\nsätt reg till nytt register\nge reg\n'
         result = self._run_module(source)
         self.assertIsInstance(result, dict)
         self.assertEqual(len(result), 0)
 
     def test_registrera_modul_adds_entry(self):
-        source = (
-            "använd modulregister\n"
-            "sätt reg till nytt register\n"
-            "registrera modul med testmodul, sökväg, reg\n"
-            "ge reg\n"
-        )
+        source = 'använd modulregister\nsätt reg till nytt register\nregistrera modul med testmodul, sökväg, reg\nge reg\n'
         result = self._run_module(source)
         self.assertIn("testmodul", result)
         modul = result["testmodul"]
@@ -63,43 +47,21 @@ class TestHiuhModulregister(unittest.TestCase):
         self.assertEqual(modul["sökväg"], "sökväg")
 
     def test_hämta_modul_returns_module(self):
-        source = (
-            "använd modulregister\n"
-            "sätt reg till nytt register\n"
-            "registrera modul med test, väg, reg\n"
-            "sätt resultat till hämta modul med test, reg\n"
-            "ge resultat\n"
-        )
+        source = 'använd modulregister\nsätt reg till nytt register\nregistrera modul med test, väg, reg\nsätt resultat till hämta modul med test, reg\nge resultat\n'
         result = self._run_module(source)
         self.assertIsNotNone(result)
         self.assertEqual(result["namn"], "test")
 
     def test_hämta_modul_missing_returns_none(self):
-        source = (
-            "använd modulregister\n"
-            "sätt reg till nytt register\n"
-            "sätt resultat till hämta modul med saknas, reg\n"
-            "ge resultat\n"
-        )
+        source = 'använd modulregister\nsätt reg till nytt register\nsätt resultat till hämta modul med saknas, reg\nge resultat\n'
         result = self._run_module(source)
-        # 'inget av modulelement' stringifies to itself at runtime
         self.assertEqual(result, "inget av modulelement")
 
     def test_registrera_symbol_and_hämta(self):
-        source = (
-            "använd modulregister\n"
-            "sätt reg till nytt register\n"
-            "registrera modul med minmodul, väg, reg\n"
-            "sätt sym till symbolelement med hej, var, minmodul\n"
-            "registrera symbol med minmodul, sym, reg\n"
-            "sätt resultat till hämta symbol med hej, minmodul, reg\n"
-            "ge resultat\n"
-        )
+        source = 'använd modulregister\nsätt reg till nytt register\nregistrera modul med minmodul, väg, reg\nsätt sym till symbolelement med hej, var, minmodul\nregistrera symbol med minmodul, sym, reg\nsätt resultat till hämta symbol med hej, minmodul, reg\nge resultat\n'
         result = self._run_module(source)
         self.assertIsNotNone(result)
         self.assertEqual(result["namn"], "hej")
         self.assertEqual(result["sort"], "var")
-
-
 if __name__ == '__main__':
     unittest.main()

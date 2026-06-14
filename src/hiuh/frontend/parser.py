@@ -79,18 +79,18 @@ class Parser:
         if t.type == TOKEN_FOR: return self.parse_for_each()
         if t.type == TOKEN_BREAK:
             token = self.consume()
-            return BreakNode(token=token)
+            return BreakNode(token.line, token.column)
         if t.type == TOKEN_CONTINUE:
             token = self.consume()
-            return ContinueNode(token=token)
+            return ContinueNode(token.line, token.column)
         if t.type == TOKEN_IDENTIFIER and t.value == "grejtyp":
             return self.parse_grejtyp()
         if t.type == TOKEN_TYPE: return self.parse_type_def()
         if t.type == TOKEN_TRY: return self.parse_try_catch()
         if t.type == TOKEN_THROW:
-            self.consume(); return UnaryOpNode("kasta", self.expression(), token=t)
+            self.consume(); return UnaryOpNode(t.line, t.column, "kasta", self.expression())
         if t.type == TOKEN_GIVE:
-            self.consume(); return ReturnNode(self.expression(), token=t)
+            self.consume(); return ReturnNode(t.line, t.column, self.expression())
         return self.expression()
 
     def parse_import(self):
@@ -114,7 +114,7 @@ class Parser:
         else:
             import_all = True
 
-        return ImportNode(module_name, alias, import_all=import_all, token=import_token)
+        return ImportNode(import_token.line, import_token.column, module_name, alias, import_all=import_all)
 
     def parse_append(self):
         append_token = self.consume()  # lägg
@@ -127,7 +127,7 @@ class Parser:
         while self.peek() and self.peek().type == TOKEN_IDENTIFIER:
             parts.append(self.consume().value)
         target = "".join(parts)
-        return AppendNode(val, target, token=append_token)
+        return AppendNode(append_token.line, append_token.column, val, target)
 
     def parse_remove(self):
         remove_token = self.consume() # ta
@@ -140,7 +140,7 @@ class Parser:
         value_parts = []
         while self.peek() and self.peek().type != TOKEN_FROM:
             value_parts.append(self.consume().value)
-        target_expr = ExpressionPartsNode(value_parts, token=self.peek()) if value_parts else None
+        target_expr = ExpressionPartsNode(self.peek().line, self.peek().column, value_parts) if value_parts else None
 
         self.consume(TOKEN_FROM)
 
@@ -150,8 +150,8 @@ class Parser:
         list_name = " ".join(parts)
 
         if is_index_based:
-            return RemoveIndexNode(target_expr, list_name, token=remove_token)
-        return RemoveValueNode(target_expr, list_name, token=remove_token)
+            return RemoveIndexNode(remove_token.line, remove_token.column, target_expr, list_name)
+        return RemoveValueNode(remove_token.line, remove_token.column, target_expr, list_name)
 
     def _parse_verb_call(self):
         """Parse 'öka <target> med <value>' as AddAssignNode etc.
@@ -176,9 +176,9 @@ class Parser:
         }
         node_class = node_map.get(verb_name)
         if node_class:
-            return node_class(target, val, token=verb_token)
+            return node_class(verb_token.line, verb_token.column, target, val)
         # Unknown verb — fall back to function call
-        return AssignNode(target, FunctionCallNode(verb_name, [VarAccessNode(target, token=verb_token), val], token=verb_token), token=verb_token)
+        return AssignNode(verb_token.line, verb_token.column, target, FunctionCallNode(verb_token.line, verb_token.column, verb_name, [VarAccessNode(verb_token.line, verb_token.column, target), val]))
 
     def _parse_skicka_call(self):
         """Parse 'skicka <thing> till <target>' as AssignNode(target, fn(args..., target))."""
@@ -200,16 +200,16 @@ class Parser:
         for p in all_thing_parts:
             if p == ',':
                 if current:
-                    call_args.append(ExpressionPartsNode(current, token=fn_token))
+                    call_args.append(ExpressionPartsNode(fn_token.line, fn_token.column, current))
                 current = []
             else:
                 current.append(p)
         if current:
-            call_args.append(ExpressionPartsNode(current, token=fn_token))
+            call_args.append(ExpressionPartsNode(fn_token.line, fn_token.column, current))
         # Add target as last arg
-        call_args.append(VarAccessNode(target, token=fn_token))
-        func_call = FunctionCallNode(fn_name, call_args, token=fn_token)
-        return AssignNode(target, func_call, token=fn_token)
+        call_args.append(VarAccessNode(fn_token.line, fn_token.column, target))
+        func_call = FunctionCallNode(fn_token.line, fn_token.column, fn_name, call_args)
+        return AssignNode(fn_token.line, fn_token.column, target, func_call)
 
     def _parse_hämta_call(self):
         """Parse 'hämta <thing> från <source>' as FunctionCallNode(fn, [thing, source]).
@@ -232,14 +232,14 @@ class Parser:
         for p in thing_parts:
             if p == ',':
                 if current:
-                    call_args.append(ExpressionPartsNode(current, token=fn_token))
+                    call_args.append(ExpressionPartsNode(fn_token.line, fn_token.column, current))
                 current = []
             else:
                 current.append(p)
         if current:
-            call_args.append(ExpressionPartsNode(current, token=fn_token))
-        call_args.append(VarAccessNode(source, token=fn_token))
-        return FunctionCallNode(fn_name, call_args, token=fn_token)
+            call_args.append(ExpressionPartsNode(fn_token.line, fn_token.column, current))
+        call_args.append(VarAccessNode(fn_token.line, fn_token.column, source))
+        return FunctionCallNode(fn_token.line, fn_token.column, fn_name, call_args)
 
     def parse_open_file(self):
         open_token = self.consume(TOKEN_OPEN)
@@ -247,9 +247,9 @@ class Parser:
         try:
             t = self.peek()
             if t.type == TOKEN_STRING:
-                path_expr = StringNode(self.consume().value, token=t)
+                path_expr = StringNode(t.line, t.column, self.consume().value)
             elif t.type == TOKEN_IDENTIFIER:
-                path_expr = VarAccessNode(self.consume().value, token=t)
+                path_expr = VarAccessNode(t.line, t.column, self.consume().value)
             else:
                 raise SyntaxError("Förväntade filnamn eller sökväg")
 
@@ -274,9 +274,9 @@ class Parser:
             parts.append(self.consume().value)
         var_name = " ".join(parts)
 
-        function_call_args = [path_expr, StringNode(mode, token=mode_token)]
-        function_call_node = FunctionCallNode("öppna", function_call_args, token=open_token)
-        return AssignNode(var_name, function_call_node, target_type=None, token=assign_token)
+        function_call_args = [path_expr, StringNode(mode_token.line, mode_token.column, mode)]
+        function_call_node = FunctionCallNode(open_token.line, open_token.column, "öppna", function_call_args)
+        return AssignNode(assign_token.line, assign_token.column, var_name, function_call_node, target_type=None)
 
     def parse_close_file(self):
         close_file_token = self.consume(TOKEN_CLOSE)
@@ -286,7 +286,7 @@ class Parser:
         if not parts:
             raise SyntaxError(f"Förväntade en filvariabel efter 'stäng'")
         target = " ".join(parts)
-        return CloseFileNode(target, token=close_file_token)
+        return CloseFileNode(close_file_token.line, close_file_token.column, target)
 
     def parse_assignment(self):
         assign_token = self.consume(TOKEN_SET)
@@ -318,7 +318,7 @@ class Parser:
                 target = " ".join(target_parts)
                 self.consume(TOKEN_TO)
                 val = self.expression()
-                return ElementAssignNode(" ".join(idx_parts), target, val, token=assign_token)
+                return ElementAssignNode(assign_token.line, assign_token.column, " ".join(idx_parts), target, val)
             
             # If "i" doesn't come immediately after, reset position and fall through
             self.pos = saved_pos
@@ -386,7 +386,7 @@ class Parser:
 
             # Parse body (indented block)
             body = self.parse_block(params=self._extract_param_names(params))
-            func_def = FunctionDefNode(params, body, line=assign_token.line, column=assign_token.column, is_infix=is_infix, type_params=type_params, return_type=return_type)
+            func_def = FunctionDefNode(assign_token.line, assign_token.column, params, body, is_infix=is_infix, type_params=type_params, return_type=return_type)
             if is_infixgrej:
                 func_def.kind = 'infix'
             if is_verbgrej:
@@ -400,7 +400,7 @@ class Parser:
                 self.hämta_functions.add(name)
             if is_rekgrej:
                 func_def.kind = 'rek'
-            return AssignNode(name, func_def, target_type=None, token=assign_token)
+            return AssignNode(assign_token.line, assign_token.column, name, func_def, target_type=None)
         
         # Check for 'kopia av' pattern
         if self.peek() and self.peek().type == TOKEN_COPY:
@@ -415,11 +415,11 @@ class Parser:
                     self.consume()
                     updates = self._parse_constructor_args(named_only=True)
                     if updates:
-                        return CopyWithPropNode(name, source, updates, token=assign_token)
+                        return CopyWithPropNode(assign_token.line, assign_token.column, name, source, updates)
         
         # Standard assignment - parse expression value
         val = self.expression()
-        return AssignNode(name, val, target_type=None, token=assign_token)
+        return AssignNode(assign_token.line, assign_token.column, name, val, target_type=None)
 
     def parse_print(self):
         print_token = self.consume(TOKEN_PRINT)
@@ -430,12 +430,12 @@ class Parser:
                 self.consume()
                 if self.peek() and self.peek().type == TOKEN_IDENTIFIER:
                     target_var = self.consume().value
-                    return FileWriteNode(val, target_var, token=print_token)
+                    return FileWriteNode(print_token.line, print_token.column, val, target_var)
         except:
             pass
         self.pos = checkpoint
         val = self.expression()
-        return PrintNode(val, token=print_token)
+        return PrintNode(print_token.line, print_token.column, val)
 
     def _collect_until(self, *keywords):
         """Collect tokens until we hit one of the keywords. Preserves ExpressionPart token types."""
@@ -447,7 +447,7 @@ class Parser:
             tok = self.consume()
             parts.append(ExpressionPart(tok.value, tok.type, tok.line, tok.column))
         
-        return ExpressionPartsNode(parts, token=self.peek())
+        return ExpressionPartsNode(self.peek().line if self.peek() else None, self.peek().column if self.peek() else None, parts)
 
     def expression(self):
         """Parse expression - collect all tokens as ExpressionPart for resolver to handle."""
@@ -459,7 +459,7 @@ class Parser:
             parts.append(ExpressionPart(tok.value, tok.type, tok.line, tok.column))
             t = self.peek()
 
-        return ExpressionPartsNode(parts, token=t)
+        return ExpressionPartsNode(self.peek().line if self.peek() else None, self.peek().column if self.peek() else None, parts)
 
     def parse_block(self, params=None):
         while self.peek() and self.peek().type == TOKEN_NEWLINE: self.consume()
@@ -475,23 +475,23 @@ class Parser:
         """Parse a value for kopia av."""
         t = self.peek()
         if not t:
-            return StringNode("", token=t)
+            return StringNode(t.line, t.column, "")
         
         if t.type == TOKEN_LITERAL_INT:
             self.consume()
-            return IntNode(t.value, token=t)
+            return IntNode(t.line, t.column, t.value)
         if t.type == TOKEN_LITERAL_FLOAT:
             self.consume()
-            return FloatNode(t.value, token=t)
+            return FloatNode(t.line, t.column, t.value)
         if t.type == TOKEN_LITERAL_TRUE:
             self.consume()
-            return BoolNode(True, token=t)
+            return BoolNode(t.line, t.column, True)
         if t.type == TOKEN_LITERAL_FALSE:
             self.consume()
-            return BoolNode(False, token=t)
+            return BoolNode(t.line, t.column, False)
         if t.type == TOKEN_STRING:
             self.consume()
-            return StringNode(t.value, token=t)
+            return StringNode(t.line, t.column, t.value)
         if t.type == TOKEN_IDENTIFIER:
             name_parts = [self.consume().value]
             while self.peek() and self.peek().type == TOKEN_IDENTIFIER and self.peek().value not in [","]:
@@ -508,11 +508,11 @@ class Parser:
             if self.peek() and self.peek().type == TOKEN_WITH:
                 self.consume()
                 args = self._parse_function_call_args()
-                return FunctionCallNode(name, args, token=t)
-            return VarAccessNode(name, token=t)
+                return FunctionCallNode(t.line, t.column, name, args)
+            return VarAccessNode(t.line, t.column, name)
         
         val = self.consume().value
-        return StringNode(val, token=t)
+        return StringNode(t.line, t.column, val)
 
     def _is_value_token(self, token):
         if token is None:
@@ -580,7 +580,7 @@ class Parser:
         if_token = self.consume(TOKEN_IF)
         first_cond = self.expression()
         first_block = self.parse_block()
-        first_condition = IfCondition(first_cond, first_block, line=if_token.line, column=if_token.column)
+        first_condition = IfCondition(if_token.line, if_token.column, first_cond, first_block)
         
         conditions = [first_condition]
         
@@ -590,17 +590,17 @@ class Parser:
                 self.consume()
                 elif_cond = self.expression()
                 elif_block = self.parse_block()
-                elif_condition = IfCondition(elif_cond, elif_block)
+                elif_condition = IfCondition(elif_cond.line, elif_cond.column, elif_cond, elif_block)
                 conditions.append(elif_condition)
             else:
                 else_block = self.parse_block()
-                return IfNode(conditions, else_block, line=if_token.line, column=if_token.column)
+                return IfNode(if_token.line, if_token.column, conditions, else_block)
         
-        return IfNode(conditions, line=if_token.line, column=if_token.column)
+        return IfNode(if_token.line, if_token.column, conditions)
 
     def parse_while(self):
         while_token = self.consume(TOKEN_WHILE)
-        return WhileNode(self.expression(), self.parse_block(), line=while_token.line, column=while_token.column)
+        return WhileNode(while_token.line, while_token.column, self.expression(), self.parse_block())
 
     def parse_for_each(self):
         """Parse 'för varje <variable> i <expression>' loop.
@@ -639,7 +639,7 @@ class Parser:
         # Parse the body block
         body = self.parse_block()
         
-        return ForEachNode(variable, iterable, body, token=for_token)
+        return ForEachNode(for_token.line, for_token.column, variable, iterable, body)
 
     def parse_try_catch(self):
         try_token = self.consume(TOKEN_TRY)
@@ -660,7 +660,7 @@ class Parser:
         if not catch_b and not finally_b:
             raise SyntaxError("Ett 'försök' måste ha antingen 'fånga' eller 'slutligen'.")
 
-        return TryCatchNode(try_b, err_var, catch_b, finally_b, token=try_token)
+        return TryCatchNode(try_token.line, try_token.column, try_b, err_var, catch_b, finally_b)
 
     def _parse_typed_params(self):
         """Parse a comma-separated list of typed parameters after 'med'.
@@ -795,7 +795,7 @@ class Parser:
             self.consume()  # consume newline
             fields = self._parse_type_def_body(type_params)
 
-        return TypeDefNode(name, fields, token=type_def_token, type_params=type_params,
+        return TypeDefNode(type_def_token.line, type_def_token.column, name, fields, type_params=type_params,
                           parent_types=parent_types)
 
     def parse_grejtyp(self):
@@ -811,7 +811,7 @@ class Parser:
 
         return_type = self._parse_return_type()
 
-        return FunctionTypeNode(name, params, return_type, token=token)
+        return FunctionTypeNode(token.line, token.column, name, params, return_type)
 
     def _parse_type_def_body(self, type_params):
         """Parse a multi-line typ body where each line is a field declaration.
@@ -853,7 +853,7 @@ class Parser:
                     raise Exception(
                         f"Typfältet '{field_name}' har en tom typ efter 'som'."
                     )
-                field_type = ' '.join(type_parts).replace(' ,', ',').replace(', ', ', ').replace(',,', ',')
+                field_type = ' '.join(type_parts).replace(' ,', ',').replace(', ', ', ').replace(',', ',')
                 # Clean up: remove trailing commas
                 field_type = field_type.strip().rstrip(',').strip()
                 fields.append((field_name, field_type))

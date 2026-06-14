@@ -1,5 +1,5 @@
-
 class Environment:
+
     def __init__(self, parent=None):
         self.vars = {}
         self.parent = parent
@@ -12,7 +12,6 @@ class Environment:
             return self.vars[name]
         if self.parent:
             return self.parent.get(name)
-        # README: If variable not found, return the name as a string
         return name
 
     def get_local_bindings(self):
