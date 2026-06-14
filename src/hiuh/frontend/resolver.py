@@ -1168,15 +1168,10 @@ class Resolver:
                 left_parts = parts[:i]
                 right_parts = parts[i + 1:]
                 if left_parts and right_parts:
-                    # Resolve both sides to check their types
                     left_node = self._resolve_precedence(left_parts, token=node)
                     right_node = self._resolve_precedence(right_parts, token=node)
-                    # Only create AndNode or OrNode if both are booleans or comparisons
-                    left_is_bool_like = isinstance(left_node, (BoolNode, ComparisonNodes))
-                    right_is_bool_like = isinstance(right_node, (BoolNode, ComparisonNodes))
-                    if left_is_bool_like and right_is_bool_like:
-                        node_class = AndNode if part == 'och' else OrNode
-                        return node_class(node.line, node.column, left_node, right_node)
+                    node_class = AndNode if part == 'och' else OrNode
+                    return node_class(node.line, node.column, left_node, right_node)
 
         # Find the lowest precedence operator
         # Precedence (low to high):
