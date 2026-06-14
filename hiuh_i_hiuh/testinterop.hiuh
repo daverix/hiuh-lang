@@ -36,6 +36,12 @@ sätt formatera en nod till grej med n som basnod ger sträng
         ge "VarAccessNode(" plus namn från n plus ")"
 
     . Expression parts (unresolved expressions)
+. Append
+    om ht är lika med typ av läggtillnod
+        sätt vs till formatera en nod med värde från n
+        sätt ms till mål från n
+        ge "AppendNode(" plus vs plus ", '" plus ms plus "')"
+
     om ht är lika med typ av uttrycksdelnod
         ge värde från n
 
@@ -48,7 +54,7 @@ sätt formatera en nod till grej med n som basnod ger sträng
                 sätt först till FALSKT
             annars
                 sätt txt till txt plus " "
-            sätt txt till txt plus formatera en nod med d
+            sätt txt till txt plus värde från d
         ge "Expr(" plus txt plus ")"
 
     . Arithmetic binary nodes
@@ -157,8 +163,8 @@ sätt formatera en nod till grej med n som basnod ger sträng
 
     . Element assign
     om ht är lika med typ av elementtilldelnigsnod
-        sätt idxs till formatera en nod med index från n
-        sätt ms till formatera en nod med mål från n
+        sätt idxs till "str(...)"
+        sätt ms till "str(...)"
         sätt vs till formatera en nod med värde från n
         ge "ElementAssignNode(" plus idxs plus ", " plus ms plus ", " plus vs plus ")"
 
@@ -174,12 +180,6 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt nm till namn från n
         sätt vs till formatera en nod med värde från n
         ge "NamedArgNode('" plus nm plus "', " plus vs plus ")"
-
-    . Append
-    om ht är lika med typ av läggtillnod
-        sätt vs till formatera en nod med värde från n
-        sätt ms till mål från n
-        ge "AppendNode(" plus vs plus ", '" plus ms plus "')"
 
     . Statements
     om ht är lika med typ av skrivnod
