@@ -1170,8 +1170,12 @@ class Resolver:
                 if left_parts and right_parts:
                     left_node = self._resolve_precedence(left_parts, token=node)
                     right_node = self._resolve_precedence(right_parts, token=node)
-                    node_class = AndNode if part == 'och' else OrNode
-                    return node_class(node.line, node.column, left_node, right_node)
+                    # Only create AndNode or OrNode if both operands are boolean-like
+                    left_is_bool_like = isinstance(left_node, (BoolNode, ComparisonNodes, FunctionCallNode))
+                    right_is_bool_like = isinstance(right_node, (BoolNode, ComparisonNodes, FunctionCallNode))
+                    if left_is_bool_like and right_is_bool_like:
+                        node_class = AndNode if part == 'och' else OrNode
+                        return node_class(node.line, node.column, left_node, right_node)
 
         # Find the lowest precedence operator
         # Precedence (low to high):
