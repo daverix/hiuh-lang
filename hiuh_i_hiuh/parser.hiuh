@@ -74,14 +74,12 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
             sätt t till element pos från tokens
             sätt tt till tokentyp från t
             sätt tv till värde från t
-            . Check for keyword tokens by type
-            om stoppord är lika med "i" och tt är lika med itoken
-                bryt
+            . Check for keyword tokens by type (från and till are not idtoken)
             om stoppord är lika med "från" och tt är lika med fråntoken
                 bryt
             om stoppord är lika med "till" och tt är lika med tilltoken
                 bryt
-            . Also check regular identifiers
+            . Also check regular identifiers (including "i")
             om tt är lika med idtoken och tv är lika med stoppord
                 bryt
             om tt är lika med nyradstoken
@@ -254,13 +252,18 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
             sätt t1v till värde från t1
             om t1v är lika med "element" eller t1v är lika med "index"
                 öka pos med 1
-                sätt r till samla namn med pos, itoken
-                sätt pos till pos från r
-                sätt idx till namn från r
-                om pos är mindre än längd från tokens
+                . Collect index (int or identifier) until i keyword
+                sätt idxdelar till lista av sträng
+                medan pos är mindre än längd från tokens
                     sätt t2 till element pos från tokens
-                    om tokentyp från t2 är lika med itoken
+                    sätt t2t till tokentyp från t2
+                    sätt t2v till värde från t2
+                    om t2t är lika med idtoken och t2v är lika med "i"
                         öka pos med 1
+                        bryt
+                    lägg till t2v i idxdelar
+                    öka pos med 1
+                sätt idx till slå ihop med idxdelar, " "
                 sätt r till samla namn med pos, tilltoken
                 sätt pos till pos från r
                 sätt målnamn till namn från r
@@ -521,7 +524,7 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
         sätt värde till nod från r
         om pos är mindre än längd från tokens
             sätt t till element pos från tokens
-            om tokentyp från t är lika med itoken
+            om tokentyp från t är lika med idtoken och värde från t är lika med "i"
                 öka pos med 1
         sätt r2 till samla namn med pos, nyradstoken
         sätt pos till pos från r2
@@ -604,7 +607,7 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
             sätt variabel till variabel plus värde från d
         om pos är mindre än längd från tokens
             sätt t till element pos från tokens
-            om tokentyp från t är lika med itoken
+            om tokentyp från t är lika med idtoken och värde från t är lika med "i"
                 öka pos med 1
         sätt r2 till samla uttryck med pos
         sätt pos till pos från r2
