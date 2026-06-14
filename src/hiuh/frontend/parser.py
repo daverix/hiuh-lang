@@ -438,13 +438,14 @@ class Parser:
         return PrintNode(val, token=print_token)
 
     def _collect_until(self, *keywords):
-        """Collect tokens until we hit one of the keywords."""
+        """Collect tokens until we hit one of the keywords. Preserves ExpressionPart token types."""
         parts = []
         while self.peek():
             t = self.peek()
             if t.type == TOKEN_IDENTIFIER and t.value in keywords:
                 break
-            parts.append(self.consume().value)
+            tok = self.consume()
+            parts.append(ExpressionPart(tok.value, tok.type, tok.line, tok.column))
         
         return ExpressionPartsNode(parts, token=self.peek())
 

@@ -13,40 +13,29 @@ sätt formatera till grej med noder som lista av basnod ger lista av sträng
 sätt formatera en nod till grej med n som basnod ger sträng
     sätt ht till typ av n
 
+    . Literals
     om ht är lika med typ av strängnod
         sätt v till värde från n
+        . Escape single quotes for repr format
         ge "StringNode('" plus v plus "')"
 
     om ht är lika med typ av heltalsnod
         sätt v till värde från n
         ge "IntNode(" plus v plus ")"
 
+    om ht är lika med typ av flyttalsnod
+        sätt v till värde från n
+        ge "FloatNode(" plus v plus ")"
+
     om ht är lika med typ av boolesknod
         om värde från n
             ge "BoolNode(True)"
         ge "BoolNode(False)"
 
-    om ht är lika med typ av grejanropsnod
-        sätt fnnamn till namn från n
-        sätt arg till argument från n
-        sätt argstr till formatera block med arg
-        ge "FunctionCallNode('" plus fnnamn plus "', " plus argstr plus ")"
-
-    om ht är lika med typ av egenskapsåtkomstnod
-        sätt pn till namn från n
-        sätt mn till mål från n
-        sätt ms till formatera en nod med mn
-        ge "PropertyAccessNode('" plus pn plus "', " plus ms plus ")"
-
     om ht är lika med typ av variabelnod
         ge "VarAccessNode(" plus namn från n plus ")"
 
-    om ht är lika med typ av somnod
-        sätt vn till värde från n
-        sätt vs till formatera en nod med vn
-        sätt mt till måltyp från n
-        ge "CastNode(" plus vs plus ", '" plus mt plus "')"
-
+    . Expression parts (unresolved expressions)
     om ht är lika med typ av uttrycksdelarnod
         sätt delar till delar från n
         sätt txt till ""
@@ -59,6 +48,137 @@ sätt formatera en nod till grej med n som basnod ger sträng
             sätt txt till txt plus värde från d
         ge "Expr(" plus txt plus ")"
 
+    . Arithmetic binary nodes
+    om ht är lika med typ av adderanod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "AddNode(" plus vs plus ", " plus hs plus ")"
+
+    om ht är lika med typ av subtraheranod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "SubNode(" plus vs plus ", " plus hs plus ")"
+
+    om ht är lika med typ av multipliceranod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "MulNode(" plus vs plus ", " plus hs plus ")"
+
+    om ht är lika med typ av divideranod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "DivNode(" plus vs plus ", " plus hs plus ")"
+
+    om ht är lika med typ av restnod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "ModNode(" plus vs plus ", " plus hs plus ")"
+
+    . Comparison nodes
+    om ht är lika med typ av likanod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "EqualNode(" plus vs plus ", " plus hs plus ")"
+
+    om ht är lika med typ av intelikanod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "NotEqualNode(" plus vs plus ", " plus hs plus ")"
+
+    om ht är lika med typ av störreännod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "GreaterThanNode(" plus vs plus ", " plus hs plus ")"
+
+    om ht är lika med typ av mindreännod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "LessThanNode(" plus vs plus ", " plus hs plus ")"
+
+    om ht är lika med typ av störrelikanod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "GreaterThanOrEqualNode(" plus vs plus ", " plus hs plus ")"
+
+    om ht är lika med typ av mindrelikanod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "LessThanOrEqualNode(" plus vs plus ", " plus hs plus ")"
+
+    . Logic nodes
+    om ht är lika med typ av ochnod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "AndNode(" plus vs plus ", " plus hs plus ")"
+
+    om ht är lika med typ av ellernod
+        sätt vs till formatera en nod med vänster från n
+        sätt hs till formatera en nod med höger från n
+        ge "OrNode(" plus vs plus ", " plus hs plus ")"
+
+    om ht är lika med typ av intenod
+        sätt us till formatera en nod med uttryck från n
+        ge "NotNode(" plus us plus ")"
+
+    . Cast / TypeOf
+    om ht är lika med typ av somnod
+        sätt vn till värde från n
+        sätt vs till formatera en nod med vn
+        sätt mt till måltyp från n
+        ge "CastNode(" plus vs plus ", '" plus mt plus "')"
+
+    om ht är lika med typ av typavnod
+        sätt vn till värde från n
+        sätt vs till formatera en nod med vn
+        ge "TypeOfNode(" plus vs plus ")"
+
+    . Function call
+    om ht är lika med typ av grejanropsnod
+        sätt fnnamn till namn från n
+        sätt arg till argument från n
+        sätt argstr till formatera block med arg
+        ge "FunctionCallNode('" plus fnnamn plus "', " plus argstr plus ")"
+
+    . Property access
+    om ht är lika med typ av egenskapsåtkomstnod
+        sätt pn till namn från n
+        sätt mn till mål från n
+        sätt ms till formatera en nod med mn
+        ge "PropertyAccessNode('" plus pn plus "', " plus ms plus ")"
+
+    . Element access
+    om ht är lika med typ av elementåtskomstnod
+        sätt idxs till formatera en nod med index från n
+        sätt ms till formatera en nod med mål från n
+        ge "ElementAccessNode(" plus idxs plus ", " plus ms plus ")"
+
+    . Element assign
+    om ht är lika med typ av elementtilldelnigsnod
+        sätt idxs till formatera en nod med index från n
+        sätt ms till formatera en nod med mål från n
+        sätt vs till formatera en nod med värde från n
+        ge "ElementAssignNode(" plus idxs plus ", " plus ms plus ", " plus vs plus ")"
+
+    . Infix call
+    om ht är lika med typ av infixanropsnod
+        sätt vs till formatera en nod med vänster från n
+        sätt op till operator från n
+        sätt hs till formatera en nod med höger från n
+        ge "InfixCallNode(" plus vs plus ", '" plus op plus "', " plus hs plus ")"
+
+    . Named arg
+    om ht är lika med typ av namngivenargnod
+        sätt nm till namn från n
+        sätt vs till formatera en nod med värde från n
+        ge "NamedArgNode('" plus nm plus "', " plus vs plus ")"
+
+    . Append
+    om ht är lika med typ av läggtillnod
+        sätt vs till formatera en nod med värde från n
+        sätt ms till mål från n
+        ge "AppendNode(" plus vs plus ", '" plus ms plus "')"
+
+    . Statements
     om ht är lika med typ av skrivnod
         sätt vn till värde från n
         sätt vs till formatera en nod med vn
@@ -89,6 +209,7 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt mn till variabel från n
         ge "CloseFileNode(" plus mn plus ")"
 
+    . Compound assignment
     om ht är lika med typ av ökanod
         sätt msn till mål från n
         sätt vn till värde från n
@@ -117,14 +238,27 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt vs till formatera en nod med vn
         ge "DivideAssignNode(" plus ms plus ", " plus vs plus ")"
 
+    . Unary op (kasta etc.)
+    om ht är lika med typ av unärnod
+        sätt op till operator från n
+        sätt us till formatera en nod med uttryck från n
+        ge "UnaryOpNode('" plus op plus "', " plus us plus ")"
+
+    . IfNode
     om ht är lika med typ av omnod
         sätt vl till villkor från n
-        sätt ov till element 0 från vl
-        sätt test till test från ov
-        sätt block till block från ov
-        sätt ts till formatera en nod med test
-        sätt blockstr till formatera block med block
-        sätt utstr till "IfNode(IfCond(" plus ts plus ", " plus blockstr plus ")"
+        sätt utstr till "IfNode("
+        sätt först till SANT
+        för varje ov i vl
+            sätt test till test från ov
+            sätt block till block från ov
+            sätt ts till formatera en nod med test
+            sätt blockstr till formatera block med block
+            om först
+                sätt först till FALSKT
+            annars
+                sätt utstr till utstr plus ", "
+            sätt utstr till utstr plus "IfCond(" plus ts plus ", " plus blockstr plus ")"
         sätt eb till ellerblock från n
         om längd från eb är större än 0
             sätt annarsstr till formatera block med eb
@@ -132,6 +266,7 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt utstr till utstr plus ")"
         ge utstr
 
+    . WhileNode
     om ht är lika med typ av medannod
         sätt villkor till villkor från n
         sätt block till block från n
@@ -139,6 +274,40 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt blockstr till formatera block med block
         ge "WhileNode(" plus vs plus ", " plus blockstr plus ")"
 
+    . ForEachNode
+    om ht är lika med typ av förvarjenod
+        sätt variabel till variabel från n
+        sätt is till formatera en nod med itererbar från n
+        sätt blockstr till formatera block med block från n
+        ge "ForEachNode(" plus variabel plus ", " plus is plus ", " plus blockstr plus ")"
+
+    . TryCatchNode
+    om ht är lika med typ av försöknod
+        sätt delar till lista av sträng
+        sätt fbs till formatera block med försökblock från n
+        lägg till "Try(" plus fbs plus ")" i delar
+        sätt fv till felvariabel från n
+        sätt fb till fångablock från n
+        om längd från fb är större än 0
+            sätt fbs2 till formatera block med fb
+            lägg till "Catch('" plus fv plus "', " plus fbs2 plus ")" i delar
+        sätt sb till slutligenblock från n
+        om längd från sb är större än 0
+            sätt sbs till formatera block med sb
+            lägg till "Finally(" plus sbs plus ")" i delar
+
+        sätt utstr till "TryCatchNode("
+        sätt först till SANT
+        för varje d i delar
+            om först
+                sätt först till FALSKT
+            annars
+                sätt utstr till utstr plus ", "
+            sätt utstr till utstr plus d
+        sätt utstr till utstr plus ")"
+        ge utstr
+
+    . FunctionDefNode
     om ht är lika med typ av grejdefinitionsnod
         sätt pm till parametrar från n
         sätt block till block från n
@@ -147,6 +316,7 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt blockstr till formatera block med block
         ge "FunctionDefNode(" plus paramsstr plus ", " plus blockstr plus ", return_type='" plus rt plus "')"
 
+    . FunctionTypeNode
     om ht är lika med typ av grejtypnod
         sätt nm till namn från n
         sätt pm till parametrar från n

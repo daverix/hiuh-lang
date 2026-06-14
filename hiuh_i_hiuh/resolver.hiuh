@@ -1,144 +1,1012 @@
 använd ast
 
-sätt lös till rekgrej med noder som lista av basnod ger lista av basnod
+. =====================================================
+. Hiuh resolver - transforms AST from parser output
+. Equivalent to src/hiuh/frontend/resolver.py
+. =====================================================
 
-    sätt slå ihop delar mellan till grej med delar som sträng, start som sträng, slut som sträng ger sträng
-        sätt text till ""
-        sätt först till SANT
-        sätt idx till start
-        medan idx är mindre än slut
-            sätt d till element idx från delar
-            om först
-                sätt först till FALSKT
-            annars
-                sätt text till text plus " "
-            sätt text till text plus värde från d
-            öka idx med 1
-        ge text
+. --- String helpers (needed in Hiuh context) ---
 
-    sätt lös uttryck till grej med delar som sträng ger sträng
-        sätt antal till längd från delar
+sätt delsträng till grej med text som sträng, start som heltal, längd som heltal ger sträng
+    sätt resultat till ""
+    sätt pos till start
+    sätt slut till start plus längd
+    medan pos är mindre än slut och pos är mindre än längd från text
+        sätt resultat till resultat plus element pos från text
+        öka pos med 1
+    ge resultat
 
-        om antal är lika med 1
-            sätt del till element 0 från delar
-            sätt tv till värde från del
-            om tv är lika med "SANT"
-                ge boolesknod med 1, 1, SANT
-            om tv är lika med "FALSKT"
-                ge boolesknod med 1, 1, FALSKT
-            ge strängnod med 1, 1, tv
+sätt versaler till grej med text som sträng ger sträng
+    sätt resultat till ""
+    sätt pos till 0
+    medan pos är mindre än längd från text
+        sätt tecken till element pos från text
+        sätt kod till tecken som tal
+        om kod är större än eller lika med 97 och kod är mindre än eller lika med 122
+            sätt tecken till kod minus 32 som tecken
+        sätt resultat till resultat plus tecken
+        öka pos med 1
+    ge resultat
 
-        om antal är lika med 3
-            sätt andra till element 1 från delar
-            om värde från andra är lika med "som"
-                sätt första till element 0 från delar
-                sätt tredje till element 2 från delar
-                sätt värdetext till värde från första
-                sätt typtext till värde från tredje
-                sätt värdenod till heltalsnod med 1, 1, värdetext
-                sätt n till somnod med 1, 1, värdenod, typtext
-                ge n
+. --- Helper: join string parts with space ---
+. _parts_to_str in resolver.py
+sätt slå ihop delar till grej med delar som lista av sträng, start som heltal, slut som heltal ger sträng
+    sätt text till ""
+    sätt idx till start
+    medan idx är mindre än slut
+        om idx är större än start
+            sätt text till text plus " "
+        sätt text till text plus element idx från delar
+        öka idx med 1
+    ge text
 
-        sätt har med till FALSKT
-        sätt medpos till 0
-        för varje d i delar
-            om värde från d är lika med "med"
-                sätt har med till SANT
+. --- Helper: check if string is an integer ---
+sätt är heltalsträng till grej med s som sträng ger boolesk
+    om längd från s är lika med 0
+        ge FALSKT
+    sätt pos till 0
+    sätt t0 till element 0 från s
+    om t0 är lika med "-" och längd från s är större än 1
+        öka pos med 1
+    medan pos är mindre än längd från s
+        sätt t till element pos från s
+        sätt kod till t som tal
+        om kod är mindre än 48 eller kod är större än 57
+            ge FALSKT
+        öka pos med 1
+    ge SANT
+
+. --- Helper: check if string is a float (has comma or dot) ---
+sätt är flyttalsträng till grej med s som sträng ger boolesk
+    sätt har komma till FALSKT
+    sätt pos till 0
+    om längd från s är större än 0
+        sätt t0 till element 0 från s
+        om t0 är lika med "-"
+            sätt pos till 1
+    medan pos är mindre än längd från s
+        sätt t till element pos från s
+        om t är lika med "," eller t är lika med "."
+            sätt har komma till SANT
+        annars
+            sätt kod till t som tal
+            om kod är mindre än 48 eller kod är större än 57
+                ge FALSKT
+        öka pos med 1
+    ge har komma
+
+. --- Check if name is a known infix function ---
+sätt är infixoperator till grej med namn som sträng, infixfunktioner som lista av sträng ger boolesk
+    om namn är lika med "innehåller"
+        ge SANT
+    för varje inf i infixfunktioner
+        om inf är lika med namn
+            ge SANT
+    ge FALSKT
+
+. --- Convert a single string part to an AST node ---
+. _part_to_node in resolver.py
+sätt del till nod till grej med s som sträng, rs som heltal, ks som heltal, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    . String literal (checks for quotes around value)
+    om längd från s är större än 1
+        sätt första till element 0 från s
+        sätt sista till element längd från s minus 1 från s
+        om första är lika med "\"" och sista är lika med "\""
+            sätt innanför till delsträng med s, 1, längd från s minus 2
+            ge strängnod med rs, ks, innanför
+
+    . Boolean literals
+    sätt versal till versaler med s
+    om versal är lika med "SANT"
+        ge boolesknod med rs, ks, SANT
+    om versal är lika med "FALSKT"
+        ge boolesknod med rs, ks, FALSKT
+
+    . Integer literal
+    om är heltalsträng med s
+        ge heltalsnod med rs, ks, s
+
+    . Float literal
+    om är flyttalsträng med s
+        sätt v till s som tal
+        ge flyttalsnod med rs, ks, v
+
+    . Check if defined as a local name
+    sätt är def till FALSKT
+    för varje d i definierade
+        om d är lika med s
+            sätt är def till SANT
+            bryt
+    om är def
+        ge variabelnod med rs, ks, s, inget av resultat av basnod
+
+    . Check built-in functions
+    om s är lika med "lista" eller s är lika med "inmatning" eller s är lika med "ordlista"
+        sätt är def till SANT
+    om s är lika med "putta" eller s är lika med "hämta" eller s är lika med "finns" eller s är lika med "rensa"
+        sätt är def till SANT
+
+    om är def
+        ge grejanropsnod med rs, ks, s, lista av namngivenargnod
+
+    . Undefined - treat as StringNode
+    ge strängnod med rs, ks, s
+
+. --- Split operator string into word list (manual, avoids innehåller) ---
+sätt dela upp operator till grej med opstr som sträng ger lista av sträng
+    sätt resultat till lista av sträng
+    sätt tmp till opstr
+    sätt klart till FALSKT
+    medan inte klart
+        sätt spcidx till -1
+        sätt j till 0
+        medan j är mindre än längd från tmp
+            om element j från tmp är lika med " "
+                sätt spcidx till j
                 bryt
-            öka medpos med 1
-        om har med
-            sätt fnnamn till slå ihop delar mellan med delar, 0, medpos
-            sätt antal till längd från delar
-            sätt argstart till medpos plus 1
+            öka j med 1
+        om spcidx är lika med -1
+            lägg till tmp i resultat
+            sätt klart till SANT
+        annars
+            sätt ord till delsträng med tmp, 0, spcidx
+            lägg till ord i resultat
+            sätt tmp till delsträng med tmp, spcidx plus 1, längd från tmp minus spcidx minus 1
+    ge resultat
 
-            om argstart är större än eller lika med antal
-                sätt n till grejanropsnod med 1, 1, fnnamn, lista av sträng
-                ge n
+. --- Find operator tokens in parts list ---
+sätt hitta operator i delar till grej med delar som lista av sträng, opdelar som lista av sträng ger heltal
+    sätt oplängd till längd från opdelar
+    sätt antal till längd från delar
+    sätt i till 0
+    medan i plus oplängd är mindre än eller lika med antal
+        sätt matchar till SANT
+        sätt j till 0
+        medan j är mindre än oplängd
+            om element i plus j från delar är inte lika med element j från opdelar
+                sätt matchar till FALSKT
+                bryt
+            öka j med 1
+        om matchar
+            ge i
+        öka i med 1
+    ge -1
 
-            sätt argdelar till lista av sträng
-            sätt idx till argstart
-            medan idx är mindre än antal
-                sätt elem till element idx från delar
-                lägg till elem i argdelar
-                öka idx med 1
+. --- Slice parts list from start to end ---
+sätt skiva delar till grej med delar som lista av sträng, start som heltal, slut som heltal ger lista av sträng
+    sätt resultat till lista av sträng
+    sätt i till start
+    medan i är mindre än slut
+        lägg till element i från delar i resultat
+        öka i med 1
+    ge resultat
 
-            sätt argantal till längd från argdelar
-            sätt argnod till strängnod med 1, 1, ""
-            om argantal är lika med 1
-                sätt del till element 0 från argdelar
-                sätt tv till värde från del
-                om tv är lika med "SANT"
-                    sätt argnod till boolesknod med 1, 1, SANT
-                annars om tv är lika med "FALSKT"
-                    sätt argnod till boolesknod med 1, 1, FALSKT
+. ======================================================================
+. MAIN EXPRESSION RESOLVER
+. visit_ExpressionPartsNode + _resolve_precedence in resolver.py
+. ======================================================================
+. Uses rekgrej for self-recursion (calls itself for sub-expressions)
+sätt lös uttryck till rekgrej med delar som lista av sträng, rs som heltal, ks som heltal, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt antal till längd från delar
+
+    . Empty -> empty string
+    om antal är lika med 0
+        ge strängnod med rs, ks, ""
+
+    . Single part
+    om antal är lika med 1
+        sätt s till element 0 från delar
+        ge del till nod med s, rs, ks, definierade, infixfunktioner
+
+    . Special: "ny rad" -> newline
+    om antal är lika med 2
+        om element 0 från delar är lika med "ny" och element 1 från delar är lika med "rad"
+            ge strängnod med rs, ks, ny rad
+
+    . "inte X" -> NotNode
+    om element 0 från delar är lika med "inte"
+        sätt innerdelar till skiva delar med delar, 1, antal
+        sätt inre till lös uttryck med innerdelar, rs, ks, definierade, infixfunktioner
+        ge intenod med rs, ks, inre
+
+    . Find "som" for CastNode (but not if there's a comma before it - that's a function arg)
+    sätt somidx till -1
+    sätt harkomma före som till FALSKT
+    sätt i till 0
+    medan i är mindre än antal
+        om element i från delar är lika med ","
+            sätt harkomma före som till SANT
+        om element i från delar är lika med "som" och somidx är lika med -1
+            sätt somidx till i
+        öka i med 1
+
+    om somidx är större än 0 och somidx plus 1 är mindre än antal och inte harkomma före som
+        sätt värdelista till skiva delar med delar, 0, somidx
+        sätt typlista till skiva delar med delar, somidx plus 1, antal
+        sätt värdenod till lös uttryck med värdelista, rs, ks, definierade, infixfunktioner
+        sätt måltyp till slå ihop delar med typlista, 0, längd från typlista
+        ge somnod med rs, ks, värdenod, måltyp
+
+    . "typ av X" -> TypeOfNode
+    om antal är större än eller lika med 3
+        om element 0 från delar är lika med "typ" och element 1 från delar är lika med "av"
+            sätt innerdelar till skiva delar med delar, 2, antal
+            sätt inre till lös uttryck med innerdelar, rs, ks, definierade, infixfunktioner
+            ge typavnod med rs, ks, inre
+
+    . Find position of "från" and "med"
+    sätt frånidx till -1
+    sätt medidx till -1
+    sätt i till 0
+    medan i är mindre än antal
+        om element i från delar är lika med "från" och frånidx är lika med -1
+            sätt frånidx till i
+        om element i från delar är lika med "med" och medidx är lika med -1
+            sätt medidx till i
+        öka i med 1
+
+    . "element X från Y" or "index X från Y" -> ElementAccessNode
+    om frånidx är större än 1
+        sätt första till element 0 från delar
+        om första är lika med "element" eller första är lika med "index"
+            sätt idxdelar till skiva delar med delar, 1, frånidx
+            sätt måldelar till skiva delar med delar, frånidx plus 1, antal
+            om längd från idxdelar är större än 0 och längd från måldelar är större än 0
+                sätt idxnod till lös uttryck med idxdelar, rs, ks, definierade, infixfunktioner
+                sätt målnod till lös uttryck med måldelar, rs, ks, definierade, infixfunktioner
+                ge elementåtskomstnod med rs, ks, idxnod, målnod
+
+    . "fn med args från target" pattern (med before från)
+    om medidx är inte lika med -1 och medidx är mindre än frånidx
+        sätt fnnamn till slå ihop delar med delar, 0, medidx
+        sätt argdelar till skiva delar med delar, medidx plus 1, frånidx
+        sätt måldelar till skiva delar med delar, frånidx plus 1, antal
+
+        . Resolve args - split by commas
+        sätt args till lista av basnod
+        sätt nuvarande till lista av sträng
+        för varje a i argdelar
+            om a är lika med ","
+                om längd från nuvarande är större än 0
+                    sätt anod till lös uttryck med nuvarande, rs, ks, definierade, infixfunktioner
+                    lägg till anod i args
+                sätt nuvarande till lista av sträng
+            annars
+                lägg till a i nuvarande
+        om längd från nuvarande är större än 0
+            sätt anod till lös uttryck med nuvarande, rs, ks, definierade, infixfunktioner
+            lägg till anod i args
+
+        sätt målnod till lös uttryck med måldelar, rs, ks, definierade, infixfunktioner
+        ge grejanropsnod med rs, ks, fnnamn, args
+
+    . "X från Y" -> PropertyAccessNode (no med involved)
+    om frånidx är större än 0 och frånidx plus 1 är mindre än antal och medidx är lika med -1
+        sätt propdelar till skiva delar med delar, 0, frånidx
+        sätt måldelar till skiva delar med delar, frånidx plus 1, antal
+        sätt propnamn till slå ihop delar med propdelar, 0, längd från propdelar
+        sätt målnod till lös uttryck med måldelar, rs, ks, definierade, infixfunktioner
+        ge egenskapsåtkomstnod med rs, ks, propnamn, målnod
+
+    . "X med Y, Z" -> FunctionCallNode (med after a known name)
+    om medidx är större än 0
+        sätt fnnamn till slå ihop delar med delar, 0, medidx
+
+        . Check if known function
+        sätt ärkändfn till FALSKT
+        för varje d i definierade
+            om d är lika med fnnamn
+                sätt ärkändfn till SANT
+                bryt
+        . Also check built-ins that are always callable
+        om fnnamn är lika med "lista" eller fnnamn är lika med "inmatning" eller fnnamn är lika med "ordlista"
+            sätt ärkändfn till SANT
+        om fnnamn är lika med "putta" eller fnnamn är lika med "hämta" eller fnnamn är lika med "finns" eller fnnamn är lika med "rensa"
+            sätt ärkändfn till SANT
+
+        om ärkändfn
+            sätt argdelar till skiva delar med delar, medidx plus 1, antal
+            . Parse args - split by commas
+            sätt args till lista av basnod
+            sätt nuvarande till lista av sträng
+            för varje a i argdelar
+                om a är lika med ","
+                    om längd från nuvarande är större än 0
+                        sätt anod till lös uttryck med nuvarande, rs, ks, definierade, infixfunktioner
+                        lägg till anod i args
+                    sätt nuvarande till lista av sträng
                 annars
-                    sätt argnod till strängnod med 1, 1, tv
-            annars
-                sätt argtext till slå ihop delar mellan med argdelar, 0, argantal
-                sätt argnod till strängnod med 1, 1, argtext
+                    lägg till a i nuvarande
+            om längd från nuvarande är större än 0
+                sätt anod till lös uttryck med nuvarande, rs, ks, definierade, infixfunktioner
+                lägg till anod i args
 
-            sätt arglista till lista av sträng
-            lägg till argnod i arglista
-            sätt n till grejanropsnod med 1, 1, fnnamn, arglista
-            ge n
+            ge grejanropsnod med rs, ks, fnnamn, args
 
-        sätt har komma till FALSKT
-        för varje d i delar
-            om värde från d är lika med ","
-                sätt har komma till SANT
-                bryt
-        sätt har från till FALSKT
-        om inte har komma
-            sätt frånpos till 0
-            för varje d i delar
-                om värde från d är lika med "från"
-                    sätt har från till SANT
-                    bryt
-                öka frånpos med 1
-            om har från
-                sätt propnamn till slå ihop delar mellan med delar, 0, frånpos
-                sätt målnamn till slå ihop delar mellan med delar, frånpos plus 1, antal
-                sätt målnod till variabelnod med 1, 1, målnamn, inget av basnod
-                sätt n till egenskapsåtkomstnod med 1, 1, propnamn, målnod
-                ge n
+    . =========================================
+    . OPERATOR PRECEDENCE RESOLUTION
+    . =========================================
 
-        sätt text till slå ihop delar mellan med delar, 0, antal
-        ge strängnod med 1, 1, text
+    . Multi-word comparison operators (checked first to avoid splitting)
+    sätt jämförlista till lista av sträng
+    lägg till "är inte lika med" i jämförlista
+    lägg till "är större än eller lika med" i jämförlista
+    lägg till "är mindre än eller lika med" i jämförlista
+    lägg till "större än eller lika med" i jämförlista
+    lägg till "mindre än eller lika med" i jämförlista
+    lägg till "är större än" i jämförlista
+    lägg till "är mindre än" i jämförlista
+    lägg till "är lika med" i jämförlista
+    lägg till "är inte" i jämförlista
+    lägg till "större än" i jämförlista
+    lägg till "mindre än" i jämförlista
+    lägg till "lika med" i jämförlista
 
-    . === Visitor dispatch (om chain — hiuh equivalent of visit_* methods) ===
+    för varje opstr i jämförlista
+        sätt opdelar till dela upp operator med opstr
+        sätt opidx till hitta operator i delar med delar, opdelar
+        om opidx är inte lika med -1
+            sätt vdelar till skiva delar med delar, 0, opidx
+            sätt hdelar till skiva delar med delar, opidx plus längd från opdelar, antal
+            om längd från vdelar är större än 0 och längd från hdelar är större än 0
+                . Check if left side variable is defined (for comparison stringification)
+                sätt vänsterdef till FALSKT
+                om längd från vdelar är lika med 1
+                    sätt vnamn till element 0 från vdelar
+                    för varje d i definierade
+                        om d är lika med vnamn
+                            sätt vänsterdef till SANT
+                            bryt
 
-    sätt lös nod till grej med nod som sträng ger sträng
-        sätt ht till typ av nod
+                . Check if this is an infix operator
+                om är infixoperator med opstr, infixfunktioner
+                    sätt vn till lös uttryck med vdelar, rs, ks, definierade, infixfunktioner
+                    sätt hn till lös uttryck med hdelar, rs, ks, definierade, infixfunktioner
+                    ge infixanropsnod med rs, ks, vn, opstr, hn
 
-        . visit_ExpressionPartsNode
-        om ht är lika med typ av uttrycksdelarnod
-            sätt delar till delar från nod
-            ge lös uttryck med delar
+                . For comparisons: only create node if left is defined, else stringify
+                om vänsterdef
+                    sätt vn till lös uttryck med vdelar, rs, ks, definierade, infixfunktioner
+                    sätt hn till lös uttryck med hdelar, rs, ks, definierade, infixfunktioner
 
-        . visit_AssignNode
-        om ht är lika med typ av tilldelningsnod
-            sätt r till rad från nod
-            sätt k till kolumn från nod
-            sätt nm till namn från nod
-            sätt vn till värde från nod
-            sätt mt till måltyp från nod
-            sätt lv till lös nod med vn
-            sätt nynod till tilldelningsnod med r, k, nm, lv, mt
-            ge nynod
+                    . Map operator to comparison node
+                    om opstr är lika med "är lika med" eller opstr är lika med "lika med"
+                        ge likanod med rs, ks, vn, hn
+                    om opstr är lika med "är inte" eller opstr är lika med "är inte lika med"
+                        ge intelikanod med rs, ks, vn, hn
+                    om opstr är lika med "är större än" eller opstr är lika med "större än"
+                        ge störreännod med rs, ks, vn, hn
+                    om opstr är lika med "är mindre än" eller opstr är lika med "mindre än"
+                        ge mindreännod med rs, ks, vn, hn
+                    om opstr är lika med "är större än eller lika med" eller opstr är lika med "större än eller lika med"
+                        ge störrelikanod med rs, ks, vn, hn
+                    om opstr är lika med "är mindre än eller lika med" eller opstr är lika med "mindre än eller lika med"
+                        ge mindrelikanod med rs, ks, vn, hn
 
-        . visit_PrintNode
-        om ht är lika med typ av skrivnod
-            sätt r till rad från nod
-            sätt k till kolumn från nod
-            sätt vn till värde från nod
-            sätt lv till lös nod med vn
-            sätt nynod till skrivnod med r, k, lv
-            ge nynod
+                . Left undefined or not a comparison - stringify
+                sätt vtext till slå ihop delar med vdelar, 0, längd från vdelar
+                sätt htext till slå ihop delar med hdelar, 0, längd från hdelar
+                sätt fulltext till vtext plus " " plus opstr plus " " plus htext
+                ge strängnod med rs, ks, fulltext
 
+    . Level 1: eller (find first eller that is not part of "än eller lika med")
+    sätt i till 0
+    medan i är mindre än antal
+        om element i från delar är lika med "eller"
+            . Check if part of comparison phrase
+            sätt är del av jämför till FALSKT
+            om i är större än 0
+                om element i minus 1 från delar är lika med "än"
+                    sätt är del av jämför till SANT
+            om inte är del av jämför
+                sätt vdelar till skiva delar med delar, 0, i
+                sätt hdelar till skiva delar med delar, i plus 1, antal
+                om längd från vdelar är större än 0 och längd från hdelar är större än 0
+                    sätt vn till lös uttryck med vdelar, rs, ks, definierade, infixfunktioner
+                    sätt hn till lös uttryck med hdelar, rs, ks, definierade, infixfunktioner
+                    ge ellernod med rs, ks, vn, hn
+        öka i med 1
+
+    . Level 2: och
+    sätt i till 0
+    medan i är mindre än antal
+        om element i från delar är lika med "och"
+            sätt vdelar till skiva delar med delar, 0, i
+            sätt hdelar till skiva delar med delar, i plus 1, antal
+            om längd från vdelar är större än 0 och längd från hdelar är större än 0
+                sätt vn till lös uttryck med vdelar, rs, ks, definierade, infixfunktioner
+                sätt hn till lös uttryck med hdelar, rs, ks, definierade, infixfunktioner
+                ge ochnod med rs, ks, vn, hn
+        öka i med 1
+
+    . Level 4: plus, minus (left-associative - find last occurrence)
+    sätt sistaplus till -1
+    sätt sistaminus till -1
+    sätt i till 0
+    medan i är mindre än antal
+        om element i från delar är lika med "plus"
+            sätt sistaplus till i
+        om element i från delar är lika med "minus"
+            sätt sistaminus till i
+        öka i med 1
+
+    sätt opidx till -1
+    sätt opnamn till ""
+    om sistaplus är större än sistaminus
+        sätt opidx till sistaplus
+        sätt opnamn till "plus"
+    annars om sistaminus är inte lika med -1
+        sätt opidx till sistaminus
+        sätt opnamn till "minus"
+
+    om opidx är större än 0 och opidx plus 1 är mindre än antal
+        sätt vdelar till skiva delar med delar, 0, opidx
+        sätt hdelar till skiva delar med delar, opidx plus 1, antal
+        sätt vn till lös uttryck med vdelar, rs, ks, definierade, infixfunktioner
+        sätt hn till lös uttryck med hdelar, rs, ks, definierade, infixfunktioner
+
+        om opnamn är lika med "plus"
+            ge adderanod med rs, ks, vn, hn
+        annars
+            ge subtraheranod med rs, ks, vn, hn
+
+    . Level 5: "resten av X delat med Y" -> ModNode
+    om antal är större än eller lika med 6
+        om element 0 från delar är lika med "resten" och element 1 från delar är lika med "av"
+            sätt dmidx till -1
+            sätt i till 2
+            medan i plus 1 är mindre än antal
+                om element i från delar är lika med "delat"
+                    om element i plus 1 från delar är lika med "med" eller element i plus 1 från delar är lika med "på"
+                        sätt dmidx till i
+                        bryt
+                öka i med 1
+            om dmidx är inte lika med -1
+                sätt vdelar till skiva delar med delar, 2, dmidx
+                sätt hdelar till skiva delar med delar, dmidx plus 2, antal
+                sätt vn till lös uttryck med vdelar, rs, ks, definierade, infixfunktioner
+                sätt hn till lös uttryck med hdelar, rs, ks, definierade, infixfunktioner
+                ge restnod med rs, ks, vn, hn
+
+    . Level 5: gånger
+    sätt i till 0
+    medan i är mindre än antal
+        om element i från delar är lika med "gånger"
+            sätt vdelar till skiva delar med delar, 0, i
+            sätt hdelar till skiva delar med delar, i plus 1, antal
+            sätt vn till lös uttryck med vdelar, rs, ks, definierade, infixfunktioner
+            sätt hn till lös uttryck med hdelar, rs, ks, definierade, infixfunktioner
+            ge multipliceranod med rs, ks, vn, hn
+        öka i med 1
+
+    . Level 5: delat med
+    sätt i till 0
+    medan i plus 1 är mindre än antal
+        om element i från delar är lika med "delat"
+            om element i plus 1 från delar är lika med "med"
+                sätt vdelar till skiva delar med delar, 0, i
+                sätt hdelar till skiva delar med delar, i plus 2, antal
+                sätt vn till lös uttryck med vdelar, rs, ks, definierade, infixfunktioner
+                sätt hn till lös uttryck med hdelar, rs, ks, definierade, infixfunktioner
+                ge divideranod med rs, ks, vn, hn
+        öka i med 1
+
+    . No operators matched - treat as string
+    sätt text till slå ihop delar med delar, 0, antal
+    ge strängnod med rs, ks, text
+
+. ======================================================================
+. VISITOR FUNCTIONS
+. Each corresponds to a visit_* method in resolver.py
+. ======================================================================
+
+. --- visit_ExpressionPartsNode ---
+sätt besök uttrycksdelar till grej med nod som uttrycksdelarnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt delar till delar från nod
+    sätt strängdelar till lista av sträng
+    för varje d i delar
+        lägg till värde från d i strängdelar
+    ge lös uttryck med strängdelar, 1, 1, definierade, infixfunktioner
+
+. --- visit_AssignNode ---
+sätt besök tilldelning till grej med nod som tilldelningsnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt nm till namn från nod
+    sätt vn till värde från nod
+    sätt mt till måltyp från nod
+
+    . Check if value is FunctionDefNode
+    sätt vht till typ av vn
+    om vht är lika med typ av grejdefinitionsnod
+        sätt lv till besök grejdef med vn, definierade, infixfunktioner
+    annars
+        sätt lv till besök nod med vn, definierade, infixfunktioner
+
+    ge tilldelningsnod med 1, 1, nm, lv, mt
+
+. --- visit_PrintNode ---
+sätt besök skriv till grej med nod som skrivnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt vn till värde från nod
+    sätt lv till besök nod med vn, definierade, infixfunktioner
+    ge skrivnod med 1, 1, lv
+
+. --- visit_ReturnNode ---
+sätt besök ge till grej med nod som genod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt vn till värde från nod
+    sätt lv till besök nod med vn, definierade, infixfunktioner
+    ge genod med 1, 1, lv
+
+. --- visit_FunctionDefNode ---
+sätt besök grejdef till grej med nod som grejdefinitionsnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt pm till parametrar från nod
+    sätt block till block från nod
+    sätt tp till typparametrar från nod
+    sätt sort till sort från nod
+    sätt rt till returtyp från nod
+
+    . Build inner defined names (params + outer defs)
+    sätt innerdef till lista av sträng
+    för varje d i definierade
+        lägg till d i innerdef
+
+    . Add parameter names
+    sätt i till 0
+    medan i är mindre än längd från pm
+        sätt p till element i från pm
+        sätt pnamn till värde från p
+        lägg till pnamn i innerdef
+        öka i med 2
+
+    . Resolve body
+    sätt nyblock till lista av basnod
+    för varje bn i block
+        sätt bnl till besök nod med bn, innerdef, infixfunktioner
+        lägg till bnl i nyblock
+
+    ge grejdefinitionsnod med 1, 1, pm, nyblock, tp, sort, rt
+
+. --- visit_FunctionCallNode ---
+sätt besök grejanrop till grej med nod som grejanropsnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt fnnamn till namn från nod
+    sätt arg till argument från nod
+
+    sätt nyarg till lista av basnod
+    för varje a i arg
+        sätt al till besök nod med a, definierade, infixfunktioner
+        lägg till al i nyarg
+
+    ge grejanropsnod med 1, 1, fnnamn, nyarg
+
+. --- visit_IfNode ---
+sätt besök om till grej med nod som omnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt vl till villkor från nod
+    sätt eb till ellerblock från nod
+
+    sätt nyvl till lista av omvillkor
+    för varje ov i vl
+        sätt test till test från ov
+        sätt block till block från ov
+        sätt nytest till besök nod med test, definierade, infixfunktioner
+        sätt nyblock till lista av basnod
+        för varje bn i block
+            sätt bnl till besök nod med bn, definierade, infixfunktioner
+            lägg till bnl i nyblock
+        sätt nyov till omvillkor med nytest, nyblock
+        lägg till nyov i nyvl
+
+    sätt nyeb till lista av basnod
+    för varje bn i eb
+        sätt bnl till besök nod med bn, definierade, infixfunktioner
+        lägg till bnl i nyeb
+
+    ge omnod med 1, 1, nyvl, nyeb
+
+. --- visit_WhileNode ---
+sätt besök medan till grej med nod som medannod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt villkor till villkor från nod
+    sätt block till block från nod
+
+    sätt nyvillkor till besök nod med villkor, definierade, infixfunktioner
+    sätt nyblock till lista av basnod
+    för varje bn i block
+        sätt bnl till besök nod med bn, definierade, infixfunktioner
+        lägg till bnl i nyblock
+
+    ge medannod med 1, 1, nyvillkor, nyblock
+
+. --- visit_ForEachNode ---
+sätt besök för varje till grej med nod som förvarjenod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt variabel till variabel från nod
+    sätt iter till itererbar från nod
+    sätt block till block från nod
+
+    . Add loop variable to inner defs
+    sätt innerdef till lista av sträng
+    för varje d i definierade
+        lägg till d i innerdef
+    lägg till variabel i innerdef
+
+    sätt nyiter till besök nod med iter, definierade, infixfunktioner
+    sätt nyblock till lista av basnod
+    för varje bn i block
+        sätt bnl till besök nod med bn, innerdef, infixfunktioner
+        lägg till bnl i nyblock
+
+    ge förvarjenod med 1, 1, variabel, nyiter, nyblock
+
+. --- visit_TryCatchNode ---
+sätt besök försök till grej med nod som försöknod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt fb till försökblock från nod
+    sätt fv till felvariabel från nod
+    sätt fångab till fångablock från nod
+    sätt sb till slutligenblock från nod
+
+    sätt innerdef till lista av sträng
+    för varje d i definierade
+        lägg till d i innerdef
+    om fv är inte lika med inget av sträng
+        lägg till fv i innerdef
+
+    sätt nyfb till lista av basnod
+    för varje bn i fb
+        sätt bnl till besök nod med bn, definierade, infixfunktioner
+        lägg till bnl i nyfb
+
+    sätt nyfångab till lista av basnod
+    för varje bn i fångab
+        sätt bnl till besök nod med bn, innerdef, infixfunktioner
+        lägg till bnl i nyfångab
+
+    sätt nysb till lista av basnod
+    för varje bn i sb
+        sätt bnl till besök nod med bn, definierade, infixfunktioner
+        lägg till bnl i nysb
+
+    ge försöknod med 1, 1, nyfb, fv, nyfångab, nysb
+
+. --- Compound assignment visitors ---
+. visit_AddAssignNode
+sätt besök öka till grej med nod som ökanod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt ms till mål från nod
+    sätt vn till värde från nod
+    sätt lv till besök nod med vn, definierade, infixfunktioner
+    ge ökanod med 1, 1, ms, lv
+
+. visit_SubAssignNode
+sätt besök minska till grej med nod som minskanod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt ms till mål från nod
+    sätt vn till värde från nod
+    sätt lv till besök nod med vn, definierade, infixfunktioner
+    ge minskanod med 1, 1, ms, lv
+
+. visit_MultiplyAssignNode
+sätt besök gångra till grej med nod som gångranod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt ms till mål från nod
+    sätt vn till värde från nod
+    sätt lv till besök nod med vn, definierade, infixfunktioner
+    ge gångranod med 1, 1, ms, lv
+
+. visit_DivideAssignNode
+sätt besök dela till grej med nod som delanod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt ms till mål från nod
+    sätt vn till värde från nod
+    sätt lv till besök nod med vn, definierade, infixfunktioner
+    ge delanod med 1, 1, ms, lv
+
+. --- visit_ElementAssignNode ---
+sätt besök elementtilldelning till grej med nod som elementtilldelnigsnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt idx till index från nod
+    sätt ms till mål från nod
+    sätt vn till värde från nod
+    sätt lv till besök nod med vn, definierade, infixfunktioner
+    ge elementtilldelnigsnod med 1, 1, idx, ms, lv
+
+. --- visit_AppendNode ---
+sätt besök läggtill till grej med nod som läggtillnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt vn till värde från nod
+    sätt ms till mål från nod
+    sätt lv till besök nod med vn, definierade, infixfunktioner
+    ge läggtillnod med 1, 1, ms, lv
+
+. --- visit_CastNode ---
+sätt besök som till grej med nod som somnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt vn till värde från nod
+    sätt mt till måltyp från nod
+    sätt lv till besök nod med vn, definierade, infixfunktioner
+    ge somnod med 1, 1, lv, mt
+
+. --- visit_UnaryOpNode ---
+sätt besök unär till grej med nod som unärnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt op till operator från nod
+    sätt ut till uttryck från nod
+    sätt lut till besök nod med ut, definierade, infixfunktioner
+    ge unärnod med 1, 1, op, lut
+
+. --- visit_NotNode ---
+sätt besök inte till grej med nod som intenod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt ut till uttryck från nod
+    sätt lut till besök nod med ut, definierade, infixfunktioner
+    ge intenod med 1, 1, lut
+
+. --- visit_InfixCallNode ---
+sätt besök infixanrop till grej med nod som infixanropsnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt vn till vänster från nod
+    sätt op till operator från nod
+    sätt hn till höger från nod
+    sätt lvn till besök nod med vn, definierade, infixfunktioner
+    sätt lhn till besök nod med hn, definierade, infixfunktioner
+    ge infixanropsnod med 1, 1, lvn, op, lhn
+
+. --- visit_ElementAccessNode ---
+sätt besök elementåtkomst till grej med nod som elementåtskomstnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt idx till index från nod
+    sätt ms till mål från nod
+    sätt lidx till besök nod med idx, definierade, infixfunktioner
+    sätt lms till besök nod med ms, definierade, infixfunktioner
+    ge elementåtskomstnod med 1, 1, lidx, lms
+
+. --- visit_PropertyAccessNode ---
+sätt besök egenskapsåtkomst till grej med nod som egenskapsåtkomstnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt pn till namn från nod
+    sätt mn till mål från nod
+    sätt lmn till besök nod med mn, definierade, infixfunktioner
+    ge egenskapsåtkomstnod med 1, 1, pn, lmn
+
+. --- visit_NamedArgNode ---
+sätt besök namngivet arg till grej med nod som namngivenargnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    sätt nm till namn från nod
+    sätt vn till värde från nod
+    sätt lvn till besök nod med vn, definierade, infixfunktioner
+    ge namngivenargnod med 1, 1, nm, lvn
+
+. --- Generic binary node visitor ---
+sätt besök binär till grej med nod som binärnod, definierade som lista av sträng, infixfunktioner som lista av sträng, nodtyp som sträng ger basnod
+    sätt vn till vänster från nod
+    sätt hn till höger från nod
+    sätt lvn till besök nod med vn, definierade, infixfunktioner
+    sätt lhn till besök nod med hn, definierade, infixfunktioner
+
+    om nodtyp är lika med "adderanod"
+        ge adderanod med 1, 1, lvn, lhn
+    om nodtyp är lika med "subtraheranod"
+        ge subtraheranod med 1, 1, lvn, lhn
+    om nodtyp är lika med "multipliceranod"
+        ge multipliceranod med 1, 1, lvn, lhn
+    om nodtyp är lika med "divideranod"
+        ge divideranod med 1, 1, lvn, lhn
+    om nodtyp är lika med "restnod"
+        ge restnod med 1, 1, lvn, lhn
+    om nodtyp är lika med "likanod"
+        ge likanod med 1, 1, lvn, lhn
+    om nodtyp är lika med "intelikanod"
+        ge intelikanod med 1, 1, lvn, lhn
+    om nodtyp är lika med "störreännod"
+        ge störreännod med 1, 1, lvn, lhn
+    om nodtyp är lika med "mindreännod"
+        ge mindreännod med 1, 1, lvn, lhn
+    om nodtyp är lika med "störrelikanod"
+        ge störrelikanod med 1, 1, lvn, lhn
+    om nodtyp är lika med "mindrelikanod"
+        ge mindrelikanod med 1, 1, lvn, lhn
+    om nodtyp är lika med "ochnod"
+        ge ochnod med 1, 1, lvn, lhn
+    om nodtyp är lika med "ellernod"
+        ge ellernod med 1, 1, lvn, lhn
+
+    ge nod
+
+. ======================================================================
+. MAIN VISITOR DISPATCH
+. visit in resolver.py
+. ======================================================================
+sätt besök nod till grej med nod som basnod, definierade som lista av sträng, infixfunktioner som lista av sträng ger basnod
+    om nod är lika med inget av basnod
         ge nod
 
-    sätt resultat till lista av sträng
+    sätt ht till typ av nod
+
+    . visit_ExpressionPartsNode
+    om ht är lika med typ av uttrycksdelarnod
+        ge besök uttrycksdelar med nod, definierade, infixfunktioner
+
+    . visit_AssignNode
+    om ht är lika med typ av tilldelningsnod
+        ge besök tilldelning med nod, definierade, infixfunktioner
+
+    . visit_PrintNode
+    om ht är lika med typ av skrivnod
+        ge besök skriv med nod, definierade, infixfunktioner
+
+    . visit_ReturnNode
+    om ht är lika med typ av genod
+        ge besök ge med nod, definierade, infixfunktioner
+
+    . visit_FunctionDefNode
+    om ht är lika med typ av grejdefinitionsnod
+        ge besök grejdef med nod, definierade, infixfunktioner
+
+    . visit_FunctionCallNode
+    om ht är lika med typ av grejanropsnod
+        ge besök grejanrop med nod, definierade, infixfunktioner
+
+    . visit_IfNode
+    om ht är lika med typ av omnod
+        ge besök om med nod, definierade, infixfunktioner
+
+    . visit_WhileNode
+    om ht är lika med typ av medannod
+        ge besök medan med nod, definierade, infixfunktioner
+
+    . visit_ForEachNode
+    om ht är lika med typ av förvarjenod
+        ge besök för varje med nod, definierade, infixfunktioner
+
+    . visit_TryCatchNode
+    om ht är lika med typ av försöknod
+        ge besök försök med nod, definierade, infixfunktioner
+
+    . visit_AddAssignNode
+    om ht är lika med typ av ökanod
+        ge besök öka med nod, definierade, infixfunktioner
+
+    . visit_SubAssignNode
+    om ht är lika med typ av minskanod
+        ge besök minska med nod, definierade, infixfunktioner
+
+    . visit_MultiplyAssignNode
+    om ht är lika med typ av gångranod
+        ge besök gångra med nod, definierade, infixfunktioner
+
+    . visit_DivideAssignNode
+    om ht är lika med typ av delanod
+        ge besök dela med nod, definierade, infixfunktioner
+
+    . visit_ElementAssignNode
+    om ht är lika med typ av elementtilldelnigsnod
+        ge besök elementtilldelning med nod, definierade, infixfunktioner
+
+    . visit_AppendNode
+    om ht är lika med typ av läggtillnod
+        ge besök läggtill med nod, definierade, infixfunktioner
+
+    . visit_CastNode
+    om ht är lika med typ av somnod
+        ge besök som med nod, definierade, infixfunktioner
+
+    . visit_UnaryOpNode
+    om ht är lika med typ av unärnod
+        ge besök unär med nod, definierade, infixfunktioner
+
+    . visit_NotNode
+    om ht är lika med typ av intenod
+        ge besök inte med nod, definierade, infixfunktioner
+
+    . visit_InfixCallNode
+    om ht är lika med typ av infixanropsnod
+        ge besök infixanrop med nod, definierade, infixfunktioner
+
+    . visit_ElementAccessNode
+    om ht är lika med typ av elementåtskomstnod
+        ge besök elementåtkomst med nod, definierade, infixfunktioner
+
+    . visit_PropertyAccessNode
+    om ht är lika med typ av egenskapsåtkomstnod
+        ge besök egenskapsåtkomst med nod, definierade, infixfunktioner
+
+    . visit_NamedArgNode
+    om ht är lika med typ av namngivenargnod
+        ge besök namngivet arg med nod, definierade, infixfunktioner
+
+    . Binary arithmetic nodes
+    om ht är lika med typ av adderanod
+        ge besök binär med nod, definierade, infixfunktioner, "adderanod"
+    om ht är lika med typ av subtraheranod
+        ge besök binär med nod, definierade, infixfunktioner, "subtraheranod"
+    om ht är lika med typ av multipliceranod
+        ge besök binär med nod, definierade, infixfunktioner, "multipliceranod"
+    om ht är lika med typ av divideranod
+        ge besök binär med nod, definierade, infixfunktioner, "divideranod"
+    om ht är lika med typ av restnod
+        ge besök binär med nod, definierade, infixfunktioner, "restnod"
+
+    . Comparison nodes
+    om ht är lika med typ av likanod
+        ge besök binär med nod, definierade, infixfunktioner, "likanod"
+    om ht är lika med typ av intelikanod
+        ge besök binär med nod, definierade, infixfunktioner, "intelikanod"
+    om ht är lika med typ av störreännod
+        ge besök binär med nod, definierade, infixfunktioner, "störreännod"
+    om ht är lika med typ av mindreännod
+        ge besök binär med nod, definierade, infixfunktioner, "mindreännod"
+    om ht är lika med typ av störrelikanod
+        ge besök binär med nod, definierade, infixfunktioner, "störrelikanod"
+    om ht är lika med typ av mindrelikanod
+        ge besök binär med nod, definierade, infixfunktioner, "mindrelikanod"
+    om ht är lika med typ av ochnod
+        ge besök binär med nod, definierade, infixfunktioner, "ochnod"
+    om ht är lika med typ av ellernod
+        ge besök binär med nod, definierade, infixfunktioner, "ellernod"
+
+    . Literal nodes - return as-is
+    om ht är lika med typ av strängnod
+        ge nod
+    om ht är lika med typ av heltalsnod
+        ge nod
+    om ht är lika med typ av flyttalsnod
+        ge nod
+    om ht är lika med typ av boolesknod
+        ge nod
+    om ht är lika med typ av variabelnod
+        ge nod
+    om ht är lika med typ av brytnod
+        ge nod
+    om ht är lika med typ av fortsättnod
+        ge nod
+    om ht är lika med typ av stängfilnod
+        ge nod
+    om ht är lika med typ av typavnod
+        ge nod
+    om ht är lika med typ av användnod
+        ge nod
+
+    . Default: return as-is
+    ge nod
+
+. ======================================================================
+. MAIN ENTRY POINT - resolve_all
+. ======================================================================
+sätt lös till grej med noder som lista av basnod ger lista av basnod
+
+    . --- Pass 1: Collect declared names ---
+    sätt definierade till lista av sträng
+    sätt infixfunktioner till lista av sträng
+
+    . Built-in names (always defined)
+    lägg till "SANT" i definierade
+    lägg till "FALSKT" i definierade
+    lägg till "mellanrum" i definierade
+    lägg till "ny" i definierade
+    lägg till "rad" i definierade
+    lägg till "lista" i definierade
+    lägg till "inmatning" i definierade
+    lägg till "heltal" i definierade
+    lägg till "text" i definierade
+    lägg till "sträng" i definierade
+    lägg till "flyttal" i definierade
+    lägg till "boolesk" i definierade
+    lägg till "argument" i definierade
+    lägg till "ordlista" i definierade
+    lägg till "putta" i definierade
+    lägg till "hämta" i definierade
+    lägg till "finns" i definierade
+    lägg till "rensa" i definierade
+
+    . Scan all top-level nodes for declarations
     för varje nod i noder
-        sätt lvnod till lös nod med nod
+        sätt ht till typ av nod
+
+        . AssignNode -> register name
+        om ht är lika med typ av tilldelningsnod
+            sätt nm till namn från nod
+            lägg till nm i definierade
+
+            . Check if value is FunctionDefNode and if it's infix
+            sätt vn till värde från nod
+            sätt vht till typ av vn
+            om vht är lika med typ av grejdefinitionsnod
+                sätt sort till sort från vn
+                om sort är lika med "infixgrej"
+                    lägg till nm i infixfunktioner
+
+        . TypeDefNode / FunctionTypeNode -> register name
+        om ht är lika med typ av typdefinitionsnod
+            sätt nm till namn från nod
+            lägg till nm i definierade
+
+    . --- Pass 2: Resolve all nodes ---
+    sätt resultat till lista av basnod
+
+    för varje nod i noder
+        sätt lvnod till besök nod med nod, definierade, infixfunktioner
         lägg till lvnod i resultat
+
     ge resultat
