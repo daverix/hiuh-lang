@@ -52,31 +52,31 @@ class TestGenericParser(unittest.TestCase):
     def test_generic_function_def(self):
         """sätt fn till grej av T1, T2 (no params)."""
         source = 'sätt make till grej av K, V ger V\n    ge lista av heltal'
-        expected = [AssignNode(None, None, name='make', value=FunctionDefNode(None, None, params=[], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=['lista', 'av', 'heltal']))], is_infix=False, type_params=['K', 'V'], return_type='V'))]
+        expected = [AssignNode(None, None, name='make', value=FunctionDefNode(None, None, params=[], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('lista', 0), ExpressionPart('av', 0), ExpressionPart('heltal', 0)]))], is_infix=False, type_params=['K', 'V'], return_type='V'))]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_generic_function_def_with_params(self):
         """sätt fn till grej av T1, T2 med x som T1."""
         source = 'sätt make till grej av K, V med key som K ger V\n    ge key'
-        expected = [AssignNode(None, None, name='make', value=FunctionDefNode(None, None, params=[('key', 'K')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=['key']))], is_infix=False, type_params=['K', 'V'], return_type='V'))]
+        expected = [AssignNode(None, None, name='make', value=FunctionDefNode(None, None, params=[('key', 'K')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('key', 0)]))], is_infix=False, type_params=['K', 'V'], return_type='V'))]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_lista_av_type_annotation(self):
         """sätt x till lista av heltal - expression parts preserved for resolver."""
         source = "sätt x till lista av heltal"
-        expected = [AssignNode(None, None, name='x', value=ExpressionPartsNode(None, None, parts=['lista', 'av', 'heltal']))]
+        expected = [AssignNode(None, None, name='x', value=ExpressionPartsNode(None, None, parts=[ExpressionPart('lista', 0), ExpressionPart('av', 0), ExpressionPart('heltal', 0)]))]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_lista_av_nested_type(self):
         """sätt x till lista av par av K, V."""
         source = 'typ par av K, V\n    nyckel som K\n    värde som V\n\nsätt x till lista av par av K, V'
-        expected = [TypeDefNode(None, None, name='par', fields=[('nyckel', 'K'), ('värde', 'V')], type_params=['K', 'V']), AssignNode(None, None, name='x', value=ExpressionPartsNode(None, None, parts=['lista', 'av', 'par', 'av', 'K', ',', 'V']))]
+        expected = [TypeDefNode(None, None, name='par', fields=[('nyckel', 'K'), ('värde', 'V')], type_params=['K', 'V']), AssignNode(None, None, name='x', value=ExpressionPartsNode(None, None, parts=[ExpressionPart('lista', 0), ExpressionPart('av', 0), ExpressionPart('par', 0), ExpressionPart('av', 0), ExpressionPart('K', 0), ExpressionPart(',', 0), ExpressionPart('V', 0)]))]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_function_call_generic(self):
         """sätt x till ny tom ordlista av sträng, heltal."""
         source = "sätt x till ny tom ordlista av sträng, heltal"
-        expected = [AssignNode(None, None, name='x', value=ExpressionPartsNode(None, None, parts=['ny', 'tom', 'ordlista', 'av', 'sträng', ',', 'heltal']))]
+        expected = [AssignNode(None, None, name='x', value=ExpressionPartsNode(None, None, parts=[ExpressionPart('ny', 0), ExpressionPart('tom', 0), ExpressionPart('ordlista', 0), ExpressionPart('av', 0), ExpressionPart('sträng', 0), ExpressionPart(',', 0), ExpressionPart('heltal', 0)]))]
         self.assertNodesEqual(self.parse_source(source), expected)
 
 class TestGenericResolver(unittest.TestCase):

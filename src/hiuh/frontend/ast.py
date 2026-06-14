@@ -357,6 +357,9 @@ class ExpressionPartsNode(ASTNode):
     """Generic expression node that stores a list of parts to be resolved later."""
     def __init__(self, line, column, parts):
         super().__init__(line, column)
+        for p in parts:
+            if not isinstance(p, ExpressionPart):
+                raise TypeError(f"ExpressionPartsNode parts must be ExpressionPart, got {type(p).__name__}: {p!r}")
         self.parts = parts
 
 
