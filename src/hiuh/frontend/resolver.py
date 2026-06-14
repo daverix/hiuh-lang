@@ -779,11 +779,11 @@ class Resolver:
             target_parts = right_parts
             
             # Create index node - convert to appropriate node type
-            if len(idx_parts) == 1 and idx_parts[0].isdigit():
-                idx_node = IntNode(node.line, node.column, idx_parts[0])
+            if len(idx_parts) == 1 and idx_parts[0].value.isdigit():
+                idx_node = IntNode(node.line, node.column, idx_parts[0].value)
             elif len(idx_parts) == 1:
                 # Single variable - use VarAccessNode directly
-                idx_node = VarAccessNode(node.line, node.column, idx_parts[0], target=None)
+                idx_node = VarAccessNode(node.line, node.column, idx_parts[0].value, target=None)
             else:
                 # Multi-word expression - resolve precedence
                 idx_node = self._resolve_precedence(idx_parts, token=node)
@@ -853,13 +853,13 @@ class Resolver:
                 if len(args_parts) >= 2 and args_parts[0].value == 'element':
                     # "element x från target" -> ElementAccessNode
                     index_name = args_parts[1]
-                    index_node = IntNode(node.line, node.column, index_name) if index_name.isdigit() else VarAccessNode(node.line, node.column, index_name, target=None)
+                    index_node = IntNode(node.line, node.column, index_name) if index_name.value.isdigit() else VarAccessNode(node.line, node.column, index_name, target=None)
                     target_node = VarAccessNode(node.line, node.column, target_name, target=None)
                     arg = ElementAccessNode(node.line, node.column, index=index_node, target=target_node)
-                elif len(args_parts) == 1 and args_parts[0].isdigit():
-                    arg = IntNode(node.line, node.column, args_parts[0])
+                elif len(args_parts) == 1 and args_parts[0].value.isdigit():
+                    arg = IntNode(node.line, node.column, args_parts[0].value)
                 elif len(args_parts) == 1:
-                    arg = VarAccessNode(node.line, node.column, args_parts[0], target=None)
+                    arg = VarAccessNode(node.line, node.column, args_parts[0].value, target=None)
                 else:
                     arg = ExpressionPartsNode(node.line, node.column, args_parts)
                 
@@ -1073,7 +1073,7 @@ class Resolver:
         # Add source as last arg
         if len(source_parts) == 1:
             if self._is_defined(source_parts[0].value, self._current_module):
-                args.append(VarAccessNode(node.line, node.column, source_parts[0]))
+                args.append(VarAccessNode(node.line, node.column, source_parts[0].value))
             else:
                 args.append(StringNode(node.line, node.column, ' '.join(self._parts_to_strings(source_parts))))
         else:
@@ -1378,8 +1378,8 @@ class Resolver:
                 target_parts = left_right_parts
                 
                 # Create index node
-                if len(idx_parts) == 1 and idx_parts[0].isdigit():
-                    idx_node = IntNode(node.line, node.column, idx_parts[0])
+                if len(idx_parts) == 1 and idx_parts[0].value.isdigit():
+                    idx_node = IntNode(node.line, node.column, idx_parts[0].value)
                 else:
                     idx_node = self._resolve_precedence(idx_parts, token=node)
                 
@@ -1601,10 +1601,10 @@ class Resolver:
             if left_parts and right_parts:
                 if left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
                     idx_parts = left_parts[1:]
-                    if len(idx_parts) == 1 and idx_parts[0].isdigit():
-                        idx_node = IntNode(token.line, token.column, idx_parts[0])
+                    if len(idx_parts) == 1 and idx_parts[0].value.isdigit():
+                        idx_node = IntNode(token.line, token.column, idx_parts[0].value)
                     elif len(idx_parts) == 1:
-                        idx_node = VarAccessNode(token.line, token.column, idx_parts[0], target=None)
+                        idx_node = VarAccessNode(token.line, token.column, idx_parts[0].value, target=None)
                     else:
                         idx_node = self._resolve_precedence(idx_parts, token=token)
                     
