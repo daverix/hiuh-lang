@@ -61,7 +61,7 @@ class Resolver:
         for i, p in enumerate(parts):
             if p.value == value:
                 return i
-        raise ValueError(f"not self._part_in(parts, '{value}')")
+        raise ValueError(f"'{value}' not in parts")
 
     @staticmethod
     def _part_in(parts, value):
@@ -751,7 +751,7 @@ class Resolver:
         # where 'helhet' is the target and 'är X Y' is a comparison or infix call
         # Look for 'är' anywhere in right_parts
         if 'är' in right_parts:
-            är_idx = right_self._index_of_part(parts, 'är')
+            är_idx = self._index_of_part(right_parts, 'är')
             remaining = right_parts[är_idx + 1:]
             
             # Check for registered infix functions starting with 'är'
@@ -1115,7 +1115,7 @@ class Resolver:
         type_parts = parts[av_idx + 1:]
         # Truncate at 'med' — anything after is function call args, not type params
         if 'med' in type_parts:
-            type_parts = type_parts[:type_self._index_of_part(parts, 'med')]
+            type_parts = type_parts[:self._index_of_part(type_parts, 'med')]
         known_types = self._get_all_known_types()
         nesting = 0
         for p in type_parts:
@@ -1368,7 +1368,7 @@ class Resolver:
         # This handles cases like "element x från helhet är lika med del"
         # where the left side should be parsed as ElementAccessNode, not as a property access
         if 'från' in left_parts:
-            från_idx = left_self._index_of_part(parts, 'från')
+            från_idx = self._index_of_part(left_parts, 'från')
             left_left_parts = left_parts[:från_idx]
             left_right_parts = left_parts[från_idx + 1:]
             
@@ -2417,26 +2417,26 @@ class Resolver:
         base_type = parts[0].rstrip(',')
         # Check if base type requires generics
         if base_type in self._get_generic_required():
-            if not self._part_in(parts, 'av'):
+            if 'av' not in parts:
                 raise Exception(
                     f"okänd_typ: '{base_type}' i {context} saknar typ-parameter. "
                     f"Använd '{base_type} av <typ>' (t.ex. '{base_type} av heltal')"
                 )
         # Validate type params after 'av'
-        if self._part_in(parts, 'av'):
-            av_idx = self._index_of_part(parts, 'av')
+        if 'av' in parts:
+            av_idx = parts.index('av')
             known_types = self._get_all_known_types()
             nesting = 0
             for p in parts[av_idx + 1:]:
                 p = p.rstrip(',')
                 if not p:
                     continue
-                if p.value == 'av':
+                if p == 'av':
                     nesting += 1
                     continue
                 if nesting > 0:
                     continue
-                if p.value not in known_types:
+                if p not in known_types:
                     raise Exception(
                         f"Okänd typ '{p}' i {context} ({type_str})"
                     )
