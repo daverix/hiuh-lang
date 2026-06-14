@@ -22,7 +22,7 @@ class TestGenericParser(unittest.TestCase):
         if isinstance(node, list):
             return [self.strip_locations(child) for child in node]
         if isinstance(node, ExpressionPart):
-            return str(node)
+            return node.value
         if not hasattr(node, '__dict__'):
             return node
         result = {}
@@ -100,7 +100,7 @@ class TestGenericResolver(unittest.TestCase):
         if isinstance(node, list):
             return [self.strip_locations(child) for child in node]
         if isinstance(node, ExpressionPart):
-            return str(node)
+            return node.value
         if not hasattr(node, '__dict__'):
             return node
         result = {}
@@ -154,7 +154,7 @@ class TestInheritanceParser(unittest.TestCase):
         if isinstance(node, list):
             return [self.strip_locations(child) for child in node]
         if isinstance(node, ExpressionPart):
-            return str(node)
+            return node.value
         if not hasattr(node, '__dict__'):
             return node
         result = {}
