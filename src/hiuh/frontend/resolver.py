@@ -502,6 +502,7 @@ class Resolver:
     def visit_ExpressionPartsNode(self, node):
         """Transform ExpressionPartsNode to the correct node type based on parts."""
         parts = node.parts
+        assert all(isinstance(p, ExpressionPart) for p in parts), f"All parts must be ExpressionPart, got {[type(p).__name__ for p in parts]}"
 
         if len(parts) == 0:
             return self.visit(StringNode(node.line, node.column, ''))
@@ -614,11 +615,8 @@ class Resolver:
         elif s.isdigit():
             return IntNode(token.line, token.column, s)
         elif self._is_float(s):
-            # Handle both '.' and ',' as decimal separator
             value = float(s.replace(',', '.'))
             return FloatNode(token.line, token.column, value)
-        elif s.startswith('"') or s.startswith("'"):
-            return StringNode(token.line, token.column, s[1:-1])
         # Check if it's a defined function (with no arguments)
         elif self._is_defined(s, self._current_module):
             # Check if it's a built-in function that should be called (like 'lista')
