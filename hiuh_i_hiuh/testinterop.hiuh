@@ -36,6 +36,9 @@ sätt formatera en nod till grej med n som basnod ger sträng
         ge "VarAccessNode(" plus namn från n plus ")"
 
     . Expression parts (unresolved expressions)
+    om ht är lika med typ av uttrycksdelnod
+        ge värde från n
+
     om ht är lika med typ av uttrycksdelarnod
         sätt delar till delar från n
         sätt txt till ""
@@ -45,7 +48,7 @@ sätt formatera en nod till grej med n som basnod ger sträng
                 sätt först till FALSKT
             annars
                 sätt txt till txt plus " "
-            sätt txt till txt plus värde från d
+            sätt txt till txt plus formatera en nod med d
         ge "Expr(" plus txt plus ")"
 
     . Arithmetic binary nodes
