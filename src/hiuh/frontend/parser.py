@@ -154,92 +154,73 @@ class Parser:
         return RemoveValueNode(remove_token.line, remove_token.column, target_expr, list_name)
 
     def _parse_verb_call(self):
-        """Parse 'öka <target> med <value>' as AddAssignNode etc.
-        These map directly to x86 opcodes (ADD, SUB, MUL, DIV)."""
+        """Parse 'öka <target> med <value>' as AddAssignNode etc."""
         verb_token = self.consume()
         verb_name = verb_token.value
-        # Collect target until 'med'
         target_parts = []
         while self.peek() and self.peek().type != TOKEN_WITH:
             target_parts.append(self.consume().value)
         target = " ".join(target_parts)
-        self.consume(TOKEN_WITH)  # consume 'med'
+        self.consume(TOKEN_WITH)
         val = self.expression()
-        # Map verb to specialized AST node
         node_map = {
-            "öka": AddAssignNode,
-            "minska": SubAssignNode,
-            "gångra": MultiplyAssignNode,
-            "multiplicera": MultiplyAssignNode,
-            "dela": DivideAssignNode,
-            "dividera": DivideAssignNode,
+            "öka": AddAssignNode, "minska": SubAssignNode,
+            "gångra": MultiplyAssignNode, "multiplicera": MultiplyAssignNode,
+            "dela": DivideAssignNode, "dividera": DivideAssignNode,
         }
         node_class = node_map.get(verb_name)
         if node_class:
             return node_class(verb_token.line, verb_token.column, target, val)
-        # Unknown verb — fall back to function call
-        return AssignNode(verb_token.line, verb_token.column, target, FunctionCallNode(verb_token.line, verb_token.column, verb_name, [VarAccessNode(verb_token.line, verb_token.column, target), val]))
+        return AssignNode(verb_token.line, verb_token.column, target,
+            FunctionCallNode(verb_token.line, verb_token.column, verb_name,
+                [VarAccessNode(verb_token.line, verb_token.column, target), val]))
 
-    def _parse_skicka_call(self):
-        """Parse 'skicka <thing> till <target>' as AssignNode(target, fn(args..., target))."""
+    def _parse_fn_with_target(self, separator_type, assign_result=True):
+        """Parse 'fn <thing> sep <target>' pattern used by skicka/hämta calls.
+
+        Collects thing parts until separator, splits at commas into args,
+        collects target after separator. If assign_result, wraps in AssignNode.
+        """
         fn_token = self.consume()
         fn_name = fn_token.value
-        # Collect thing parts until 'till', split at commas into multiple args
-        all_thing_parts = []
-        while self.peek() and self.peek().type != TOKEN_TO:
-            all_thing_parts.append(self.consume().value)
-        self.consume(TOKEN_TO)  # consume 'till'
+        # Collect thing parts until separator
+        thing_parts = []
+        while self.peek() and self.peek().type != separator_type:
+            thing_parts.append(self.consume().value)
+        self.consume(separator_type)
         # Collect target
         target_parts = []
         while self.peek() and self.peek().type not in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
             target_parts.append(self.consume().value)
         target = " ".join(target_parts)
         # Split thing parts into args at commas
-        call_args = []
-        current = []
-        for p in all_thing_parts:
-            if p == ',':
-                if current:
-                    call_args.append(ExpressionPartsNode(fn_token.line, fn_token.column, current))
-                current = []
-            else:
-                current.append(p)
-        if current:
-            call_args.append(ExpressionPartsNode(fn_token.line, fn_token.column, current))
-        # Add target as last arg
+        call_args = self._split_args_at_commas(thing_parts, fn_token)
         call_args.append(VarAccessNode(fn_token.line, fn_token.column, target))
         func_call = FunctionCallNode(fn_token.line, fn_token.column, fn_name, call_args)
-        return AssignNode(fn_token.line, fn_token.column, target, func_call)
+        if assign_result:
+            return AssignNode(fn_token.line, fn_token.column, target, func_call)
+        return func_call
 
-    def _parse_hämta_call(self):
-        """Parse 'hämta <thing> från <source>' as FunctionCallNode(fn, [thing, source]).
-        Unlike skicka, this does NOT assign — it just returns the value."""
-        fn_token = self.consume()
-        fn_name = fn_token.value
-        # Collect thing parts until 'från'
-        thing_parts = []
-        while self.peek() and self.peek().type != TOKEN_FROM:
-            thing_parts.append(self.consume().value)
-        self.consume(TOKEN_FROM)  # consume 'från'
-        # Collect source
-        source_parts = []
-        while self.peek() and self.peek().type not in [TOKEN_NEWLINE, TOKEN_INDENT, TOKEN_DEDENT]:
-            source_parts.append(self.consume().value)
-        source = " ".join(source_parts)
-        # Build args: split thing at commas, then add source
-        call_args = []
+    def _split_args_at_commas(self, parts, token):
+        """Split a list of string parts at commas into ExpressionPartsNode args."""
+        args = []
         current = []
-        for p in thing_parts:
+        for p in parts:
             if p == ',':
                 if current:
-                    call_args.append(ExpressionPartsNode(fn_token.line, fn_token.column, current))
+                    args.append(ExpressionPartsNode(token.line, token.column, current))
                 current = []
             else:
                 current.append(p)
         if current:
-            call_args.append(ExpressionPartsNode(fn_token.line, fn_token.column, current))
-        call_args.append(VarAccessNode(fn_token.line, fn_token.column, source))
-        return FunctionCallNode(fn_token.line, fn_token.column, fn_name, call_args)
+            args.append(ExpressionPartsNode(token.line, token.column, current))
+        return args
+
+    def _parse_skicka_call(self):
+        return self._parse_fn_with_target(TOKEN_TO, assign_result=True)
+
+    def _parse_hämta_call(self):
+        return self._parse_fn_with_target(TOKEN_FROM, assign_result=False)
 
     def parse_open_file(self):
         open_token = self.consume(TOKEN_OPEN)
