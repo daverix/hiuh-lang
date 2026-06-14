@@ -51,26 +51,13 @@ class Resolver:
     # --- ExpressionPart helpers ---
 
     @staticmethod
-    def _part_str(p):
-        """Get the string value of an expression part."""
-        return p.value if isinstance(p, ExpressionPart) else str(p)
-
-    @staticmethod
-    def _parts_join(parts, sep=' '):
-        """Join expression parts with a separator."""
-        return sep.join(Resolver._part_str(p) for p in parts)
-
-    @staticmethod
-    def _index_of_part(parts, value):
-        """Find index of an ExpressionPart with the given string value."""
-        for i, p in enumerate(parts):
-            if Resolver._part_str(p) == value:
-                return i
-        raise ValueError(f"'{value}' not in parts")
+    def _parts_to_strings(parts):
+        """Convert a list of ExpressionPart (or str) to a list of plain strings."""
+        return [str(p) for p in parts]
 
     def _parts_to_str(self, parts):
         """Join parts to a string, filtering out AST nodes."""
-        return self._parts_join([p for p in parts if isinstance(p, (str, ExpressionPart))])
+        return ' '.join(self._parts_to_strings([p for p in parts if isinstance(p, (str, ExpressionPart))]))
     
     def _register_builtins(self):
         """Register built-in symbols."""
@@ -545,7 +532,7 @@ class Resolver:
             return self._part_to_node(parts[0], node)
 
         # Check if the entire parts joined is a defined name (multi-word name)
-        full_name = ' '.join(parts)
+        full_name = ' '.join(self._parts_to_strings(parts))
         if self._is_defined(full_name, self._current_module):
             # Check if it is a function with no required parameters (grej without params)
             # Check AST directly for robustness
@@ -611,7 +598,7 @@ class Resolver:
             return self.visit(result)
 
         # No special pattern - treat as string
-        joined = ' '.join(parts)
+        joined = ' '.join(self._parts_to_strings(parts))
         # Clean up comma spacing: "a , b" -> "a, b"
         while ' ,' in joined:
             joined = joined.replace(' ,', ',')
@@ -1670,7 +1657,7 @@ class Resolver:
                     return FunctionCallNode(token.line, token.column, fn_name, args)
 
         # No operator found, return as single value
-        return self._part_to_node(' '.join(parts), token)
+        return self._part_to_node(' '.join(self._parts_to_strings(parts)), token)
 
     def _find_op_in_parts(self, parts, op_tokens):
         """Find operator tokens in parts list."""
