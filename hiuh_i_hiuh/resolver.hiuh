@@ -1,6 +1,21 @@
 använd ast
 använd texter
 
+sätt är heltalsträng till grej med s som sträng ger boolesk
+    om längd från s är lika med 0
+        ge FALSKT
+    sätt pos till 0
+    sätt t0 till element 0 från s
+    om t0 är lika med "-" och längd från s är större än 1
+        öka pos med 1
+    medan pos är mindre än längd från s
+        sätt t till element pos från s
+        sätt kod till t som tal
+        om kod är mindre än 48 eller kod är större än 57
+            ge FALSKT
+        öka pos med 1
+    ge SANT
+
 sätt lös till grej med noder som lista av basnod ger lista av basnod
 
     sätt besök nod till grej med nod som basnod ger basnod
@@ -18,6 +33,8 @@ sätt lös till grej med noder som lista av basnod ger lista av basnod
                     ge boolesknod med 1, 1, SANT
                 om versal är lika med "FALSKT"
                     ge boolesknod med 1, 1, FALSKT
+                om är heltalsträng med s
+                    ge heltalsnod med 1, 1, s
                 ge strängnod med 1, 1, s
             ge nod
 
@@ -34,7 +51,6 @@ sätt lös till grej med noder som lista av basnod ger lista av basnod
 
         ge nod
 
-    . PASS 1: collect declarations
     sätt definierade till lista av sträng
     lägg till "SANT" i definierade
     lägg till "FALSKT" i definierade
@@ -55,7 +71,6 @@ sätt lös till grej med noder som lista av basnod ger lista av basnod
     lägg till "finns" i definierade
     lägg till "rensa" i definierade
 
-    . Scan top-level declarations
     för varje nod i noder
         sätt ht till typ av nod
         om ht är lika med typ av tilldelningsnod
@@ -65,7 +80,6 @@ sätt lös till grej med noder som lista av basnod ger lista av basnod
             sätt nm till namn från nod
             lägg till nm i definierade
 
-    . PASS 2: resolve
     sätt resultat till lista av basnod
     för varje nod i noder
         sätt lvnod till besök nod med nod
