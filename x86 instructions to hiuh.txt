@@ -1,0 +1,36 @@
+### 1. Modulo / Remainder (% / Swedish: rest)                                                                                           
+                                                                                                                                         
+ - x86 Instructions: DIV (unsigned division) and IDIV (signed division).                                                                 
+ - Why it benefits: When x86 performs a division, the CPU simultaneously calculates both the quotient and the remainder in a single      
+   operation.                                                                                                                            
+     - For example, dividing RAX by a divisor puts the quotient in RAX and the remainder directly in RDX.                                
+     - Because of this hardware feature, calculating modulo/remainder has zero extra CPU cost over a regular division; you just read a   
+       different register!                                                                                                               
+                                                                                                                                         
+ ### 2. In-place modification (+=, -=, *=, /=)                                                                                           
+                                                                                                                                         
+ - x86 Instructions: ADD [mem], reg, SUB [mem], reg, etc.                                                                                
+ - Why it benefits: x86 supports memory-destination operations.                                                                          
+     - In x86 assembly, you can add a value directly to a memory location in a single instruction (e.g., ADD [my_variable], 5).          
+     - On other architectures like ARM (RISC), you cannot do this; you are forced to use three separate instructions: load the value     
+       from memory into a register, add to the register, and store the register back to memory.                                          
+                                                                                                                                         
+ ### 3. Bitwise Operators (&, |, ^, ~) and Shifts (<<, >>)                                                                               
+                                                                                                                                         
+ - x86 Instructions: AND, OR, XOR, NOT, SHL, SHR.                                                                                        
+ - Why it benefits: Since CPUs are fundamentally composed of silicon logic gates and shift registers, these translate directly into      
+   hardware operations that execute in a single CPU cycle.                                                                               
+                                                                                                                                         
+ ### 4. Comparisons (==, <, >, <=, >=, !=)                                                                                               
+                                                                                                                                         
+ - x86 Instructions: CMP (compare), combined with conditional jumps (JE, JG, JL) or flag setters (SETG, SETL).                           
+ - Why it benefits: x86 has a dedicated hardware EFLAGS register containing flags (Zero Flag, Sign Flag, Overflow Flag).                 
+     - The CMP instruction subtracts two values without storing the result, just updating the flags.                                     
+     - Conditional instructions then check these flags in hardware instantly, making comparisons and branches incredibly fast.           
+                                                                                                                                         
+ ### 5. Floating Point Arithmetic (floats/doubles)                                                                                       
+                                                                                                                                         
+ - x86 Instructions: SSE/AVX instructions like ADDSS, MULSS, DIVSS, and SQRTSD.                                                          
+ - Why it benefits: Floating-point math is incredibly complex (handling exponents, mantissas, sign bits, and rounding according to IEEE  
+   754 standards). Doing this in software requires hundreds of instructions. x86 coprocessors/registers do this entirely in hardware in  
+   just a few clock cycles, including complex things like square roots (SQRT).                         

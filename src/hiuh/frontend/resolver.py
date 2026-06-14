@@ -730,11 +730,11 @@ class Resolver:
         comparison_keywords = ['är', 'större', 'mindre', 'lika']
         
         if not is_module_call:
-            if any(op in left_parts or op in right_parts for op in operators + comparison_keywords):
+            if any(self._part_in(left_parts, op) or self._part_in(right_parts, op) for op in operators + comparison_keywords):
                 return None
         else:
             mod_parts = parts[från_idx + 1:self._index_of_part(parts, 'med')]
-            if any(op in left_parts or op in mod_parts for op in operators + comparison_keywords):
+            if any(self._part_in(left_parts, op) or self._part_in(mod_parts, op) for op in operators + comparison_keywords):
                 return None
 
         # Check if left_parts contains a multi-word comparison operator - if so, this is not property access
@@ -1470,36 +1470,34 @@ class Resolver:
         # When we find one, we split there and recursively resolve both sides
 
         # Level 1: 'eller' (lowest)
-        for op in ['eller']:
-            if op in parts:
-                idx = -1
-                for i, part in enumerate(parts):
-                    if part.value == 'eller':
-                        is_part_of_comp = False
-                        if i > 0 and parts[i - 1].value == 'än':
-                            if i + 2 < len(parts) and parts[i + 1].value == 'lika' and parts[i + 2].value == 'med':
-                                is_part_of_comp = True
-                        if not is_part_of_comp:
-                            idx = i
-                            break
-                if idx != -1:
-                    left_parts = parts[:idx]
-                    right_parts = parts[idx + 1:]
-                    if left_parts and right_parts:
-                        left = self._resolve_precedence(left_parts, token=token)
-                        right = self._resolve_precedence(right_parts, token=token)
-                        return OrNode(token.line, token.column, left, right)
-
-        # Level 2: 'och'
-        for op in ['och']:
-            if op in parts:
-                idx = parts.index(op)
+        if self._part_in(parts, 'eller'):
+            idx = -1
+            for i, part in enumerate(parts):
+                if part.value == 'eller':
+                    is_part_of_comp = False
+                    if i > 0 and parts[i - 1].value == 'än':
+                        if i + 2 < len(parts) and parts[i + 1].value == 'lika' and parts[i + 2].value == 'med':
+                            is_part_of_comp = True
+                    if not is_part_of_comp:
+                        idx = i
+                        break
+            if idx != -1:
                 left_parts = parts[:idx]
                 right_parts = parts[idx + 1:]
                 if left_parts and right_parts:
                     left = self._resolve_precedence(left_parts, token=token)
                     right = self._resolve_precedence(right_parts, token=token)
-                    return AndNode(token.line, token.column, left, right)
+                    return OrNode(token.line, token.column, left, right)
+
+        # Level 2: 'och'
+        if self._part_in(parts, 'och'):
+            idx = self._index_of_part(parts, 'och')
+            left_parts = parts[:idx]
+            right_parts = parts[idx + 1:]
+            if left_parts and right_parts:
+                left = self._resolve_precedence(left_parts, token=token)
+                right = self._resolve_precedence(right_parts, token=token)
+                return AndNode(token.line, token.column, left, right)
 
         # Level 3: comparisons (är, etc.)
         multi_word_ops = [
@@ -1582,8 +1580,8 @@ class Resolver:
 
         # Level 5: multiplication/division (highest)
         for op in ['gånger', 'delat']:
-            if op in parts:
-                idx = parts.index(op)
+            if self._part_in(parts, op):
+                idx = self._index_of_part(parts, op)
                 # For 'delat', check if next word is 'med'
                 skip = 1
                 if op == 'delat' and idx + 1 < len(parts) and parts[idx + 1].value == 'med':
