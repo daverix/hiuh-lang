@@ -904,7 +904,7 @@ class Resolver:
         fn_name = ' '.join(self._parts_to_strings(parts[:med_idx]))
 
         # Strip generic type params: 'lista av heltal med ...' -> fn_name='lista'
-        if self._part_in(parts, 'av')[:med_idx]:
+        if self._part_in(parts[:med_idx], 'av'):
             av_pos = self._index_of_part(parts, 'av')
             if av_pos < med_idx:
                 base_fn = ' '.join(self._parts_to_strings(parts[:av_pos]))
