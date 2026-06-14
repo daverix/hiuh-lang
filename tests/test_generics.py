@@ -168,22 +168,30 @@ class TestInheritanceParser(unittest.TestCase):
         self.assertEqual(self.strip_locations(actual), self.strip_locations(expected))
 
     def test_simple_inheritance(self):
-        source = "typ IntNod ärver BasNod\n    värde som heltal"
+        source = """\
+typ IntNod ärver BasNod
+    värde som heltal"""
         expected = [TypeDefNode(None, None, name='IntNod', fields=[('värde', 'heltal')], parent_types=[('BasNod', [])])]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_inheritance_with_type_params(self):
-        source = "typ ordlista av K, V ärver lista av par av K, V\n    extra som heltal"
+        source = """\
+typ ordlista av K, V ärver lista av par av K, V
+    extra som heltal"""
         expected = [TypeDefNode(None, None, name='ordlista', fields=[('extra', 'heltal')], type_params=['K', 'V'], parent_types=[('lista', ['par', 'av', 'K', ',', 'V'])])]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_inheritance_without_generics(self):
-        source = "typ personbil ärver fordon\n    märke som sträng"
+        source = """\
+typ personbil ärver fordon
+    märke som sträng"""
         expected = [TypeDefNode(None, None, name='personbil', fields=[('märke', 'sträng')], parent_types=[('fordon', [])])]
         self.assertNodesEqual(self.parse_source(source), expected)
 
     def test_multiple_inheritance(self):
-        source = "typ bil ärver fordon, ägodel\n    märke som sträng"
+        source = """\
+typ bil ärver fordon, ägodel
+    märke som sträng"""
         expected = [TypeDefNode(None, None, name='bil', fields=[('märke', 'sträng')], parent_types=[('fordon', []), ('ägodel', [])])]
         self.assertNodesEqual(self.parse_source(source), expected)
 

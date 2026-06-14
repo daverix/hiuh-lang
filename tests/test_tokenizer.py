@@ -9,12 +9,17 @@ class _BaseTokenizerTests:
         raise "needs to be overridden"
 
     def test_stdout_section(self):
-        source = "skriv hejsan\nskriv ny rad\nskriv hoppsan"
+        source = """\
+skriv hejsan
+skriv ny rad
+skriv hoppsan"""
         expected = [Token(TOKEN_PRINT, 'skriv', 1, 1), Token(TOKEN_IDENTIFIER, 'hejsan', 1, 7), Token(TOKEN_NEWLINE, '\n', 1, 13), Token(TOKEN_PRINT, 'skriv', 2, 1), Token(TOKEN_IDENTIFIER, 'ny', 2, 7), Token(TOKEN_IDENTIFIER, 'rad', 2, 10), Token(TOKEN_NEWLINE, '\n', 2, 13), Token(TOKEN_PRINT, 'skriv', 3, 1), Token(TOKEN_IDENTIFIER, 'hoppsan', 3, 7)]
         self.assertEqual(self.tokenize(source), expected)
 
     def test_variables_boolean_section(self):
-        source = "sätt x till SANT\nsätt b till a större än 2"
+        source = """\
+sätt x till SANT
+sätt b till a större än 2"""
         expected = [Token(TOKEN_SET, 'sätt', 1, 1), Token(TOKEN_IDENTIFIER, 'x', 1, 6), Token(TOKEN_TO, 'till', 1, 8), Token(TOKEN_LITERAL_TRUE, 'SANT', 1, 13), Token(TOKEN_NEWLINE, '\n', 1, 17), Token(TOKEN_SET, 'sätt', 2, 1), Token(TOKEN_IDENTIFIER, 'b', 2, 6), Token(TOKEN_TO, 'till', 2, 8), Token(TOKEN_IDENTIFIER, 'a', 2, 13), Token(TOKEN_GREATER, 'större', 2, 15), Token(TOKEN_THAN, 'än', 2, 22), Token(TOKEN_LITERAL_INT, '2', 2, 25)]
         self.assertEqual(self.tokenize(source), expected)
 
@@ -34,17 +39,27 @@ class _BaseTokenizerTests:
         self.assertEqual(self.tokenize(source), expected)
 
     def test_function_section(self):
-        source = "sätt f till grej med a som heltal ger heltal\n    ge a"
+        source = """\
+sätt f till grej med a som heltal ger heltal
+    ge a"""
         expected = [Token(TOKEN_SET, 'sätt', 1, 1), Token(TOKEN_IDENTIFIER, 'f', 1, 6), Token(TOKEN_TO, 'till', 1, 8), Token(TOKEN_FUNC, 'grej', 1, 13), Token(TOKEN_WITH, 'med', 1, 18), Token(TOKEN_IDENTIFIER, 'a', 1, 22), Token(TOKEN_AS, 'som', 1, 24), Token(TOKEN_IDENTIFIER, 'heltal', 1, 28), Token(TOKEN_RETURNS, 'ger', 1, 35), Token(TOKEN_IDENTIFIER, 'heltal', 1, 39), Token(TOKEN_NEWLINE, '\n', 1, 45), Token(TOKEN_INDENT, '    ', 2, 1), Token(TOKEN_GIVE, 'ge', 2, 5), Token(TOKEN_IDENTIFIER, 'a', 2, 8), Token(TOKEN_DEDENT, '', 3, 1)]
         self.assertEqual(self.tokenize(source), expected)
 
     def test_typ_section(self):
-        source = "typ person\n    namn som sträng\n    ålder som heltal\nsätt ålder till 38"
+        source = """\
+typ person
+    namn som sträng
+    ålder som heltal
+sätt ålder till 38"""
         expected = [Token(TOKEN_TYPE, 'typ', 1, 1), Token(TOKEN_IDENTIFIER, 'person', 1, 5), Token(TOKEN_NEWLINE, '\n', 1, 11), Token(TOKEN_INDENT, '    ', 2, 1), Token(TOKEN_IDENTIFIER, 'namn', 2, 5), Token(TOKEN_AS, 'som', 2, 10), Token(TOKEN_IDENTIFIER, 'sträng', 2, 14), Token(TOKEN_NEWLINE, '\n', 2, 20), Token(TOKEN_IDENTIFIER, 'ålder', 3, 5), Token(TOKEN_AS, 'som', 3, 11), Token(TOKEN_IDENTIFIER, 'heltal', 3, 15), Token(TOKEN_NEWLINE, '\n', 3, 21), Token(TOKEN_DEDENT, '', 4, 1), Token(TOKEN_SET, 'sätt', 4, 1), Token(TOKEN_IDENTIFIER, 'ålder', 4, 6), Token(TOKEN_TO, 'till', 4, 12), Token(TOKEN_LITERAL_INT, '38', 4, 17)]
         self.assertEqual(self.tokenize(source), expected)
 
     def test_if_statement_section(self):
-        source = "om x är större än 2\n    skriv större\nannars\n    skriv mindre"
+        source = """\
+om x är större än 2
+    skriv större
+annars
+    skriv mindre"""
         expected = [Token(TOKEN_IF, 'om', 1, 1), Token(TOKEN_IDENTIFIER, 'x', 1, 4), Token(TOKEN_OP_IS, 'är', 1, 6), Token(TOKEN_GREATER, 'större', 1, 9), Token(TOKEN_THAN, 'än', 1, 16), Token(TOKEN_LITERAL_INT, '2', 1, 19), Token(TOKEN_NEWLINE, '\n', 1, 20), Token(TOKEN_INDENT, '    ', 2, 1), Token(TOKEN_PRINT, 'skriv', 2, 5), Token(TOKEN_GREATER, 'större', 2, 11), Token(TOKEN_NEWLINE, '\n', 2, 17), Token(TOKEN_DEDENT, '', 3, 1), Token(TOKEN_ELSE, 'annars', 3, 1), Token(TOKEN_NEWLINE, '\n', 3, 7), Token(TOKEN_INDENT, '    ', 4, 1), Token(TOKEN_PRINT, 'skriv', 4, 5), Token(TOKEN_LESS, 'mindre', 4, 11), Token(TOKEN_DEDENT, '', 5, 1)]
         self.assertEqual(self.tokenize(source), expected)
 
@@ -54,17 +69,26 @@ class _BaseTokenizerTests:
         self.assertEqual(self.tokenize(source), expected)
 
     def test_error_handling_section(self):
-        source = "försök\n    kasta fel\nfånga fel"
+        source = """\
+försök
+    kasta fel
+fånga fel"""
         expected = [Token(TOKEN_TRY, 'försök', 1, 1), Token(TOKEN_NEWLINE, '\n', 1, 7), Token(TOKEN_INDENT, '    ', 2, 1), Token(TOKEN_THROW, 'kasta', 2, 5), Token(TOKEN_IDENTIFIER, 'fel', 2, 11), Token(TOKEN_NEWLINE, '\n', 2, 14), Token(TOKEN_DEDENT, '', 3, 1), Token(TOKEN_CATCH, 'fånga', 3, 1), Token(TOKEN_IDENTIFIER, 'fel', 3, 7)]
         self.assertEqual(self.tokenize(source), expected)
 
     def test_comments_section(self):
-        source = ". skriver\nskriv hej"
+        source = """\
+. skriver
+skriv hej"""
         expected = [Token(TOKEN_PRINT, 'skriv', 2, 1), Token(TOKEN_IDENTIFIER, 'hej', 2, 7)]
         self.assertEqual(self.tokenize(source), expected)
 
     def test_multiple_indents_nested(self):
-        source = "om SANT\n    skriv nivå 1\n    om SANT\n        skriv nivå 2"
+        source = """\
+om SANT
+    skriv nivå 1
+    om SANT
+        skriv nivå 2"""
         expected = [Token(TOKEN_IF, 'om', 1, 1), Token(TOKEN_LITERAL_TRUE, 'SANT', 1, 4), Token(TOKEN_NEWLINE, '\n', 1, 8), Token(TOKEN_INDENT, '    ', 2, 1), Token(TOKEN_PRINT, 'skriv', 2, 5), Token(TOKEN_IDENTIFIER, 'nivå', 2, 11), Token(TOKEN_LITERAL_INT, '1', 2, 16), Token(TOKEN_NEWLINE, '\n', 2, 17), Token(TOKEN_IF, 'om', 3, 5), Token(TOKEN_LITERAL_TRUE, 'SANT', 3, 8), Token(TOKEN_NEWLINE, '\n', 3, 12), Token(TOKEN_INDENT, '        ', 4, 1), Token(TOKEN_PRINT, 'skriv', 4, 9), Token(TOKEN_IDENTIFIER, 'nivå', 4, 15), Token(TOKEN_LITERAL_INT, '2', 4, 20), Token(TOKEN_DEDENT, '', 5, 1), Token(TOKEN_DEDENT, '', 5, 1)]
         self.assertEqual(self.tokenize(source), expected)
 
@@ -103,19 +127,26 @@ class _BaseTokenizerTests:
         Each word becomes a separate identifier token.
         The parser handles joining multi-word names.
         """
-        source = "sätt min lista till lista med a, b, c\nför varje mitt index i min lista\n    skriv mitt index"
+        source = """\
+sätt min lista till lista med a, b, c
+för varje mitt index i min lista
+    skriv mitt index"""
         expected = [Token(TOKEN_SET, 'sätt', 1, 1), Token(TOKEN_IDENTIFIER, 'min', 1, 6), Token(TOKEN_IDENTIFIER, 'lista', 1, 10), Token(TOKEN_TO, 'till', 1, 16), Token(TOKEN_IDENTIFIER, 'lista', 1, 21), Token(TOKEN_WITH, 'med', 1, 27), Token(TOKEN_IDENTIFIER, 'a', 1, 31), Token(TOKEN_COMMA, ',', 1, 32), Token(TOKEN_IDENTIFIER, 'b', 1, 34), Token(TOKEN_COMMA, ',', 1, 35), Token(TOKEN_IDENTIFIER, 'c', 1, 37), Token(TOKEN_NEWLINE, '\n', 1, 38), Token(TOKEN_FOR, 'för', 2, 1), Token(TOKEN_EACH, 'varje', 2, 5), Token(TOKEN_IDENTIFIER, 'mitt', 2, 11), Token(TOKEN_IDENTIFIER, 'index', 2, 16), Token(TOKEN_IDENTIFIER, 'i', 2, 22), Token(TOKEN_IDENTIFIER, 'min', 2, 24), Token(TOKEN_IDENTIFIER, 'lista', 2, 28), Token(TOKEN_NEWLINE, '\n', 2, 33), Token(TOKEN_INDENT, '    ', 3, 1), Token(TOKEN_PRINT, 'skriv', 3, 5), Token(TOKEN_IDENTIFIER, 'mitt', 3, 11), Token(TOKEN_IDENTIFIER, 'index', 3, 16), Token(TOKEN_DEDENT, '', 4, 1)]
         self.assertEqual(self.tokenize(source), expected)
 
     def test_bryt_token(self):
         """Verify 'bryt' tokenizes as TOKEN_BREAK."""
-        source = "medan sant\n    bryt"
+        source = """\
+medan sant
+    bryt"""
         expected = [Token(TOKEN_WHILE, 'medan', 1, 1), Token(TOKEN_LITERAL_TRUE, 'sant', 1, 7), Token(TOKEN_NEWLINE, '\n', 1, 11), Token(TOKEN_INDENT, '    ', 2, 1), Token(TOKEN_BREAK, 'bryt', 2, 5), Token(TOKEN_DEDENT, '', 3, 1)]
         self.assertEqual(self.tokenize(source), expected)
 
     def test_fortsätt_token(self):
         """Verify 'fortsätt' tokenizes as TOKEN_CONTINUE."""
-        source = "medan sant\n    fortsätt"
+        source = """\
+medan sant
+    fortsätt"""
         expected = [Token(TOKEN_WHILE, 'medan', 1, 1), Token(TOKEN_LITERAL_TRUE, 'sant', 1, 7), Token(TOKEN_NEWLINE, '\n', 1, 11), Token(TOKEN_INDENT, '    ', 2, 1), Token(TOKEN_CONTINUE, 'fortsätt', 2, 5), Token(TOKEN_DEDENT, '', 3, 1)]
         self.assertEqual(self.tokenize(source), expected)
 
@@ -127,7 +158,9 @@ class _BaseTokenizerTests:
 
     def test_ärver_keyword(self):
         """Verify 'ärver' tokenizes as TOKEN_INHERITS."""
-        source = "typ IntNod ärver BasNod\n    värde som heltal"
+        source = """\
+typ IntNod ärver BasNod
+    värde som heltal"""
         expected = [Token(TOKEN_TYPE, 'typ', 1, 1), Token(TOKEN_IDENTIFIER, 'IntNod', 1, 5), Token(TOKEN_INHERITS, 'ärver', 1, 12), Token(TOKEN_IDENTIFIER, 'BasNod', 1, 18), Token(TOKEN_NEWLINE, '\n', 1, 24), Token(TOKEN_INDENT, '    ', 2, 1), Token(TOKEN_IDENTIFIER, 'värde', 2, 5), Token(TOKEN_AS, 'som', 2, 11), Token(TOKEN_IDENTIFIER, 'heltal', 2, 15), Token(TOKEN_DEDENT, '', 3, 1)]
         self.assertEqual(self.tokenize(source), expected)
 

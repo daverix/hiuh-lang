@@ -79,7 +79,9 @@ class _BaseParserTests:
         self.assertParseEqual(source, expected)
 
     def test_indentation_dedent(self):
-        source = "sätt x till 1\nsätt y till 2"
+        source = """\
+sätt x till 1
+sätt y till 2"""
         expected = [AssignNode(None, None, name='x', value=ExpressionPartsNode(None, None, parts=['1'])), AssignNode(None, None, name='y', value=ExpressionPartsNode(None, None, parts=['2']))]
         self.assertParseEqual(source, expected)
 
@@ -89,7 +91,9 @@ class _BaseParserTests:
         self.assertParseEqual(source, expected)
 
     def test_while_loop(self):
-        source = "medan x är mindre än 10\n    sätt x till x plus 1"
+        source = """\
+medan x är mindre än 10
+    sätt x till x plus 1"""
         expected = [WhileNode(None, None, condition=ExpressionPartsNode(None, None, parts=['x', 'är', 'mindre', 'än', '10']), body=[AssignNode(None, None, name='x', value=ExpressionPartsNode(None, None, parts=['x', 'plus', '1']))])]
         self.assertParseEqual(source, expected)
 
@@ -99,12 +103,16 @@ class _BaseParserTests:
         self.assertParseEqual(source, expected)
 
     def test_comparison_operators(self):
-        source = "om x är större än y\n    skriv större"
+        source = """\
+om x är större än y
+    skriv större"""
         expected = [IfNode(None, None, conditions=[IfCondition(None, None, test=ExpressionPartsNode(None, None, parts=['x', 'är', 'större', 'än', 'y']), block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['större']))])])]
         self.assertParseEqual(source, expected)
 
     def test_boolean_literals(self):
-        source = "om sant\n    skriv det stämmer"
+        source = """\
+om sant
+    skriv det stämmer"""
         expected = [IfNode(None, None, conditions=[IfCondition(None, None, test=ExpressionPartsNode(None, None, parts=['sant']), block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['det', 'stämmer']))])])]
         self.assertParseEqual(source, expected)
 
@@ -119,7 +127,9 @@ class _BaseParserTests:
         self.assertParseEqual(source, expected)
 
     def test_negation(self):
-        source = "om inte x\n    skriv falskt"
+        source = """\
+om inte x
+    skriv falskt"""
         expected = [IfNode(None, None, conditions=[IfCondition(None, None, test=ExpressionPartsNode(None, None, parts=['inte', 'x']), block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['falskt']))])])]
         self.assertParseEqual(source, expected)
 
@@ -169,12 +179,16 @@ class _BaseParserTests:
         self.assertParseEqual(source, expected)
 
     def test_bryt_statement(self):
-        source = "medan sant\n    bryt"
+        source = """\
+medan sant
+    bryt"""
         expected = [WhileNode(None, None, condition=ExpressionPartsNode(None, None, parts=['sant']), body=[BreakNode(None, None)])]
         self.assertParseEqual(source, expected)
 
     def test_fortsätt_statement(self):
-        source = "medan sant\n    fortsätt"
+        source = """\
+medan sant
+    fortsätt"""
         expected = [WhileNode(None, None, condition=ExpressionPartsNode(None, None, parts=['sant']), body=[ContinueNode(None, None)])]
         self.assertParseEqual(source, expected)
 
@@ -184,17 +198,25 @@ class _BaseParserTests:
         self.assertParseEqual(source, expected)
 
     def test_function_definition(self):
-        source = "sätt foo till grej med a som heltal, b som heltal ger heltal\n    ge a plus b"
+        source = """\
+sätt foo till grej med a som heltal, b som heltal ger heltal
+    ge a plus b"""
         expected = [AssignNode(None, None, name='foo', value=FunctionDefNode(None, None, params=[('a', 'heltal'), ('b', 'heltal')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=['a', 'plus', 'b']))], return_type='heltal'))]
         self.assertParseEqual(source, expected)
 
     def test_if_statement(self):
-        source = "om x är 5\n    skriv japp"
+        source = """\
+om x är 5
+    skriv japp"""
         expected = [IfNode(None, None, conditions=[IfCondition(None, None, test=ExpressionPartsNode(None, None, parts=['x', 'är', '5']), block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['japp']))])])]
         self.assertParseEqual(source, expected)
 
     def test_if_else_statement(self):
-        source = "om x är 5\n    skriv japp\nannars\n    skriv nej"
+        source = """\
+om x är 5
+    skriv japp
+annars
+    skriv nej"""
         expected = [IfNode(None, None, conditions=[IfCondition(None, None, test=ExpressionPartsNode(None, None, parts=['x', 'är', '5']), block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['japp']))])], else_block=[PrintNode(None, None, value=ExpressionPartsNode(None, None, parts=['nej']))])]
         self.assertParseEqual(source, expected)
 

@@ -39,7 +39,9 @@ class TestHiuhFullIntegration(unittest.TestCase):
 
     def test_greedy_string_assignment(self):
         """Tests the README rule: anything after TILL that isn't a type is a string."""
-        source = "sätt x till detta är en hemlighet\nskriv x"
+        source = """\
+sätt x till detta är en hemlighet
+skriv x"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "detta är en hemlighet")
@@ -67,7 +69,10 @@ class TestHiuhFullIntegration(unittest.TestCase):
 
     def test_newline_swedish_literal(self):
         """Tests that 'ny rad' is interpreted as a newline character."""
-        source = "skriv rad1\nskriv ny rad\nskriv rad2"
+        source = """\
+skriv rad1
+skriv ny rad
+skriv rad2"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue(), "rad1\nrad2")
@@ -109,14 +114,19 @@ class TestHiuhFullIntegration(unittest.TestCase):
 
     def test_casting_som_tal(self):
         """Tests that strings can be converted to numbers for math."""
-        source = "sätt x till 10 som tal\nskriv x plus 5"
+        source = """\
+sätt x till 10 som tal
+skriv x plus 5"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "15")
 
     def test_casting_som_text(self):
         """Tests converting a number back to text."""
-        source = "sätt x till 100 som text\nsätt y till 2 som text\nskriv x plus y plus mellanrum plus är ett stort tal"
+        source = """\
+sätt x till 100 som text
+sätt y till 2 som text
+skriv x plus y plus mellanrum plus är ett stort tal"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "1002 är ett stort tal")
@@ -378,7 +388,29 @@ class TestHiuhFullIntegration(unittest.TestCase):
 
     def test_infix_funktion_custom_definition(self):
         """Verify that custom infix functions can be defined and used."""
-        source = "\n. Define a custom infix function 'är del av'\nsätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk\n    sätt x till 0\n    medan x är mindre än längd från helhet\n        om element x från helhet är lika med del\n            ge SANT\n        sätt x till x plus 1\n    ge FALSKT\n\nsätt färger till lista med röd, grön, blå\n\n. Use the infix function syntax\nom grön är del av färger\n    skriv Hittat\n\nom gul är del av färger\n    skriv Saknas\n\nsätt resultat till blå är del av färger \nskriv resultat\n"
+        source = """\
+
+. Define a custom infix function 'är del av'
+sätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk
+    sätt x till 0
+    medan x är mindre än längd från helhet
+        om element x från helhet är lika med del
+            ge SANT
+        sätt x till x plus 1
+    ge FALSKT
+
+sätt färger till lista med röd, grön, blå
+
+. Use the infix function syntax
+om grön är del av färger
+    skriv Hittat
+
+om gul är del av färger
+    skriv Saknas
+
+sätt resultat till blå är del av färger 
+skriv resultat
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "HittatSANT")
