@@ -619,26 +619,26 @@ class Resolver:
 
     def _part_to_node(self, s, token):
         """Convert a string (or ExpressionPart) to the appropriate AST node."""
-        # If s is an ExpressionPart (subclass of str), extract token type
         token_type = None
         if isinstance(s, ExpressionPart):
             token_type = s.token_type
+            str_val = s.value
+        else:
+            str_val = str(s)
         
         # Check for known literals
         if token_type == TOKEN_STRING:
-            # Original token was a quoted string — always treat as string
-            return StringNode(token.line, token.column, s.value)
-        elif s.value.lower() == 'sant':
+            return StringNode(token.line, token.column, str_val)
+        elif str_val.lower() == 'sant':
             return BoolNode(token.line, token.column, True)
-        elif s.value.lower() == 'falskt':
+        elif str_val.lower() == 'falskt':
             return BoolNode(token.line, token.column, False)
-        elif s.value.isdigit():
-            return IntNode(token.line, token.column, s.value)
-        elif self._is_float(s):
-            value = float(s.value.replace(',', '.'))
+        elif str_val.isdigit():
+            return IntNode(token.line, token.column, str_val)
+        elif self._is_float(str_val):
+            value = float(str_val.replace(',', '.'))
             return FloatNode(token.line, token.column, value)
-        # Check if it's a defined function (with no arguments)
-        elif self._is_defined(s, self._current_module):
+        elif self._is_defined(str_val, self._current_module):
             # Check if it's a built-in function that should be called (like 'lista')
             # Built-in functions are in __main__ module
             is_builtin = False
@@ -646,30 +646,28 @@ class Resolver:
             # Check if the symbol exists in __main__ as a func
             if '__main__' in self.module_registry.modules:
                 main_mod = self.module_registry.modules['__main__']
-                if hasattr(main_mod, 'symbols') and s in main_mod.symbols:
-                    symbol = main_mod.symbols[s]
+                if hasattr(main_mod, 'symbols') and str_val in main_mod.symbols:
+                    symbol = main_mod.symbols[str_val]
                     if symbol.type == 'func':
                         is_builtin = True
             
             if is_builtin:
-                # Some builtins require generic type params (e.g., lista av heltal)
-                if s in self._get_generic_required():
+                if str_val in self._get_generic_required():
                     raise Exception(
-                        f"okänd_typ: '{s}' kräver en typ-parameter. "
-                        f"Använd '{s} av <typ>' (t.ex. '{s} av heltal')"
+                        f"okänd_typ: '{str_val}' kräver en typ-parameter. "
+                        f"Använd '{str_val} av <typ>' (t.ex. '{str_val} av heltal')"
                     )
-                return FunctionCallNode(token.line, token.column, s, [])
+                return FunctionCallNode(token.line, token.column, str_val, [])
             
             # Check if it's a user-defined function with no required parameters
             # Grej functions with empty params should be called automatically
             # Check AST directly for robustness
-            if self._is_function_def_with_empty_params(s, self._current_module):
-                return FunctionCallNode(token.line, token.column, s, [])
+            if self._is_function_def_with_empty_params(str_val, self._current_module):
+                return FunctionCallNode(token.line, token.column, str_val, [])
             
-            return VarAccessNode(token.line, token.column, s, target=None)
+            return VarAccessNode(token.line, token.column, str_val, target=None)
         else:
-            # Undefined - treat as string
-            return StringNode(token.line, token.column, s.value)
+            return StringNode(token.line, token.column, str_val)
 
     def _is_function_def_with_empty_params(self, name, module_name):
         """Check if a name is defined as a FunctionDefNode with empty params in the AST."""
@@ -1074,7 +1072,7 @@ class Resolver:
             args.append(ExpressionPartsNode(node.line, node.column, current))
         # Add source as last arg
         if len(source_parts) == 1:
-            if self._is_defined(source_parts[0], self._current_module):
+            if self._is_defined(source_parts[0].value, self._current_module):
                 args.append(VarAccessNode(node.line, node.column, source_parts[0]))
             else:
                 args.append(StringNode(node.line, node.column, ' '.join(self._parts_to_strings(source_parts))))
@@ -1360,9 +1358,10 @@ class Resolver:
         # For comparison operators, proceed if left base variable is defined
         # or if it looks like an identifier (not a string literal)
         # Allow comparisons with undefined variables that look like identifiers
-        left_is_identifier = left_base and left_base[0].isalpha() and left_base.replace(' ', '').isalnum()
-        if not self._is_defined(left_base, self._current_module) and not left_is_identifier:
-            left_str = ' '.join(self._parts_to_strings(left_parts)) if left_parts else left_base
+        left_str_val = left_base.value if isinstance(left_base, ExpressionPart) else left_base
+        left_is_identifier = left_str_val and left_str_val[0].isalpha() and left_str_val.replace(' ', '').isalnum()
+        if not self._is_defined(left_str_val, self._current_module) and not left_is_identifier:
+            left_str = ' '.join(self._parts_to_strings(left_parts)) if left_parts else left_str_val
             return StringNode(node.line, node.column, f"{left_str} {op} {' '.join(self._parts_to_strings(right_parts))}")
 
         # Check if left_parts contains an element access pattern: "element X från Y"
