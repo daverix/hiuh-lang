@@ -62,6 +62,31 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
         sätt nod till uttrycksdelarnod med första rad, första kolumn, delar
         ge parsningsresultat med nod nod, pos pos
 
+    . collect tokens until a specific keyword VALUE
+    sätt samla tills till grej med startpos som heltal, stoppord som sträng ger parsningsresultat
+        sätt delar till lista av uttrycksdelnod
+        sätt pos till startpos
+        sätt t0 till element startpos från tokens
+        sätt första rad till rad från t0
+        sätt första kolumn till kolumn från t0
+        medan pos är mindre än längd från tokens
+            sätt t till element pos från tokens
+            sätt tt till tokentyp från t
+            sätt tv till värde från t
+            om tt är lika med idtoken och tv är lika med stoppord
+                bryt
+            om tt är lika med nyradstoken
+                bryt
+            om tt är lika med indenteringstoken
+                bryt
+            om tt är lika med avindenteringstoken
+                bryt
+            sätt ud till uttrycksdelnod med rad från t, kolumn från t, tv, tt
+            lägg till ud i delar
+            öka pos med 1
+        sätt nod till uttrycksdelarnod med första rad, första kolumn, delar
+        ge parsningsresultat med nod nod, pos pos
+
     sätt parsa skriv till grej med startpos som heltal ger parsningsresultat
         sätt pos till startpos
         sätt t0 till element startpos från tokens
@@ -413,6 +438,26 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
         sätt n till medannod med rad, kolumn, villkor, block
         ge parsningsresultat med nod n, pos pos
 
+    sätt parsa läggtill till grej med startpos som heltal ger parsningsresultat
+        sätt pos till startpos
+        sätt t0 till element startpos från tokens
+        sätt rad till rad från t0
+        sätt kolumn till kolumn från t0
+        öka pos med 1
+        öka pos med 1
+        sätt r till samla tills med pos, "i"
+        sätt pos till pos från r
+        sätt värde till nod från r
+        om pos är mindre än längd från tokens
+            sätt t till element pos från tokens
+            om tokentyp från t är lika med idtoken och värde från t är lika med "i"
+                öka pos med 1
+        sätt r2 till samla namn med pos, nyradstoken
+        sätt pos till pos från r2
+        sätt målnamn till namn från r2
+        sätt n till läggtillnod med rad, kolumn, värde, målnamn
+        ge parsningsresultat med nod n, pos pos
+
     sätt parsa block till rekgrej med startpos som heltal ger blockresultat
         sätt pos till startpos
 
@@ -511,6 +556,9 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
                 ge r
             om tv är lika med "grejtyp"
                 sätt r till parsa grejtyp med pos
+                ge r
+            om tv är lika med "lägg"
+                sätt r till parsa läggtill med pos
                 ge r
 
         öka pos med 1
