@@ -137,11 +137,7 @@ class Parser:
             self.consume()
             is_index_based = True
 
-        value_parts = []
-        while self.peek() and self.peek().type != TOKEN_FROM:
-            value_parts.append(self.consume().value)
-        target_expr = ExpressionPartsNode(self.peek().line, self.peek().column, value_parts) if value_parts else None
-
+        val = self._collect_until(TOKEN_FROM)
         self.consume(TOKEN_FROM)
 
         parts = []
@@ -150,8 +146,8 @@ class Parser:
         list_name = " ".join(parts)
 
         if is_index_based:
-            return RemoveIndexNode(remove_token.line, remove_token.column, target_expr, list_name)
-        return RemoveValueNode(remove_token.line, remove_token.column, target_expr, list_name)
+            return RemoveIndexNode(remove_token.line, remove_token.column, val, list_name)
+        return RemoveValueNode(remove_token.line, remove_token.column, val, list_name)
 
     def _parse_verb_call(self):
         """Parse 'öka <target> med <value>' as AddAssignNode etc."""
@@ -176,17 +172,11 @@ class Parser:
                 [VarAccessNode(verb_token.line, verb_token.column, target), val]))
 
     def _parse_fn_with_target(self, separator_type, assign_result=True):
-        """Parse 'fn <thing> sep <target>' pattern used by skicka/hämta calls.
-
-        Collects thing parts until separator, splits at commas into args,
-        collects target after separator. If assign_result, wraps in AssignNode.
-        """
+        """Parse 'fn <thing> sep <target>' pattern used by skicka/hämta calls."""
         fn_token = self.consume()
         fn_name = fn_token.value
         # Collect thing parts until separator
-        thing_parts = []
-        while self.peek() and self.peek().type != separator_type:
-            thing_parts.append(self.consume().value)
+        thing_parts = self._collect_until(separator_type)
         self.consume(separator_type)
         # Collect target
         target_parts = []
@@ -201,8 +191,12 @@ class Parser:
             return AssignNode(fn_token.line, fn_token.column, target, func_call)
         return func_call
 
-    def _split_args_at_commas(self, parts, token):
-        """Split a list of string parts at commas into ExpressionPartsNode args."""
+    def _split_args_at_commas(self, expr_or_parts, token):
+        """Split an ExpressionPartsNode or list of string parts at commas into args."""
+        if isinstance(expr_or_parts, ExpressionPartsNode):
+            parts = expr_or_parts.parts
+        else:
+            parts = expr_or_parts
         args = []
         current = []
         for p in parts:
@@ -418,16 +412,28 @@ class Parser:
         val = self.expression()
         return PrintNode(print_token.line, print_token.column, val)
 
-    def _collect_until(self, *keywords):
-        """Collect tokens until we hit one of the keywords. Preserves ExpressionPart token types."""
+    def _collect_until(self, *stop_conditions):
+        """Collect tokens until we hit one of the stop conditions.
+        
+        Each condition can be:
+          - A string: stops when an IDENTIFIER token with that value is found
+          - An int: stops when a token with that type is found
+        Preserves ExpressionPart token types."""
         parts = []
         while self.peek():
             t = self.peek()
-            if t.type == TOKEN_IDENTIFIER and t.value in keywords:
-                break
-            tok = self.consume()
-            parts.append(ExpressionPart(tok.value, tok.type, tok.line, tok.column))
-        
+            for cond in stop_conditions:
+                if isinstance(cond, str):
+                    if t.type == TOKEN_IDENTIFIER and t.value == cond:
+                        break
+                elif isinstance(cond, int):
+                    if t.type == cond:
+                        break
+            else:
+                tok = self.consume()
+                parts.append(ExpressionPart(tok.value, tok.type, tok.line, tok.column))
+                continue
+            break
         return ExpressionPartsNode(self.peek().line if self.peek() else None, self.peek().column if self.peek() else None, parts)
 
     def expression(self):
