@@ -341,7 +341,10 @@ class CopyWithPropNode(ASTNode):
         self.updates = updates
 
 class ExpressionPart(str):
-    """A single part in an expression, with original token type for disambiguation."""
+    """A single part in an expression, with original token type for disambiguation.
+    
+    Subclasses str so parts work naturally in joins and comparisons.
+    """
     def __new__(cls, value, token_type, line=None, column=None):
         instance = super().__new__(cls, value)
         instance.token_type = token_type
