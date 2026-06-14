@@ -239,7 +239,7 @@ class Interpreter:
     def visit_IntNode(self, node): return int(node.value)
     def visit_FloatNode(self, node): return float(node.value)
     def visit_BoolNode(self, node):
-        return "SANT" if node.value else "FALSKT"
+        return node.value
     def visit_StringNode(self, node): return node.value
 
     def _resolve_index(self, name):
@@ -507,9 +507,10 @@ class Interpreter:
     # --- Stdout ---
     def visit_PrintNode(self, node):
         val = self.visit(node.value)
-        # If val is a callable function (not a FunctionCallNode), convert to string
         if callable(val) and not isinstance(node.value, FunctionCallNode):
             val = str(val)
+        if isinstance(val, bool):
+            val = "SANT" if val else "FALSKT"
         sys.stdout.write(str(val))
         return val
 
@@ -542,14 +543,7 @@ class Interpreter:
     # --- Control Flow ---
     def visit_IfNode(self, node):
         for cond_block in node.conditions:
-            val = self.visit(cond_block.test)
-            # Handle Swedish boolean strings
-            if isinstance(val, str):
-                if val.upper() == 'FALSKT':
-                    val = False
-                elif val.upper() == 'SANT':
-                    val = True
-            if val:
+            if self.visit(cond_block.test):
                 for s in cond_block.block: self.visit(s)
                 return
         if node.else_block:
@@ -788,8 +782,7 @@ class Interpreter:
         return bool(self.visit(node.left)) or bool(self.visit(node.right))
 
     def visit_NotNode(self, node):
-        val = self.visit(node.condition)
-        return not bool(val)
+        return not bool(self.visit(node.condition))
 
     def visit_InfixCallNode(self, node):
         # Evaluate left and right operands
