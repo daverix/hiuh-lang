@@ -200,7 +200,7 @@ class Parser:
         args = []
         current = []
         for p in parts:
-            if p == ',':
+            if p.value == ',':
                 if current:
                     args.append(ExpressionPartsNode(token.line, token.column, current))
                 current = []

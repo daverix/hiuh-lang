@@ -68,6 +68,13 @@ class Resolver:
         """Check if any ExpressionPart in parts has the given string value."""
         return any(p.value == value for p in parts)
 
+    @staticmethod
+    def _slice_eq(parts, i, values):
+        """Check if a slice of parts matches a list of string values."""
+        if i + len(values) > len(parts):
+            return False
+        return all(parts[i + j].value == values[j] for j in range(len(values)))
+
     def _parts_to_str(self, parts):
         """Join parts to a string, filtering out AST nodes."""
         return ' '.join(self._parts_to_strings([p for p in parts if isinstance(p, (str, ExpressionPart))]))
@@ -534,7 +541,7 @@ class Resolver:
             target_var_parts = parts[till_idx + 1:]
             if value_parts and target_var_parts:
                 target_var = target_var_parts[0]
-                if target_var and target_var.isidentifier():
+                if target_var and target_var.value.isidentifier():
                     self._print_write_to_file = target_var
                     if len(value_parts) == 1:
                         return self._part_to_node(value_parts[0], node)
@@ -742,7 +749,7 @@ class Resolver:
         for op in comparison_ops:
             op_tokens = op.split()
             for i in range(len(left_parts) - len(op_tokens) + 1):
-                if left_parts[i:i+len(op_tokens)] == op_tokens:
+                if self._slice_eq(left_parts, i, op_tokens):
                     # Found a comparison operator - let _try_operator handle this
                     return None
 
@@ -774,7 +781,7 @@ class Resolver:
                     return None
 
         # Handle "element X från Y" -> ElementAccessNode
-        if left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
+        if left_parts[0].value in ['element', 'index'] and len(left_parts) >= 2:
             idx_parts = left_parts[1:]
             target_parts = right_parts
             
@@ -822,7 +829,7 @@ class Resolver:
                 i = 0
                 while i < len(args_parts):
                     part = args_parts[i]
-                    if part == ',':
+                    if part.value == ',':
                         i += 1
                         continue
                     # Collect argument parts until comma
@@ -967,7 +974,7 @@ class Resolver:
         if all_named:
             temp_i = 0
             while temp_i < len(args_parts):
-                if args_parts[temp_i] == ',':
+                if args_parts[temp_i].value == ',':
                     temp_i += 1
                     continue
                 start = temp_i
@@ -983,7 +990,7 @@ class Resolver:
         while i < len(args_parts):
             part = args_parts[i]
 
-            if part == ',':
+            if part.value == ',':
                 i += 1
                 continue
 
@@ -1093,7 +1100,7 @@ class Resolver:
 
         # If 'av' is immediately followed by a comma, it's an argument value,
         # not a generic type marker (e.g., putta "av", ...)
-        if av_idx + 1 < len(parts) and parts[av_idx + 1] == ',':
+        if av_idx + 1 < len(parts) and parts[av_idx + 1].value == ',':
             return None
 
         # If there's a 'med' after 'av', let _try_function_call handle the whole
@@ -1157,7 +1164,7 @@ class Resolver:
             från_idx = self._index_of_part(parts, 'från')
             left_parts = parts[:från_idx]
             right_parts = parts[från_idx + 1:]
-            if left_parts and right_parts and left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
+            if left_parts and right_parts and left_parts[0].value in ['element', 'index'] and len(left_parts) >= 2:
                 idx_parts = left_parts[1:]
                 # Check if the index expression contains any operators
                 if any(op in idx_parts for op in ['plus', 'minus', 'gånger', 'delat']):
@@ -1176,10 +1183,10 @@ class Resolver:
         # Level 2: 'och' and 'eller' - checked first to respect lowest precedence
         # Only match if both operands are booleans or comparison results
         for i, part in enumerate(parts):
-            if part in ['och', 'eller']:
-                if part == 'eller':
-                    if i > 0 and parts[i - 1] == 'än':
-                        if i + 2 < len(parts) and parts[i + 1] == 'lika' and parts[i + 2] == 'med':
+            if part.value in ['och', 'eller']:
+                if part.value == 'eller':
+                    if i > 0 and parts[i - 1].value == 'än':
+                        if i + 2 < len(parts) and parts[i + 1].value == 'lika' and parts[i + 2].value == 'med':
                             continue
                 left_parts = parts[:i]
                 right_parts = parts[i + 1:]
@@ -1190,7 +1197,7 @@ class Resolver:
                     left_is_bool_like = isinstance(left_node, (BoolNode, ComparisonNodes, FunctionCallNode))
                     right_is_bool_like = isinstance(right_node, (BoolNode, ComparisonNodes, FunctionCallNode))
                     if left_is_bool_like and right_is_bool_like:
-                        node_class = AndNode if part == 'och' else OrNode
+                        node_class = AndNode if part.value == 'och' else OrNode
                         return node_class(node.line, node.column, left_node, right_node)
 
         # Find the lowest precedence operator
@@ -1220,7 +1227,7 @@ class Resolver:
         for op_str in multi_word_ops:
             op_tokens = op_str.split()
             for i in range(len(parts) - len(op_tokens) + 1):
-                if parts[i:i+len(op_tokens)] == op_tokens:
+                if self._slice_eq(parts, i, op_tokens):
                     left_parts = parts[:i]
                     right_parts = parts[i+len(op_tokens):]
                     if left_parts and right_parts:
@@ -1231,7 +1238,7 @@ class Resolver:
         for op_str in infix_ops:
             op_tokens = op_str.split()
             for i in range(len(parts) - len(op_tokens) + 1):
-                if parts[i:i+len(op_tokens)] == op_tokens:
+                if self._slice_eq(parts, i, op_tokens):
                     left_parts = parts[:i]
                     right_parts = parts[i+len(op_tokens):]
                     if left_parts and right_parts:
@@ -1242,9 +1249,9 @@ class Resolver:
         last_plus_idx = None
         last_minus_idx = None
         for i, part in enumerate(parts):
-            if part == 'plus':
+            if part.value == 'plus':
                 last_plus_idx = i
-            elif part == 'minus':
+            elif part.value == 'minus':
                 last_minus_idx = i
         
         # Use the rightmost + or - if found
@@ -1268,7 +1275,7 @@ class Resolver:
             # Find the position of 'delat med' or 'delat på'
             delat_idx = None
             for i in range(2, len(parts) - 1):
-                if parts[i] == 'delat' and parts[i+1] in ('med', 'på'):
+                if parts[i].value == 'delat' and parts[i+1].value in ('med', 'på'):
                     delat_idx = i
                     break
             if delat_idx is not None:
@@ -1280,12 +1287,12 @@ class Resolver:
                     return ModNode(node.line, node.column, left_node, right_node)
 
         for i, part in enumerate(parts):
-            if part == 'gånger':
+            if part.value == 'gånger':
                 left_parts = parts[:i]
                 right_parts = parts[i + 1:]
                 if left_parts and right_parts:
                     return self._create_binary_expr(left_parts, 'gånger', right_parts, node)
-            elif part == 'delat' and i + 1 < len(parts) and parts[i + 1] == 'med':
+            elif part.value == 'delat' and i + 1 < len(parts) and parts[i + 1].value == 'med':
                 left_parts = parts[:i]
                 right_parts = parts[i + 2:]
                 if left_parts and right_parts:
@@ -1306,7 +1313,7 @@ class Resolver:
 
         # Handle 'är' as a connector word - remove it from left_parts if it's just a connector
         # 'x är större än 2' -> left should be 'x', not 'x är'
-        if left_parts and left_parts[-1] == 'är' and len(left_parts) > 1:
+        if left_parts and left_parts[-1].value == 'är' and len(left_parts) > 1:
             left_parts = left_parts[:-1]
             left_base = left_parts[0] if left_parts else left_base
 
@@ -1373,7 +1380,7 @@ class Resolver:
             left_right_parts = left_parts[från_idx + 1:]
             
             # Check if this is an element access pattern
-            if len(left_left_parts) >= 2 and left_left_parts[0] in ['element', 'index']:
+            if len(left_left_parts) >= 2 and left_left_parts[0].value in ['element', 'index']:
                 idx_parts = left_left_parts[1:]
                 target_parts = left_right_parts
                 
@@ -1403,7 +1410,7 @@ class Resolver:
         # Resolve any operators in operands with proper precedence
         # For comparison operators, always use VarAccessNode for single identifiers
         # even if they're not defined (let interpreter handle undefined vars)
-        if len(left_parts) == 1 and left_parts[0].isidentifier():
+        if len(left_parts) == 1 and left_parts[0].value.isidentifier():
             left_expr = VarAccessNode(node.line, node.column, left_parts[0], target=None)
         else:
             left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
@@ -1467,10 +1474,10 @@ class Resolver:
             if op in parts:
                 idx = -1
                 for i, part in enumerate(parts):
-                    if part == 'eller':
+                    if part.value == 'eller':
                         is_part_of_comp = False
-                        if i > 0 and parts[i - 1] == 'än':
-                            if i + 2 < len(parts) and parts[i + 1] == 'lika' and parts[i + 2] == 'med':
+                        if i > 0 and parts[i - 1].value == 'än':
+                            if i + 2 < len(parts) and parts[i + 1].value == 'lika' and parts[i + 2].value == 'med':
                                 is_part_of_comp = True
                         if not is_part_of_comp:
                             idx = i
@@ -1551,9 +1558,9 @@ class Resolver:
         last_plus_idx = None
         last_minus_idx = None
         for i, part in enumerate(parts):
-            if part == 'plus':
+            if part.value == 'plus':
                 last_plus_idx = i
-            elif part == 'minus':
+            elif part.value == 'minus':
                 last_minus_idx = i
 
         if last_plus_idx is not None or last_minus_idx is not None:
@@ -1579,7 +1586,7 @@ class Resolver:
                 idx = parts.index(op)
                 # For 'delat', check if next word is 'med'
                 skip = 1
-                if op == 'delat' and idx + 1 < len(parts) and parts[idx + 1] == 'med':
+                if op == 'delat' and idx + 1 < len(parts) and parts[idx + 1].value == 'med':
                     skip = 2
 
                 left_parts = parts[:idx]
@@ -1599,7 +1606,7 @@ class Resolver:
             left_parts = parts[:från_idx]
             right_parts = parts[från_idx + 1:]
             if left_parts and right_parts:
-                if left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
+                if left_parts[0].value in ['element', 'index'] and len(left_parts) >= 2:
                     idx_parts = left_parts[1:]
                     if len(idx_parts) == 1 and idx_parts[0].value.isdigit():
                         idx_node = IntNode(token.line, token.column, idx_parts[0].value)
@@ -1674,7 +1681,7 @@ class Resolver:
     def _find_op_in_parts(self, parts, op_tokens):
         """Find operator tokens in parts list."""
         for i in range(len(parts) - len(op_tokens) + 1):
-            if parts[i:i+len(op_tokens)] == op_tokens:
+            if self._slice_eq(parts, i, op_tokens):
                 return i
         return None
 
