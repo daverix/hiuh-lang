@@ -48,9 +48,29 @@ class Resolver:
 
         self._register_builtins()
 
+    # --- ExpressionPart helpers ---
+
+    @staticmethod
+    def _part_str(p):
+        """Get the string value of an expression part."""
+        return p.value if isinstance(p, ExpressionPart) else str(p)
+
+    @staticmethod
+    def _parts_join(parts, sep=' '):
+        """Join expression parts with a separator."""
+        return sep.join(Resolver._part_str(p) for p in parts)
+
+    @staticmethod
+    def _index_of_part(parts, value):
+        """Find index of an ExpressionPart with the given string value."""
+        for i, p in enumerate(parts):
+            if Resolver._part_str(p) == value:
+                return i
+        raise ValueError(f"'{value}' not in parts")
+
     def _parts_to_str(self, parts):
         """Join parts to a string, filtering out AST nodes."""
-        return ' '.join(p for p in parts if isinstance(p, str))
+        return self._parts_join([p for p in parts if isinstance(p, (str, ExpressionPart))])
     
     def _register_builtins(self):
         """Register built-in symbols."""
