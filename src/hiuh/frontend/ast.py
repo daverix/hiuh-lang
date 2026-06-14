@@ -340,20 +340,16 @@ class CopyWithPropNode(ASTNode):
         self.source = source
         self.updates = updates
 
-class ExpressionPart(str):
-    """A single part in an expression, with original token type for disambiguation.
-    
-    Subclasses str so parts work naturally in joins and comparisons.
-    """
-    def __new__(cls, value, token_type, line=None, column=None):
-        instance = super().__new__(cls, value)
-        instance.token_type = token_type
-        instance.line = line
-        instance.column = column
-        return instance
+class ExpressionPart:
+    """A single part in an expression, with original token type for disambiguation."""
+    def __init__(self, value, token_type, line=None, column=None):
+        self.value = value
+        self.token_type = token_type
+        self.line = line
+        self.column = column
 
     def __repr__(self):
-        return f"ExpressionPart({super().__str__()!r}, type={self.token_type})"
+        return f"ExpressionPart({self.value!r}, type={self.token_type})"
 
 
 class ExpressionPartsNode(ASTNode):

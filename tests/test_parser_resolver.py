@@ -353,7 +353,7 @@ class TestPythonResolver(_BaseResolverTests, unittest.TestCase):
         if isinstance(node, list):
             return [self._strip(child) for child in node]
         if isinstance(node, ExpressionPart):
-            return str(node)
+            return node.value
         if not hasattr(node, '__dict__'):
             return node
         result = {}

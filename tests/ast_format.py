@@ -7,7 +7,7 @@ def ast_to_string(node):
         items = ', '.join((ast_to_string(n) for n in node))
         return "[" + items + "]"
     if isinstance(node, ExpressionPartsNode):
-        return "Expr(" + " ".join(node.parts) + ")"
+        return "Expr(" + " ".join(p.value for p in node.parts) + ")"
     classname = type(node).__name__
     if isinstance(node, (IntNode, FloatNode)):
         return f"{classname}({node.value})"

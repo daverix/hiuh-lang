@@ -52,8 +52,21 @@ class Resolver:
 
     @staticmethod
     def _parts_to_strings(parts):
-        """Convert a list of ExpressionPart (or str) to a list of plain strings."""
-        return [str(p) for p in parts]
+        """Convert a list of ExpressionPart to a list of plain strings."""
+        return [p.value for p in parts]
+
+    @staticmethod
+    def _index_of_part(parts, value):
+        """Find index of an ExpressionPart with the given string value."""
+        for i, p in enumerate(parts):
+            if p.value == value:
+                return i
+        raise ValueError(f"not self._part_in(parts, '{value}')")
+
+    @staticmethod
+    def _part_in(parts, value):
+        """Check if any ExpressionPart in parts has the given string value."""
+        return any(p.value == value for p in parts)
 
     def _parts_to_str(self, parts):
         """Join parts to a string, filtering out AST nodes."""
@@ -515,8 +528,8 @@ class Resolver:
             return self.visit(StringNode(node.line, node.column, ''))
 
         # Check for file write pattern: "X till var" when in print context
-        if self._in_print_context and 'till' in parts:
-            till_idx = parts.index('till')
+        if self._in_print_context and self._part_in(parts, 'till'):
+            till_idx = self._index_of_part(parts, 'till')
             value_parts = parts[:till_idx]
             target_var_parts = parts[till_idx + 1:]
             if value_parts and target_var_parts:
@@ -541,11 +554,11 @@ class Resolver:
             return VarAccessNode(node.line, node.column, full_name, target=None)
 
         # Special case: "ny rad" -> newline string (two tokens)
-        if len(parts) == 2 and parts[0] == 'ny' and parts[1] == 'rad':
+        if len(parts) == 2 and parts[0].value == 'ny' and parts[1].value == 'rad':
             return self.visit(StringNode(node.line, node.column, '\n'))
 
         # Check for negation: "inte X" -> NotNode(X)
-        if parts[0] == 'inte':
+        if parts[0].value == 'inte':
             inner_parts = parts[1:]
             if inner_parts:
                 inner_node = ExpressionPartsNode(node.line, node.column, inner_parts)
@@ -556,17 +569,17 @@ class Resolver:
         # But don't create CastNode if:
         # 1. There's a comma anywhere (it's a function call argument, not a cast)
         # 2. 'som' is a string literal (not the keyword)
-        if 'som' in parts and ',' not in parts:
-            som_idx = parts.index('som')
+        if self._part_in(parts, 'som') and not self._part_in(parts, ','):
+            som_idx = self._index_of_part(parts, 'som')
             value_parts = parts[:som_idx]
             target_parts = parts[som_idx + 1:]
             if value_parts and target_parts:
                 value_node = self.visit(ExpressionPartsNode(node.line, node.column, value_parts))
-                target_type = ' '.join(target_parts)
+                target_type = ' '.join(self._parts_to_strings(target_parts))
                 return CastNode(node.line, node.column, value=value_node, target_type=target_type)
 
         # Check for type query: "typ av X" -> TypeOfNode
-        if len(parts) >= 3 and parts[0] == 'typ' and parts[1] == 'av':
+        if len(parts) >= 3 and parts[0].value == 'typ' and parts[1].value == 'av':
             inner_parts = parts[2:]
             inner_node = ExpressionPartsNode(node.line, node.column, inner_parts)
             inner_result = self.visit(inner_node)
@@ -614,15 +627,15 @@ class Resolver:
         # Check for known literals
         if token_type == TOKEN_STRING:
             # Original token was a quoted string — always treat as string
-            return StringNode(token.line, token.column, s)
-        elif s.lower() == 'sant':
+            return StringNode(token.line, token.column, s.value)
+        elif s.value.lower() == 'sant':
             return BoolNode(token.line, token.column, True)
-        elif s.lower() == 'falskt':
+        elif s.value.lower() == 'falskt':
             return BoolNode(token.line, token.column, False)
-        elif s.isdigit():
-            return IntNode(token.line, token.column, s)
+        elif s.value.isdigit():
+            return IntNode(token.line, token.column, s.value)
         elif self._is_float(s):
-            value = float(s.replace(',', '.'))
+            value = float(s.value.replace(',', '.'))
             return FloatNode(token.line, token.column, value)
         # Check if it's a defined function (with no arguments)
         elif self._is_defined(s, self._current_module):
@@ -656,7 +669,7 @@ class Resolver:
             return VarAccessNode(token.line, token.column, s, target=None)
         else:
             # Undefined - treat as string
-            return StringNode(token.line, token.column, s)
+            return StringNode(token.line, token.column, s.value)
 
     def _is_function_def_with_empty_params(self, name, module_name):
         """Check if a name is defined as a FunctionDefNode with empty params in the AST."""
@@ -695,10 +708,10 @@ class Resolver:
         'längd från Y' -> PropertyAccessNode(property_name='längd', target=Y)
         'fn från mod med args' -> FunctionCallNode(name=VarAccessNode(fn, target=mod), args)
         """
-        if 'från' not in parts:
+        if not self._part_in(parts, 'från'):
             return None
 
-        från_idx = parts.index('från')
+        från_idx = self._index_of_part(parts, 'från')
         left_parts = parts[:från_idx]
         right_parts = parts[från_idx + 1:]
 
@@ -707,7 +720,7 @@ class Resolver:
 
         # Check if there are any lower-precedence operators (arithmetic, comparison, boolean)
         # that should be evaluated after property access.
-        is_module_call = 'med' in parts and parts.index('med') > från_idx
+        is_module_call = self._part_in(parts, 'med') and self._index_of_part(parts, 'med') > från_idx
         operators = ['plus', 'minus', 'gånger', 'delat', 'och', 'eller']
         comparison_keywords = ['är', 'större', 'mindre', 'lika']
         
@@ -715,7 +728,7 @@ class Resolver:
             if any(op in left_parts or op in right_parts for op in operators + comparison_keywords):
                 return None
         else:
-            mod_parts = parts[från_idx + 1:parts.index('med')]
+            mod_parts = parts[från_idx + 1:self._index_of_part(parts, 'med')]
             if any(op in left_parts or op in mod_parts for op in operators + comparison_keywords):
                 return None
 
@@ -740,7 +753,7 @@ class Resolver:
         # where 'helhet' is the target and 'är X Y' is a comparison or infix call
         # Look for 'är' anywhere in right_parts
         if 'är' in right_parts:
-            är_idx = right_parts.index('är')
+            är_idx = right_self._index_of_part(parts, 'är')
             remaining = right_parts[är_idx + 1:]
             
             # Check for registered infix functions starting with 'är'
@@ -778,7 +791,7 @@ class Resolver:
                 idx_node = self._resolve_precedence(idx_parts, token=node)
             
             # Create target node - prefer VarAccessNode for property access targets
-            target_name = ' '.join(target_parts)
+            target_name = ' '.join(self._parts_to_strings(target_parts))
             # If it's a defined local variable, use VarAccessNode (not built-in FunctionCallNode)
             if self._is_defined(target_name, self._current_module):
                 target_node = VarAccessNode(node.line, node.column, target_name, target=None)
@@ -789,15 +802,15 @@ class Resolver:
 
         # Check if this is a function call: "fn med args från target"
         # This handles callbacks like "anrop med element x från värden"
-        if 'med' in parts:
-            med_idx = parts.index('med')
+        if self._part_in(parts, 'med'):
+            med_idx = self._index_of_part(parts, 'med')
             
             if med_idx > från_idx:
                 # 'med' is after 'från' - module function call pattern
-                fn_name = ' '.join(left_parts)
+                fn_name = ' '.join(self._parts_to_strings(left_parts))
                 # Find the module name (everything between 'från' and 'med') if present
                 mod_parts = parts[från_idx + 1:med_idx]
-                mod_name = ' '.join(mod_parts) if mod_parts else None
+                mod_name = ' '.join(self._parts_to_strings(mod_parts)) if mod_parts else None
                 args_parts = parts[med_idx + 1:]
                 
                 # Create function reference
@@ -829,17 +842,17 @@ class Resolver:
                 # Example: "anrop med element x från värden"
                 # Only match if no commas are present (commas indicate a
                 # regular multi-arg function call like "nod med arg1, arg2")
-                if ',' in parts:
+                if self._part_in(parts, ','):
                     return None
                 fn_name = parts[:med_idx][0]  # 'anrop'
                 args_parts = parts[med_idx + 1:från_idx]  # ['element', 'x']
-                target_name = ' '.join(parts[från_idx + 1:])  # 'värden'
+                target_name = ' '.join(self._parts_to_strings(parts[från_idx + 1:]))  # 'värden'
                 
                 # Create function reference (no module)
                 fn_ref = VarAccessNode(node.line, node.column, fn_name, target=None)
                 
                 # Parse argument - handle element access pattern
-                if len(args_parts) >= 2 and args_parts[0] == 'element':
+                if len(args_parts) >= 2 and args_parts[0].value == 'element':
                     # "element x från target" -> ElementAccessNode
                     index_name = args_parts[1]
                     index_node = IntNode(node.line, node.column, index_name) if index_name.isdigit() else VarAccessNode(node.line, node.column, index_name, target=None)
@@ -855,7 +868,7 @@ class Resolver:
                 return FunctionCallNode(node.line, node.column, name=fn_ref, args=[arg])
 
         # Handle property access: "X från Y" -> PropertyAccessNode
-        prop_name = ' '.join(left_parts)
+        prop_name = ' '.join(self._parts_to_strings(left_parts))
         
         # If right_parts contains arithmetic operators, let _try_operator handle it
         # This prevents creating PropertyAccessNode with string target like "värden minus 1"
@@ -863,7 +876,7 @@ class Resolver:
             return None
         
         # Create target node - prefer VarAccessNode for property access targets
-        target_name = ' '.join(right_parts)
+        target_name = ' '.join(self._parts_to_strings(right_parts))
         # If it's a defined local variable, use VarAccessNode (not built-in FunctionCallNode)
         if self._is_defined(target_name, self._current_module):
             target_node = VarAccessNode(node.line, node.column, target_name, target=None)
@@ -874,10 +887,10 @@ class Resolver:
 
     def _try_function_call(self, parts, node):
         """Try to parse as function call: 'fn med arg1, arg2' -> FunctionCallNode"""
-        if 'med' not in parts:
+        if not self._part_in(parts, 'med'):
             return None
 
-        med_idx = parts.index('med')
+        med_idx = self._index_of_part(parts, 'med')
 
         # If arithmetic/comparison operators appear before 'med', this is
         # an expression like 'n gånger fakultet med n' — let _try_operator
@@ -888,27 +901,27 @@ class Resolver:
             if op in pre_med:
                 return None
 
-        fn_name = ' '.join(parts[:med_idx])
+        fn_name = ' '.join(self._parts_to_strings(parts[:med_idx]))
 
         # Strip generic type params: 'lista av heltal med ...' -> fn_name='lista'
-        if 'av' in parts[:med_idx]:
-            av_pos = parts.index('av')
+        if self._part_in(parts, 'av')[:med_idx]:
+            av_pos = self._index_of_part(parts, 'av')
             if av_pos < med_idx:
-                base_fn = ' '.join(parts[:av_pos])
+                base_fn = ' '.join(self._parts_to_strings(parts[:av_pos]))
                 # Only strip if the base function is known (not modulo 'resten av x')
                 if self._is_defined(base_fn, self._current_module):
                     type_parts = parts[av_pos + 1:med_idx]
                     known_types = self._get_all_known_types()
                     nesting = 0
                     for p in type_parts:
-                        if p == ',':
+                        if p.value == ',':
                             continue
-                        if p == 'av':
+                        if p.value == 'av':
                             nesting += 1
                             continue
                         if nesting > 0:
                             continue
-                        if p not in known_types:
+                        if p.value not in known_types:
                             raise Exception(
                                 f"Okänd typ '{p}' i '{base_fn} av ...'"
                             )
@@ -1031,9 +1044,9 @@ class Resolver:
     def _try_hämta_call(self, parts, node):
         """Try to parse as hämta-style call: 'fn thing från source' -> FunctionCallNode(fn, [thing, source]).
         Only matches if fn is defined with kind='hämta'."""
-        if 'från' not in parts:
+        if not self._part_in(parts, 'från'):
             return None
-        från_idx = parts.index('från')
+        från_idx = self._index_of_part(parts, 'från')
         if från_idx < 2:
             return None
         fn_name = parts[0]
@@ -1051,7 +1064,7 @@ class Resolver:
         args = []
         current = []
         for p in thing_parts:
-            if p == ',':
+            if p.value == ',':
                 if current:
                     args.append(ExpressionPartsNode(node.line, node.column, current))
                 current = []
@@ -1064,7 +1077,7 @@ class Resolver:
             if self._is_defined(source_parts[0], self._current_module):
                 args.append(VarAccessNode(node.line, node.column, source_parts[0]))
             else:
-                args.append(StringNode(node.line, node.column, ' '.join(source_parts)))
+                args.append(StringNode(node.line, node.column, ' '.join(self._parts_to_strings(source_parts))))
         else:
             args.append(ExpressionPartsNode(node.line, node.column, source_parts))
         return FunctionCallNode(node.line, node.column, fn_name, args)
@@ -1075,10 +1088,10 @@ class Resolver:
         Type parameters are compile-time only. At runtime, we just call the base function
         with no arguments. Validates that type params refer to known types.
         """
-        if 'av' not in parts:
+        if not self._part_in(parts, 'av'):
             return None
 
-        av_idx = parts.index('av')
+        av_idx = self._index_of_part(parts, 'av')
 
         # If 'av' is immediately followed by a comma, it's an argument value,
         # not a generic type marker (e.g., putta "av", ...)
@@ -1087,12 +1100,12 @@ class Resolver:
 
         # If there's a 'med' after 'av', let _try_function_call handle the whole
         # expression so that 'lista av heltal med 1, 2' parses correctly.
-        av_idx = parts.index('av')
-        if 'med' in parts and parts.index('med') > av_idx:
+        av_idx = self._index_of_part(parts, 'av')
+        if self._part_in(parts, 'med') and self._index_of_part(parts, 'med') > av_idx:
             return None
 
         fn_parts = parts[:av_idx]
-        fn_name = ' '.join(fn_parts)
+        fn_name = ' '.join(self._parts_to_strings(fn_parts))
 
         if not fn_parts:
             return None
@@ -1104,18 +1117,18 @@ class Resolver:
         type_parts = parts[av_idx + 1:]
         # Truncate at 'med' — anything after is function call args, not type params
         if 'med' in type_parts:
-            type_parts = type_parts[:type_parts.index('med')]
+            type_parts = type_parts[:type_self._index_of_part(parts, 'med')]
         known_types = self._get_all_known_types()
         nesting = 0
         for p in type_parts:
-            if p == ',':
+            if p.value == ',':
                 continue
-            if p == 'av':
+            if p.value == 'av':
                 nesting += 1
                 continue
             if nesting > 0:
                 continue
-            if p not in known_types:
+            if p.value not in known_types:
                 raise Exception(
                     f"Okänd typ '{p}' i '{fn_name} av ...'"
                 )
@@ -1142,8 +1155,8 @@ class Resolver:
         # Special case: if parts form "element X från Y" or "index X från Y" where X contains
         # arithmetic operators, we need to split the index into its operator sub-expression,
         # resolve it, then build the ElementAccessNode.
-        if 'från' in parts:
-            från_idx = parts.index('från')
+        if self._part_in(parts, 'från'):
+            från_idx = self._index_of_part(parts, 'från')
             left_parts = parts[:från_idx]
             right_parts = parts[från_idx + 1:]
             if left_parts and right_parts and left_parts[0] in ['element', 'index'] and len(left_parts) >= 2:
@@ -1253,7 +1266,7 @@ class Resolver:
 
 
         # Level 5: multiplication/division/modulo
-        if len(parts) >= 6 and parts[0] == 'resten' and parts[1] == 'av':
+        if len(parts) >= 6 and parts[0].value == 'resten' and parts[1].value == 'av':
             # Find the position of 'delat med' or 'delat på'
             delat_idx = None
             for i in range(2, len(parts) - 1):
@@ -1349,14 +1362,14 @@ class Resolver:
         # Allow comparisons with undefined variables that look like identifiers
         left_is_identifier = left_base and left_base[0].isalpha() and left_base.replace(' ', '').isalnum()
         if not self._is_defined(left_base, self._current_module) and not left_is_identifier:
-            left_str = ' '.join(left_parts) if left_parts else left_base
-            return StringNode(node.line, node.column, f"{left_str} {op} {' '.join(right_parts)}")
+            left_str = ' '.join(self._parts_to_strings(left_parts)) if left_parts else left_base
+            return StringNode(node.line, node.column, f"{left_str} {op} {' '.join(self._parts_to_strings(right_parts))}")
 
         # Check if left_parts contains an element access pattern: "element X från Y"
         # This handles cases like "element x från helhet är lika med del"
         # where the left side should be parsed as ElementAccessNode, not as a property access
         if 'från' in left_parts:
-            från_idx = left_parts.index('från')
+            från_idx = left_self._index_of_part(parts, 'från')
             left_left_parts = left_parts[:från_idx]
             left_right_parts = left_parts[från_idx + 1:]
             
@@ -1372,7 +1385,7 @@ class Resolver:
                     idx_node = self._resolve_precedence(idx_parts, token=node)
                 
                 # Create target node
-                target_name = ' '.join(target_parts)
+                target_name = ' '.join(self._parts_to_strings(target_parts))
                 if self._is_defined(target_name, self._current_module):
                     target_node = VarAccessNode(node.line, node.column, target_name, target=None)
                 else:
@@ -1582,8 +1595,8 @@ class Resolver:
                         return DivNode(token.line, token.column, left, right)
 
         # Check for property access: "X från Y" -> PropertyAccessNode / ElementAccessNode
-        if 'från' in parts:
-            från_idx = parts.index('från')
+        if self._part_in(parts, 'från'):
+            från_idx = self._index_of_part(parts, 'från')
             left_parts = parts[:från_idx]
             right_parts = parts[från_idx + 1:]
             if left_parts and right_parts:
@@ -1606,7 +1619,7 @@ class Resolver:
                         target_node = self._resolve_precedence(right_parts, token=token)
                     return ElementAccessNode(token.line, token.column, index=idx_node, target=target_node)
 
-                prop_name = ' '.join(left_parts)
+                prop_name = ' '.join(self._parts_to_strings(left_parts))
                 
                 # Create target node
                 if len(right_parts) == 1:
@@ -1621,20 +1634,20 @@ class Resolver:
                 return PropertyAccessNode(token.line, token.column, property_name=prop_name, target=target_node)
 
         # Check for type query: "typ av X" -> TypeOfNode
-        if len(parts) >= 3 and parts[0] == 'typ' and parts[1] == 'av':
+        if len(parts) >= 3 and parts[0].value == 'typ' and parts[1].value == 'av':
             inner_parts = parts[2:]
             inner_node = ExpressionPartsNode(token.line, token.column, inner_parts)
             inner_result = self.visit(inner_node)
             return TypeOfNode(token.line, token.column, inner_result)
 
         # Check for function call: "fn med arg1, arg2" -> FunctionCallNode
-        if 'med' in parts:
-            med_idx = parts.index('med')
+        if self._part_in(parts, 'med'):
+            med_idx = self._index_of_part(parts, 'med')
             pre_med = parts[:med_idx]
             # Only if no arithmetic/comparison operators appear before 'med'
-            has_op_before = any(op in pre_med for op in ['plus', 'minus', 'gånger', 'delat', 'och', 'eller'])
+            has_op_before = any(self._part_in(pre_med, op) for op in ['plus', 'minus', 'gånger', 'delat', 'och', 'eller'])
             if not has_op_before:
-                fn_name = ' '.join(pre_med)
+                fn_name = ' '.join(self._parts_to_strings(pre_med))
                 # Check if the function name is a known callable
                 symbol = self.module_registry.resolve_symbol(fn_name, self._current_module)
                 is_callable = symbol is not None and symbol.type in ('func', 'type')
@@ -1646,7 +1659,7 @@ class Resolver:
                     args = []
                     current = []
                     for p in args_parts:
-                        if p == ',':
+                        if p.value == ',':
                             if current:
                                 args.append(self._resolve_precedence(current, token=token))
                             current = []
@@ -1669,7 +1682,7 @@ class Resolver:
     def _is_float(self, s):
         """Check if string is a float."""
         try:
-            float(s.replace(',', '.'))
+            float(s.value.replace(',', '.'))
             return '.' in s or ',' in s
         except:
             return False
@@ -1806,8 +1819,8 @@ class Resolver:
             node_id = id(node)
             if node_id in self._original_parts:
                 parts = self._original_parts[node_id]
-                left_str = ' '.join(parts['left']) if parts['left'] else ''
-                right_str = ' '.join(parts['right']) if parts['right'] else ''
+                left_str = ' '.join(self._parts_to_strings(parts['left'])) if parts['left'] else ''
+                right_str = ' '.join(self._parts_to_strings(parts['right'])) if parts['right'] else ''
                 return StringNode(node.line, node.column, f"{left_str} {parts['op']} {right_str}".strip())
             # Fallback: stringify using node values
             left_str = self._get_string_value(left)
@@ -2198,8 +2211,8 @@ class Resolver:
         if not type_str:
             return None
         parts = type_str.split()
-        if 'av' in parts:
-            av_idx = parts.index('av')
+        if self._part_in(parts, 'av'):
+            av_idx = self._index_of_part(parts, 'av')
             return (parts[0], parts[av_idx + 1:])
         return (type_str, [])
 
@@ -2405,26 +2418,26 @@ class Resolver:
         base_type = parts[0].rstrip(',')
         # Check if base type requires generics
         if base_type in self._get_generic_required():
-            if 'av' not in parts:
+            if not self._part_in(parts, 'av'):
                 raise Exception(
                     f"okänd_typ: '{base_type}' i {context} saknar typ-parameter. "
                     f"Använd '{base_type} av <typ>' (t.ex. '{base_type} av heltal')"
                 )
         # Validate type params after 'av'
-        if 'av' in parts:
-            av_idx = parts.index('av')
+        if self._part_in(parts, 'av'):
+            av_idx = self._index_of_part(parts, 'av')
             known_types = self._get_all_known_types()
             nesting = 0
             for p in parts[av_idx + 1:]:
                 p = p.rstrip(',')
                 if not p:
                     continue
-                if p == 'av':
+                if p.value == 'av':
                     nesting += 1
                     continue
                 if nesting > 0:
                     continue
-                if p not in known_types:
+                if p.value not in known_types:
                     raise Exception(
                         f"Okänd typ '{p}' i {context} ({type_str})"
                     )
