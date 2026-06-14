@@ -74,6 +74,14 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
             sätt t till element pos från tokens
             sätt tt till tokentyp från t
             sätt tv till värde från t
+            . Check for keyword tokens by type
+            om stoppord är lika med "i" och tt är lika med itoken
+                bryt
+            om stoppord är lika med "från" och tt är lika med fråntoken
+                bryt
+            om stoppord är lika med "till" och tt är lika med tilltoken
+                bryt
+            . Also check regular identifiers
             om tt är lika med idtoken och tv är lika med stoppord
                 bryt
             om tt är lika med nyradstoken
@@ -251,7 +259,7 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
                 sätt idx till namn från r
                 om pos är mindre än längd från tokens
                     sätt t2 till element pos från tokens
-                    om tokentyp från t2 är lika med idtoken och värde från t2 är lika med "i"
+                    om tokentyp från t2 är lika med itoken
                         öka pos med 1
                 sätt r till samla namn med pos, tilltoken
                 sätt pos till pos från r
@@ -513,7 +521,7 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
         sätt värde till nod från r
         om pos är mindre än längd från tokens
             sätt t till element pos från tokens
-            om tokentyp från t är lika med idtoken och värde från t är lika med "i"
+            om tokentyp från t är lika med itoken
                 öka pos med 1
         sätt r2 till samla namn med pos, nyradstoken
         sätt pos till pos från r2
@@ -596,7 +604,7 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
             sätt variabel till variabel plus värde från d
         om pos är mindre än längd från tokens
             sätt t till element pos från tokens
-            om tokentyp från t är lika med idtoken och värde från t är lika med "i"
+            om tokentyp från t är lika med itoken
                 öka pos med 1
         sätt r2 till samla uttryck med pos
         sätt pos till pos från r2

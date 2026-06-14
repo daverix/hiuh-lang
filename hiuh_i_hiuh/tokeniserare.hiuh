@@ -98,6 +98,7 @@ sätt tokenisera till grej med rader som lista av sträng ger lista av token
     putta "fortsätt", fortsättoken till nyckelord
     putta "ärver", ärvertoken till nyckelord
     putta "ger", gertoken till nyckelord
+    putta "i", itoken till nyckelord
 
     sätt är siffra till grej med symbol som tecken ger boolesk
         sätt kod till symbol som tal
