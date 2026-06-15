@@ -1037,6 +1037,7 @@ class Resolver:
 
     def _function_has_kind(self, fn_name, kind):
         """Check if a function is defined with the given kind (e.g., 'hämtagrej', 'skickagrej', 'verbgrej')."""
+        fn_name = fn_name.value if isinstance(fn_name, ExpressionPart) else fn_name
         for mod_info in self.modules.values():
             if mod_info.ast:
                 for n in mod_info.ast:
@@ -1724,6 +1725,7 @@ class Resolver:
     
     def _is_defined(self, name, module_name):
         """Check if a variable is defined in any scope."""
+        name = name.value if isinstance(name, ExpressionPart) else name
         # Check local vars tracked by resolver FIRST (local vars shadow built-ins)
         if module_name in self.local_vars and name in self.local_vars[module_name]:
             return True
