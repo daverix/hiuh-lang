@@ -412,11 +412,7 @@ sätt resolera uttryck till rekgrej med delar som lista av uttrycksdelnod, rad s
         ge del till nod med ep0, rad, kolumn
 
     . Check special patterns
-    . Debug: check delar type
-    sätt dbt till typ av delar
-    sätt ep0 till element 0 från delar
-    sätt ep0t till typ av ep0
-    sätt första ord till värde från ep0
+    sätt första ord till värde från element 0 från delar
 
     . "inte X" -> NotNode
     om första ord är lika med "inte"
@@ -480,3 +476,237 @@ sätt resolera uttryck till rekgrej med delar som lista av uttrycksdelnod, rad s
     . No pattern matched — treat as unresolved string
     sätt txt till slå ihop med separator med stränga delar med delar, " "
     ge strängnod med rad, kolumn, txt
+
+. === Statement Resolution ===
+. Resolve individual AST nodes by type, transforming ExpressionPartsNode recursively
+
+sätt resolera block till rekgrej med noder som lista av basnod ger lista av basnod
+    sätt ut till lista av basnod
+    för varje n i noder
+        sätt r till resolera nod med n
+        lägg till r i ut
+    ge ut
+
+sätt resolera nod till rekgrej med n som basnod ger basnod
+    sätt ht till typ av n
+
+    . ExpressionPartsNode — the main target of resolution
+    om ht är lika med typ av uttrycksdelarnod
+        sätt delar till delar från n
+        sätt r till rad från n
+        sätt k till kolumn från n
+        ge resolera uttryck med delar, r, k
+
+    . Literals — already resolved, return as-is
+    om ht är lika med typ av heltalsnod
+        ge n
+    om ht är lika med typ av flyttalsnod
+        ge n
+    om ht är lika med typ av strängnod
+        ge n
+    om ht är lika med typ av boolesknod
+        ge n
+    om ht är lika med typ av variabelnod
+        ge n
+
+    . Statement nodes — resolve children recursively
+    om ht är lika med typ av skrivnod
+        sätt vn till värde från n
+        sätt rv till resolera nod med vn
+        ge skrivnod med rad från n, kolumn från n, rv
+
+    om ht är lika med typ av genod
+        sätt vn till värde från n
+        sätt rv till resolera nod med vn
+        ge genod med rad från n, kolumn från n, rv
+
+    om ht är lika med typ av tilldelningsnod
+        sätt vn till värde från n
+        sätt rv till resolera nod med vn
+        . Handle nested function definitions
+        om typ av rv är lika med typ av grejdefinitionsnod
+            sätt rb till resolera block med block från rv
+            sätt nygrej till grejdefinitionsnod med rad från rv, kolumn från rv, parametrar från rv, rb, typparametrar från rv, sort från rv, returtyp från rv
+            ge tilldelningsnod med rad från n, kolumn från n, namn från n, nygrej
+        ge tilldelningsnod med rad från n, kolumn från n, namn från n, rv
+
+    om ht är lika med typ av omnod
+        sätt nya villkor till lista av omvillkor
+        för varje ov i villkor från n
+            sätt rt till resolera nod med test från ov
+            sätt rb till resolera block med block från ov
+            sätt nytt ov till omvillkor med rad från ov, kolumn från ov, rt, rb
+            lägg till nytt ov i nya villkor
+        sätt eb till ellerblock från n
+        sätt reb till resolera block med eb
+        ge omnod med rad från n, kolumn från n, nya villkor, reb
+
+    om ht är lika med typ av medannod
+        sätt rc till resolera nod med villkor från n
+        sätt rb till resolera block med block från n
+        ge medannod med rad från n, kolumn från n, rc, rb
+
+    om ht är lika med typ av förvarjenod
+        sätt ri till resolera nod med itererbar från n
+        sätt rb till resolera block med block från n
+        ge förvarjenod med rad från n, kolumn från n, variabel från n, ri, rb
+
+    om ht är lika med typ av försöknod
+        sätt rfb till resolera block med försökblock från n
+        sätt rcb till resolera block med fångablock från n
+        sätt rsl till resolera block med slutligenblock från n
+        ge försöknod med rad från n, kolumn från n, rfb, felvariabel från n, rcb, rsl
+
+    . Arithmetic nodes — resolve left and right
+    om ht är lika med typ av adderanod
+        sätt rv till resolera nod med vänster från n
+        sätt rh till resolera nod med höger från n
+        ge adderanod med rad från n, kolumn från n, rv, rh
+
+    om ht är lika med typ av subtraheranod
+        sätt rv till resolera nod med vänster från n
+        sätt rh till resolera nod med höger från n
+        ge subtraheranod med rad från n, kolumn från n, rv, rh
+
+    om ht är lika med typ av multipliceranod
+        sätt rv till resolera nod med vänster från n
+        sätt rh till resolera nod med höger från n
+        ge multipliceranod med rad från n, kolumn från n, rv, rh
+
+    om ht är lika med typ av divideranod
+        sätt rv till resolera nod med vänster från n
+        sätt rh till resolera nod med höger från n
+        ge divideranod med rad från n, kolumn från n, rv, rh
+
+    . Comparison nodes
+    om ht är lika med typ av likanod
+        sätt rv till resolera nod med vänster från n
+        sätt rh till resolera nod med höger från n
+        ge likanod med rad från n, kolumn från n, rv, rh
+
+    om ht är lika med typ av intelikanod
+        sätt rv till resolera nod med vänster från n
+        sätt rh till resolera nod med höger från n
+        ge intelikanod med rad från n, kolumn från n, rv, rh
+
+    om ht är lika med typ av störreännod
+        sätt rv till resolera nod med vänster från n
+        sätt rh till resolera nod med höger från n
+        ge störreännod med rad från n, kolumn från n, rv, rh
+
+    om ht är lika med typ av mindreännod
+        sätt rv till resolera nod med vänster från n
+        sätt rh till resolera nod med höger från n
+        ge mindreännod med rad från n, kolumn från n, rv, rh
+
+    . Boolean nodes
+    om ht är lika med typ av ochnod
+        sätt rv till resolera nod med vänster från n
+        sätt rh till resolera nod med höger från n
+        ge ochnod med rad från n, kolumn från n, rv, rh
+
+    om ht är lika med typ av ellernod
+        sätt rv till resolera nod med vänster från n
+        sätt rh till resolera nod med höger från n
+        ge ellernod med rad från n, kolumn från n, rv, rh
+
+    . Property / Element access
+    om ht är lika med typ av egenskapsåtkomstnod
+        sätt rt till resolera nod med mål från n
+        ge egenskapsåtkomstnod med rad från n, kolumn från n, namn från n, rt
+
+    om ht är lika med typ av elementåtskomstnod
+        sätt ri till resolera nod med index från n
+        sätt rt till resolera nod med mål från n
+        ge elementåtskomstnod med rad från n, kolumn från n, ri, rt
+
+    . Function call — resolve each arg
+    om ht är lika med typ av grejanropsnod
+        sätt gamla args till argument från n
+        sätt nya args till lista av basnod
+        för varje a i gamla args
+            sätt ra till resolera nod med a
+            lägg till ra i nya args
+        sätt fnref till resolera nod med namn från n
+        ge grejanropsnod med rad från n, kolumn från n, fnref, nya args
+
+    . Composite assignment
+    om ht är lika med typ av ökanod
+        sätt rv till resolera nod med värde från n
+        ge ökanod med rad från n, kolumn från n, mål från n, rv
+
+    om ht är lika med typ av minskanod
+        sätt rv till resolera nod med värde från n
+        ge minskanod med rad från n, kolumn från n, mål från n, rv
+
+    om ht är lika med typ av gångranod
+        sätt rv till resolera nod med värde från n
+        ge gångranod med rad från n, kolumn från n, mål från n, rv
+
+    om ht är lika med typ av delanod
+        sätt rv till resolera nod med värde från n
+        ge delanod med rad från n, kolumn från n, mål från n, rv
+
+    . Negation / Cast / TypeOf
+    om ht är lika med typ av intenod
+        sätt rv till resolera nod med uttryck från n
+        ge intenod med rad från n, kolumn från n, rv
+
+    om ht är lika med typ av somnod
+        sätt rv till resolera nod med värde från n
+        ge somnod med rad från n, kolumn från n, rv, måltyp från n
+
+    om ht är lika med typ av typavnod
+        sätt rv till resolera nod med värde från n
+        ge typavnod med rad från n, kolumn från n, rv
+
+    . Append / Remove / ElementAssign / CopyWithProp
+    om ht är lika med typ av läggtillnod
+        sätt rv till resolera nod med värde från n
+        ge läggtillnod med rad från n, kolumn från n, rv, mål från n
+
+    om ht är lika med typ av tabortvärdenod
+        sätt rv till resolera nod med värde från n
+        ge tabortvärdenod med rad från n, kolumn från n, rv, mål från n
+
+    om ht är lika med typ av tabortindexnod
+        sätt ri till resolera nod med index från n
+        ge tabortindexnod med rad från n, kolumn från n, ri, mål från n
+
+    om ht är lika med typ av elementtilldelnigsnod
+        sätt ri till resolera nod med index från n
+        sätt rt till resolera nod med mål från n
+        sätt rv till resolera nod med värde från n
+        ge elementtilldelnigsnod med rad från n, kolumn från n, ri, rt, rv
+
+    om ht är lika med typ av kopiaavnod
+        sätt gamla uppd till mål från n
+        sätt nya uppd till lista av basnod
+        sätt pos till 0
+        medan pos är mindre än längd från gamla uppd
+            sätt fnmn till element pos från gamla uppd
+            öka pos med 1
+            sätt fv till element pos från gamla uppd
+            sätt rfv till resolera nod med fv
+            lägg till fnmn i nya uppd
+            lägg till rfv i nya uppd
+            öka pos med 1
+        ge kopiaavnod med rad från n, kolumn från n, namn från n, källa från n, nya uppd
+
+    . Infix call / Named arg
+    om ht är lika med typ av infixanropsnod
+        sätt rv till resolera nod med vänster från n
+        sätt rh till resolera nod med höger från n
+        ge infixanropsnod med rad från n, kolumn från n, rv, operator från n, rh
+
+    om ht är lika med typ av namngivenargnod
+        sätt rv till resolera nod med värde från n
+        ge namngivenargnod med rad från n, kolumn från n, namn från n, rv
+
+    . UnaryOp
+    om ht är lika med typ av unärnod
+        sätt ru till resolera nod med uttryck från n
+        ge unärnod med rad från n, kolumn från n, operator från n, ru
+
+    . Typedef / FunctionType / Import — pass through
+    ge n
