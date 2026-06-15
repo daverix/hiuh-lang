@@ -643,7 +643,7 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
         sätt r till parsa block med pos
         sätt pos till pos från r
         sätt försökblock till stmts från r
-        sätt fv till inget av sträng
+        sätt fv till ""
         sätt fångablock till lista av basnod
         om pos är mindre än längd från tokens
             sätt t till element pos från tokens
@@ -651,7 +651,7 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
                 öka pos med 1
                 om pos är mindre än längd från tokens
                     sätt t2 till element pos från tokens
-                    sätt fv till något av sträng med värde från t2
+                    sätt fv till värde från t2
                     öka pos med 1
                 sätt r till parsa block med pos
                 sätt pos till pos från r
