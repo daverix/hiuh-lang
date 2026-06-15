@@ -214,10 +214,6 @@ class FunctionDefNode(ASTNode):
         self.kind = kind
         self.return_type = return_type
 
-    @property
-    def is_infix(self):
-        return self.kind == 'infix'
-
     def get_param_types(self):
         result = {}
         for p in self.params:
