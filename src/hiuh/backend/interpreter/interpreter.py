@@ -174,7 +174,9 @@ class Interpreter:
             if module_path and module_path != "<in_memory>":
                 try:
                     from pathlib import Path
-                    file_name = Path(module_path).absolute().as_uri()
+                    p = Path(module_path).absolute()
+                    if p.is_file():
+                        file_name = p.as_uri()
                 except (ValueError, ImportError):
                     file_name = module_path
             col_info = f":{frame['column']}" if "column" in frame else ""
@@ -523,6 +525,7 @@ class Interpreter:
                     call_env.define(name, value)
             prev_env = self.env
             self.env = call_env
+            self.file_stack.append(hiuh_func._file)
             try:
                 for s in node.body:
                     res = self.visit(s)
@@ -532,6 +535,7 @@ class Interpreter:
                 return e.value
             finally:
                 self.env = prev_env
+                self.file_stack.pop()
 
         hiuh_func._file = self.file_stack[-1]
         return hiuh_func
@@ -616,6 +620,8 @@ class Interpreter:
                 local_env.define(name, value)
         old_env = self.env
         self.env = local_env
+        func_file = getattr(func_node, '_file', self.file_stack[-1])
+        self.file_stack.append(func_file)
         try:
             for statement_node in func_node.body:
                 self.visit(statement_node)
@@ -624,6 +630,7 @@ class Interpreter:
             return e.value
         finally:
             self.env = old_env
+            self.file_stack.pop()
 
     def visit_ExpressionPartsNode(self, node):
         """ExpressionPartsNode should always be transformed by resolver before interpreter runs."""
