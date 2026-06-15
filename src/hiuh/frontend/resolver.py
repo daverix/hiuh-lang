@@ -342,10 +342,27 @@ class Resolver:
         # Check for wildcard import conflicts after all imports are resolved
         self._check_wildcard_import_conflicts()
 
+        # Validate no ExpressionPart leaked into resolved AST
+        for module_name, module in self.modules.items():
+            self._validate_no_expression_parts(module.ast, module_name)
+
         # Save symbol tables to target directory
         self.module_registry.save()
 
         return len(self.errors) == 0
+
+    def _validate_no_expression_parts(self, node, path=''):
+        """Recursively check that no ExpressionPart remains in the AST."""
+        if isinstance(node, ExpressionPart):
+            raise TypeError(f"ExpressionPart leaked into resolved AST at {path}: {node!r}")
+        if isinstance(node, list):
+            for i, n in enumerate(node):
+                self._validate_no_expression_parts(n, f'{path}[{i}]')
+        elif hasattr(node, '__dict__'):
+            for key, value in node.__dict__.items():
+                if key in ('line', 'column', 'token'):
+                    continue
+                self._validate_no_expression_parts(value, f'{path}.{key}')
 
     # === Visitor Pattern Implementation ===
 
@@ -1173,11 +1190,12 @@ class Resolver:
                     idx_node = self._resolve_precedence(idx_parts, token=node)
                     # Resolve the target
                     if len(right_parts) == 1:
-                        target_name = right_parts[0]
+                        target_ep = right_parts[0]
+                        target_name = target_ep.value if isinstance(target_ep, ExpressionPart) else target_ep
                         if self._is_defined(target_name, self._current_module):
                             target_node = VarAccessNode(node.line, node.column, target_name, target=None)
                         else:
-                            target_node = self._part_to_node(target_name, node)
+                            target_node = self._part_to_node(target_ep, node)
                     else:
                         target_node = self._resolve_precedence(right_parts, token=node)
                     return ElementAccessNode(node.line, node.column, index=idx_node, target=target_node)

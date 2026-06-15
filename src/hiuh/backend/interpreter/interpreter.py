@@ -344,6 +344,11 @@ class Interpreter:
             if callable(val):
                 return val()
             return val if val is not None else prop_name
+        if hasattr(target, 'vars'):
+            val = target.vars.get(prop_name, prop_name)
+            if callable(val):
+                return val()
+            return val
         if isinstance(target, str):
             if prop_name == 'längd':
                 return len(target)
