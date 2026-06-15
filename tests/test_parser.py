@@ -328,28 +328,28 @@ typ person
         source = """\
 sätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk
     ge FALSKT"""
-        expected = [AssignNode(None, None, name='är del av', value=FunctionDefNode(None, None, params=[('del', 'heltal'), ('helhet', 'lista av heltal')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('FALSKT', TOKEN_LITERAL_FALSE)]))], is_infix=True, return_type='boolesk'))]
+        expected = [AssignNode(None, None, name='är del av', value=FunctionDefNode(None, None, params=[('del', 'heltal'), ('helhet', 'lista av heltal')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('FALSKT', TOKEN_LITERAL_FALSE)]))], kind='infix', return_type='boolesk'))]
         self.assertParseEqual(source, expected)
 
     def test_verbgrej_definition(self):
         source = """\
 sätt upprepa till verbgrej med ord som sträng, antal som heltal ger sträng
     ge ord"""
-        expected = [AssignNode(None, None, name='upprepa', value=FunctionDefNode(None, None, params=[('ord', 'sträng'), ('antal', 'heltal')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('ord', TOKEN_IDENTIFIER)]))], is_infix=False, return_type='sträng'))]
+        expected = [AssignNode(None, None, name='upprepa', value=FunctionDefNode(None, None, params=[('ord', 'sträng'), ('antal', 'heltal')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('ord', TOKEN_IDENTIFIER)]))], return_type='sträng'))]
         self.assertParseEqual(source, expected)
 
     def test_skickagrej_definition(self):
         source = """\
 sätt lägg_till till skickagrej med sak som sträng, mål som lista av sträng ger lista av sträng
     ge mål"""
-        expected = [AssignNode(None, None, name='lägg_till', value=FunctionDefNode(None, None, params=[('sak', 'sträng'), ('mål', 'lista av sträng')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('mål', TOKEN_IDENTIFIER)]))], is_infix=False, return_type='lista av sträng'))]
+        expected = [AssignNode(None, None, name='lägg_till', value=FunctionDefNode(None, None, params=[('sak', 'sträng'), ('mål', 'lista av sträng')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('mål', TOKEN_IDENTIFIER)]))], return_type='lista av sträng'))]
         self.assertParseEqual(source, expected)
 
     def test_hämtagrej_definition(self):
         source = """\
 sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng ger sträng
     ge element 0 från källa"""
-        expected = [AssignNode(None, None, name='plocka', value=FunctionDefNode(None, None, params=[('namn', 'sträng'), ('källa', 'lista av sträng')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('element', TOKEN_IDENTIFIER), ExpressionPart('0', TOKEN_LITERAL_INT), ExpressionPart('från', TOKEN_FROM), ExpressionPart('källa', TOKEN_IDENTIFIER)]))], is_infix=False, return_type='sträng'))]
+        expected = [AssignNode(None, None, name='plocka', value=FunctionDefNode(None, None, params=[('namn', 'sträng'), ('källa', 'lista av sträng')], body=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('element', TOKEN_IDENTIFIER), ExpressionPart('0', TOKEN_LITERAL_INT), ExpressionPart('från', TOKEN_FROM), ExpressionPart('källa', TOKEN_IDENTIFIER)]))], return_type='sträng'))]
         self.assertParseEqual(source, expected)
 
     def test_rekgrej_definition(self):
@@ -358,7 +358,7 @@ sätt fakultet till rekgrej med n som heltal ger heltal
     om n är mindre än 2
         ge 1
     ge n gånger fakultet med n minus 1"""
-        expected = [AssignNode(None, None, name='fakultet', value=FunctionDefNode(None, None, params=[('n', 'heltal')], body=[IfNode(None, None, conditions=[IfCondition(None, None, test=ExpressionPartsNode(None, None, parts=[ExpressionPart('n', TOKEN_IDENTIFIER), ExpressionPart('är', TOKEN_OP_IS), ExpressionPart('mindre', TOKEN_LESS), ExpressionPart('än', TOKEN_THAN), ExpressionPart('2', TOKEN_LITERAL_INT)]), block=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('1', TOKEN_LITERAL_INT)]))])]), ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('n', TOKEN_IDENTIFIER), ExpressionPart('gånger', TOKEN_OP_MUL), ExpressionPart('fakultet', TOKEN_IDENTIFIER), ExpressionPart('med', TOKEN_WITH), ExpressionPart('n', TOKEN_IDENTIFIER), ExpressionPart('minus', TOKEN_OP_SUB), ExpressionPart('1', TOKEN_LITERAL_INT)]))], is_infix=False, return_type='heltal'))]
+        expected = [AssignNode(None, None, name='fakultet', value=FunctionDefNode(None, None, params=[('n', 'heltal')], body=[IfNode(None, None, conditions=[IfCondition(None, None, test=ExpressionPartsNode(None, None, parts=[ExpressionPart('n', TOKEN_IDENTIFIER), ExpressionPart('är', TOKEN_OP_IS), ExpressionPart('mindre', TOKEN_LESS), ExpressionPart('än', TOKEN_THAN), ExpressionPart('2', TOKEN_LITERAL_INT)]), block=[ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('1', TOKEN_LITERAL_INT)]))])]), ReturnNode(None, None, value=ExpressionPartsNode(None, None, parts=[ExpressionPart('n', TOKEN_IDENTIFIER), ExpressionPart('gånger', TOKEN_OP_MUL), ExpressionPart('fakultet', TOKEN_IDENTIFIER), ExpressionPart('med', TOKEN_WITH), ExpressionPart('n', TOKEN_IDENTIFIER), ExpressionPart('minus', TOKEN_OP_SUB), ExpressionPart('1', TOKEN_LITERAL_INT)]))], return_type='heltal'))]
         self.assertParseEqual(source, expected)
 
 # --- open file ---

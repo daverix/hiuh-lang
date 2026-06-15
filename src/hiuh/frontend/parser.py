@@ -328,18 +328,22 @@ class Parser:
         )
         
         if is_grej or is_infixgrej or is_verbgrej or is_skickagrej or is_hämtagrej or is_rekgrej:
-            is_infix = False
+            kind = 'grej'
             if is_infixgrej:
                 self.consume()  # consume 'infixgrej'
-                is_infix = True
+                kind = 'infix'
             elif is_verbgrej:
                 self.consume()  # consume 'verbgrej'
+                kind = 'verb'
             elif is_skickagrej:
                 self.consume()  # consume 'skickagrej'
+                kind = 'skicka'
             elif is_hämtagrej:
                 self.consume()  # consume 'hämtagrej'
+                kind = 'hämta'
             elif is_rekgrej:
                 self.consume()  # consume 'rekgrej'
+                kind = 'rek'
             if is_grej:
                 self.consume()  # consume 'grej'
 
@@ -364,11 +368,8 @@ class Parser:
 
             # Parse body (indented block)
             body = self.parse_block(params=self._extract_param_names(params))
-            func_def = FunctionDefNode(assign_token.line, assign_token.column, params, body, is_infix=is_infix, type_params=type_params, return_type=return_type)
-            if is_infixgrej:
-                func_def.kind = 'infix'
+            func_def = FunctionDefNode(assign_token.line, assign_token.column, params, body, type_params=type_params, return_type=return_type, kind=kind)
             if is_verbgrej:
-                func_def.kind = 'verb'
                 self.verb_functions.add(name)
             if is_skickagrej:
                 func_def.kind = 'skicka'

@@ -154,7 +154,7 @@ sätt innehåller till infixgrej med värden som lista av heltal, värde som hel
     medan x är mindre än längd från värden
         ge SANT"""
         expected = [
-            AssignNode(None, None, name='innehåller', value=FunctionDefNode(None, None, params=[('värden', 'lista av heltal'), ('värde', 'heltal')], body=[AssignNode(None, None, name='x', value=IntNode(None, None, '0')), WhileNode(None, None, condition=LessThanNode(None, None, left=VarAccessNode(None, None, 'x'), right=PropertyAccessNode(None, None, property_name='längd', target=VarAccessNode(None, None, 'värden'))), body=[ReturnNode(None, None, value=BoolNode(None, None, True))])], is_infix=True, return_type='boolesk'))
+            AssignNode(None, None, name='innehåller', value=FunctionDefNode(None, None, params=[('värden', 'lista av heltal'), ('värde', 'heltal')], body=[AssignNode(None, None, name='x', value=IntNode(None, None, '0')), WhileNode(None, None, condition=LessThanNode(None, None, left=VarAccessNode(None, None, 'x'), right=PropertyAccessNode(None, None, property_name='längd', target=VarAccessNode(None, None, 'värden'))), body=[ReturnNode(None, None, value=BoolNode(None, None, True))])], kind='infix', return_type='boolesk'))
         ]
         self.assertResolvedEqual(source, expected)
 
@@ -163,7 +163,7 @@ sätt innehåller till infixgrej med värden som lista av heltal, värde som hel
 sätt foo till grej med a som heltal, b som heltal ger heltal
     skriv a är mindre än längd från b"""
         expected = [
-            AssignNode(None, None, name='foo', value=FunctionDefNode(None, None, params=[('a', 'heltal'), ('b', 'heltal')], body=[PrintNode(None, None, value=LessThanNode(None, None, left=VarAccessNode(None, None, 'a'), right=PropertyAccessNode(None, None, property_name='längd', target=VarAccessNode(None, None, 'b'))))], is_infix=False, return_type='heltal'))
+            AssignNode(None, None, name='foo', value=FunctionDefNode(None, None, params=[('a', 'heltal'), ('b', 'heltal')], body=[PrintNode(None, None, value=LessThanNode(None, None, left=VarAccessNode(None, None, 'a'), right=PropertyAccessNode(None, None, property_name='längd', target=VarAccessNode(None, None, 'b'))))], return_type='heltal'))
         ]
         self.assertResolvedEqual(source, expected)
 
@@ -173,7 +173,7 @@ sätt är del av till infixgrej med del som heltal, helhet som lista av heltal g
     sätt x till 0
     ge FALSKT"""
         expected = [
-            AssignNode(None, None, name='är del av', value=FunctionDefNode(None, None, params=[('del', 'heltal'), ('helhet', 'lista av heltal')], body=[AssignNode(None, None, name='x', value=IntNode(None, None, '0')), ReturnNode(None, None, value=BoolNode(None, None, False))], is_infix=True, return_type='boolesk'))
+            AssignNode(None, None, name='är del av', value=FunctionDefNode(None, None, params=[('del', 'heltal'), ('helhet', 'lista av heltal')], body=[AssignNode(None, None, name='x', value=IntNode(None, None, '0')), ReturnNode(None, None, value=BoolNode(None, None, False))], kind='infix', return_type='boolesk'))
         ]
         self.assertResolvedEqual(source, expected)
 
@@ -184,7 +184,7 @@ sätt är del av till infixgrej med del som heltal, helhet som lista av heltal g
 om grön är del av färger
     skriv Hittat"""
         expected = [
-            AssignNode(None, None, name='är del av', value=FunctionDefNode(None, None, params=[('del', 'heltal'), ('helhet', 'lista av heltal')], body=[ReturnNode(None, None, value=BoolNode(None, None, False))], is_infix=True, return_type='boolesk')),
+            AssignNode(None, None, name='är del av', value=FunctionDefNode(None, None, params=[('del', 'heltal'), ('helhet', 'lista av heltal')], body=[ReturnNode(None, None, value=BoolNode(None, None, False))], kind='infix', return_type='boolesk')),
             IfNode(None, None, conditions=[IfCondition(None, None, test=InfixCallNode(None, None, left=StringNode(None, None, 'grön'), operator='är del av', right=StringNode(None, None, 'färger')), block=[PrintNode(None, None, StringNode(None, None, 'Hittat'))])])
         ]
         self.assertResolvedEqual(source, expected)
@@ -195,7 +195,7 @@ sätt beräkna till grej med a som heltal, b som heltal ger heltal
     ge 0
 sätt resultat till beräkna med a 5, b 3"""
         expected = [
-            AssignNode(None, None, name='beräkna', value=FunctionDefNode(None, None, params=[('a', 'heltal'), ('b', 'heltal')], body=[ReturnNode(None, None, value=IntNode(None, None, '0'))], is_infix=False, return_type='heltal')),
+            AssignNode(None, None, name='beräkna', value=FunctionDefNode(None, None, params=[('a', 'heltal'), ('b', 'heltal')], body=[ReturnNode(None, None, value=IntNode(None, None, '0'))], return_type='heltal')),
             AssignNode(None, None, name='resultat', value=FunctionCallNode(None, None, name='beräkna', args=[NamedArgNode(None, None, name='a', value=IntNode(None, None, '5')), NamedArgNode(None, None, name='b', value=IntNode(None, None, '3'))]))
         ]
         self.assertResolvedEqual(source, expected)
@@ -258,7 +258,7 @@ om gul är del av färger
 sätt resultat till blå är del av färger
 skriv resultat"""
         expected = [
-            AssignNode(None, None, name='är del av', value=FunctionDefNode(None, None, params=[('del', 'heltal'), ('helhet', 'lista av heltal')], body=[AssignNode(None, None, name='x', value=IntNode(None, None, '0')), WhileNode(None, None, condition=LessThanNode(None, None, left=VarAccessNode(None, None, 'x'), right=PropertyAccessNode(None, None, property_name='längd', target=VarAccessNode(None, None, 'helhet'))), body=[IfNode(None, None, conditions=[IfCondition(None, None, test=EqualNode(None, None, left=ElementAccessNode(None, None, index=VarAccessNode(None, None, 'x'), target=VarAccessNode(None, None, 'helhet')), right=VarAccessNode(None, None, 'del')), block=[ReturnNode(None, None, value=BoolNode(None, None, True))])]), AssignNode(None, None, name='x', value=AddNode(None, None, VarAccessNode(None, None, 'x'), IntNode(None, None, '1')))]), ReturnNode(None, None, value=BoolNode(None, None, False))], is_infix=True, return_type='boolesk')),
+            AssignNode(None, None, name='är del av', value=FunctionDefNode(None, None, params=[('del', 'heltal'), ('helhet', 'lista av heltal')], body=[AssignNode(None, None, name='x', value=IntNode(None, None, '0')), WhileNode(None, None, condition=LessThanNode(None, None, left=VarAccessNode(None, None, 'x'), right=PropertyAccessNode(None, None, property_name='längd', target=VarAccessNode(None, None, 'helhet'))), body=[IfNode(None, None, conditions=[IfCondition(None, None, test=EqualNode(None, None, left=ElementAccessNode(None, None, index=VarAccessNode(None, None, 'x'), target=VarAccessNode(None, None, 'helhet')), right=VarAccessNode(None, None, 'del')), block=[ReturnNode(None, None, value=BoolNode(None, None, True))])]), AssignNode(None, None, name='x', value=AddNode(None, None, VarAccessNode(None, None, 'x'), IntNode(None, None, '1')))]), ReturnNode(None, None, value=BoolNode(None, None, False))], kind='infix', return_type='boolesk')),
             AssignNode(None, None, name='färger', value=FunctionCallNode(None, None, name='lista', args=[StringNode(None, None, 'röd'), StringNode(None, None, 'grön'), StringNode(None, None, 'blå')])),
             IfNode(None, None, conditions=[IfCondition(None, None, test=InfixCallNode(None, None, left=StringNode(None, None, 'grön'), operator='är del av', right=VarAccessNode(None, None, 'färger')), block=[PrintNode(None, None, StringNode(None, None, 'Hittat'))])]),
             IfNode(None, None, conditions=[IfCondition(None, None, test=InfixCallNode(None, None, left=StringNode(None, None, 'gul'), operator='är del av', right=VarAccessNode(None, None, 'färger')), block=[PrintNode(None, None, StringNode(None, None, 'Saknas'))])]),
@@ -282,7 +282,7 @@ sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
 """
         expected = [
             ImportNode(None, None, module_name='listor', import_all=True, resolved=True),
-            AssignNode(None, None, name='matchar_hiuh', value=FunctionDefNode(None, None, params=[('text_stycke', 'sträng')], body=[ReturnNode(None, None, value=EqualNode(None, None, left=VarAccessNode(None, None, 'text_stycke'), right=StringNode(None, None, 'Hiuh')))], is_infix=False, return_type='boolesk')),
+            AssignNode(None, None, name='matchar_hiuh', value=FunctionDefNode(None, None, params=[('text_stycke', 'sträng')], body=[ReturnNode(None, None, value=EqualNode(None, None, left=VarAccessNode(None, None, 'text_stycke'), right=StringNode(None, None, 'Hiuh')))], return_type='boolesk')),
             AssignNode(None, None, name='namn_lista', value=FunctionCallNode(None, None, name='lista', args=[StringNode(None, None, 'Java'), StringNode(None, None, 'Python'), StringNode(None, None, 'Hiuh'), StringNode(None, None, 'Kotlin')])),
             AssignNode(None, None, name='hittat_index', value=FunctionCallNode(None, None, name='index på första matchande', args=[VarAccessNode(None, None, 'namn_lista'), VarAccessNode(None, None, 'matchar_hiuh')])),
             AssignNode(None, None, name='hittat_namn', value=FunctionCallNode(None, None, name='första matchande', args=[VarAccessNode(None, None, 'namn_lista'), VarAccessNode(None, None, 'matchar_hiuh')]))
@@ -299,7 +299,7 @@ sätt resultat till add med a 5, b 3
 skriv resultat
 """
         expected = [
-            AssignNode(None, None, name='add', value=FunctionDefNode(None, None, params=[('a', 'heltal'), ('b', 'heltal')], body=[ReturnNode(None, None, value=AddNode(None, None, left=VarAccessNode(None, None, 'a'), right=VarAccessNode(None, None, 'b')))], is_infix=False, return_type='heltal')),
+            AssignNode(None, None, name='add', value=FunctionDefNode(None, None, params=[('a', 'heltal'), ('b', 'heltal')], body=[ReturnNode(None, None, value=AddNode(None, None, left=VarAccessNode(None, None, 'a'), right=VarAccessNode(None, None, 'b')))], return_type='heltal')),
             AssignNode(None, None, name='resultat', value=FunctionCallNode(None, None, name='add', args=[NamedArgNode(None, None, name='a', value=IntNode(None, None, '5')), NamedArgNode(None, None, name='b', value=IntNode(None, None, '3'))])),
             PrintNode(None, None, value=VarAccessNode(None, None, 'resultat'))
         ]
@@ -335,7 +335,7 @@ sätt uppdatera till grej med lst som lista av heltal ger heltal
     ge element 0 från lst
         """
         expected = [
-            AssignNode(None, None, name='uppdatera', value=FunctionDefNode(None, None, params=[('lst', 'lista av heltal')], body=[ElementAssignNode(None, None, index=IntNode(None, None, '0'), target=VarAccessNode(None, None, 'lst'), value=IntNode(None, None, '100')), ReturnNode(None, None, value=ElementAccessNode(None, None, index=IntNode(None, None, '0'), target=VarAccessNode(None, None, 'lst')))], is_infix=False, return_type='heltal'))
+            AssignNode(None, None, name='uppdatera', value=FunctionDefNode(None, None, params=[('lst', 'lista av heltal')], body=[ElementAssignNode(None, None, index=IntNode(None, None, '0'), target=VarAccessNode(None, None, 'lst'), value=IntNode(None, None, '100')), ReturnNode(None, None, value=ElementAccessNode(None, None, index=IntNode(None, None, '0'), target=VarAccessNode(None, None, 'lst')))], return_type='heltal'))
         ]
         self.assertResolvedEqual(source, expected)
 
@@ -458,7 +458,7 @@ sätt a till hej
 upprepa a med 3
 """
         expected = [
-            AssignNode(None, None, name='upprepa', value=FunctionDefNode(None, None, params=[('ord', 'sträng'), ('antal', 'heltal')], body=[AssignNode(None, None, name='resultat', value=StringNode(None, None, '')), AssignNode(None, None, name='i', value=IntNode(None, None, '0')), WhileNode(None, None, condition=LessThanNode(None, None, left=VarAccessNode(None, None, 'i'), right=VarAccessNode(None, None, 'antal')), body=[AssignNode(None, None, name='resultat', value=AddNode(None, None, left=VarAccessNode(None, None, 'resultat'), right=VarAccessNode(None, None, 'ord'))), AddAssignNode(None, None, target='i', value=IntNode(None, None, '1'))]), ReturnNode(None, None, value=VarAccessNode(None, None, 'resultat'))], is_infix=False, return_type='sträng')),
+            AssignNode(None, None, name='upprepa', value=FunctionDefNode(None, None, params=[('ord', 'sträng'), ('antal', 'heltal')], body=[AssignNode(None, None, name='resultat', value=StringNode(None, None, '')), AssignNode(None, None, name='i', value=IntNode(None, None, '0')), WhileNode(None, None, condition=LessThanNode(None, None, left=VarAccessNode(None, None, 'i'), right=VarAccessNode(None, None, 'antal')), body=[AssignNode(None, None, name='resultat', value=AddNode(None, None, left=VarAccessNode(None, None, 'resultat'), right=VarAccessNode(None, None, 'ord'))), AddAssignNode(None, None, target='i', value=IntNode(None, None, '1'))]), ReturnNode(None, None, value=VarAccessNode(None, None, 'resultat'))], return_type='sträng')),
             AssignNode(None, None, name='a', value=StringNode(None, None, 'hej')),
             AssignNode(None, None, name='a', value=FunctionCallNode(None, None, name='upprepa', args=[VarAccessNode(None, None, 'a'), IntNode(None, None, '3')]))
         ]
@@ -475,7 +475,7 @@ sätt min lista till lista av sträng
 lägg_till hej till min lista
 """
         expected = [
-            AssignNode(None, None, name='lägg_till', value=FunctionDefNode(None, None, params=[('sak', 'sträng'), ('mål', 'lista av sträng')], body=[AppendNode(None, None, value=VarAccessNode(None, None, 'sak'), target_list='mål'), ReturnNode(None, None, value=VarAccessNode(None, None, 'mål'))], is_infix=False, return_type='lista av sträng')),
+            AssignNode(None, None, name='lägg_till', value=FunctionDefNode(None, None, params=[('sak', 'sträng'), ('mål', 'lista av sträng')], body=[AppendNode(None, None, value=VarAccessNode(None, None, 'sak'), target_list='mål'), ReturnNode(None, None, value=VarAccessNode(None, None, 'mål'))], return_type='lista av sträng')),
             AssignNode(None, None, name='min lista', value=FunctionCallNode(None, None, name='lista', args=[])),
             AssignNode(None, None, name='min lista', value=FunctionCallNode(None, None, name='lägg_till', args=[StringNode(None, None, 'hej'), VarAccessNode(None, None, 'min lista')]))
         ]
@@ -491,7 +491,7 @@ sätt frukter till lista av sträng med äpple, banan
 sätt resultat till plocka banan från frukter
 """
         expected = [
-            AssignNode(None, None, name='plocka', value=FunctionDefNode(None, None, params=[('namn', 'sträng'), ('källa', 'lista av sträng')], body=[ReturnNode(None, None, value=ElementAccessNode(None, None, index=IntNode(None, None, '0'), target=VarAccessNode(None, None, 'källa')))], is_infix=False, return_type='sträng')),
+            AssignNode(None, None, name='plocka', value=FunctionDefNode(None, None, params=[('namn', 'sträng'), ('källa', 'lista av sträng')], body=[ReturnNode(None, None, value=ElementAccessNode(None, None, index=IntNode(None, None, '0'), target=VarAccessNode(None, None, 'källa')))], return_type='sträng')),
             AssignNode(None, None, name='frukter', value=FunctionCallNode(None, None, name='lista', args=[StringNode(None, None, 'äpple'), StringNode(None, None, 'banan')])),
             AssignNode(None, None, name='resultat', value=FunctionCallNode(None, None, name='plocka', args=[StringNode(None, None, 'banan'), VarAccessNode(None, None, 'frukter')]))
         ]

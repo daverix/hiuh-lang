@@ -206,14 +206,17 @@ class ContinueNode(ASTNode):
 
 # --- Functions and Types ---
 class FunctionDefNode(ASTNode):
-    def __init__(self, line, column, params, body, return_type, is_infix=False, type_params=None, kind=None):
+    def __init__(self, line, column, params, body, return_type, type_params=None, kind='grej'):
         super().__init__(line, column)
         self.params = params
         self.body = body
-        self.is_infix = is_infix
         self.type_params = type_params or []
-        self.kind = kind if kind is not None else ('infix' if is_infix else 'grej')
+        self.kind = kind
         self.return_type = return_type
+
+    @property
+    def is_infix(self):
+        return self.kind == 'infix'
 
     def get_param_types(self):
         result = {}

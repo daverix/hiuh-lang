@@ -217,9 +217,9 @@ class Resolver:
         for node in nodes:
             if isinstance(node, AssignNode):
                 if isinstance(node.value, FunctionDefNode):
-                    is_infix = getattr(node.value, 'is_infix', False)
+                    kind = getattr(node.value, 'kind', 'grej')
                     self.module_registry.modules[self._current_module].add_symbol(
-                        node.name, "func", FunctionSignature(params=node.value.params), is_infix=is_infix
+                        node.name, "func", FunctionSignature(params=node.value.params), kind=kind
                     )
                 elif isinstance(node.value, TypeDefNode):
                     self.module_registry.modules[self._current_module].add_symbol(node.name, "type")
@@ -1739,13 +1739,8 @@ class Resolver:
             mod_info = self.module_registry.modules[module_name]
             if hasattr(mod_info, 'symbols') and name in mod_info.symbols:
                 symbol = mod_info.symbols[name]
-                # Check SymbolEntry.is_infix
-                if hasattr(symbol, 'is_infix') and symbol.is_infix:
+                if getattr(symbol, 'kind', 'grej') == 'infix':
                     return True
-                # Legacy: check if signature has is_infix
-                if hasattr(symbol, 'signature') and symbol.signature:
-                    if hasattr(symbol.signature, 'is_infix') and symbol.signature.is_infix:
-                        return True
         
         # Also check imported modules (for wildcard imports like "använd listor")
         if module_name and module_name in self.module_registry.modules:
@@ -1755,12 +1750,8 @@ class Resolver:
                     if imported_module in self.module_registry.modules:
                         imported_mod = self.module_registry.modules[imported_module]
                         if hasattr(imported_mod, 'symbols') and name in imported_mod.symbols:
-                            symbol = imported_mod.symbols[name]
-                            if hasattr(symbol, 'is_infix') and symbol.is_infix:
+                            if getattr(imported_mod.symbols[name], 'kind', 'grej') == 'infix':
                                 return True
-                            if hasattr(symbol, 'signature') and symbol.signature:
-                                if hasattr(symbol.signature, 'is_infix') and symbol.signature.is_infix:
-                                    return True
         
         return False
     
@@ -1811,12 +1802,7 @@ class Resolver:
             mod_info = self.module_registry.modules[module_name]
             if hasattr(mod_info, 'symbols'):
                 for name, symbol in mod_info.symbols.items():
-                    is_infix = False
-                    if hasattr(symbol, 'is_infix') and symbol.is_infix:
-                        is_infix = True
-                    elif hasattr(symbol, 'signature') and hasattr(symbol.signature, 'is_infix') and symbol.signature.is_infix:
-                        is_infix = True
-                    if is_infix and name not in infix_ops:
+                    if getattr(symbol, 'kind', 'grej') == 'infix' and name not in infix_ops:
                         infix_ops.append(name)
         return infix_ops
 
@@ -1826,8 +1812,7 @@ class Resolver:
         if self._current_module and self._current_module in self.module_registry.modules:
             mod_info = self.module_registry.modules[self._current_module]
             if hasattr(mod_info, 'symbols') and name in mod_info.symbols:
-                symbol = mod_info.symbols[name]
-                if hasattr(symbol, 'is_infix') and symbol.is_infix:
+                if getattr(mod_info.symbols[name], 'kind', 'grej') == 'infix':
                     return True
             # Also check imported modules
             if hasattr(mod_info, 'imports'):
@@ -1835,15 +1820,13 @@ class Resolver:
                     if imported_module in self.module_registry.modules:
                         imported_mod = self.module_registry.modules[imported_module]
                         if hasattr(imported_mod, 'symbols') and name in imported_mod.symbols:
-                            symbol = imported_mod.symbols[name]
-                            if hasattr(symbol, 'is_infix') and symbol.is_infix:
+                            if getattr(imported_mod.symbols[name], 'kind', 'grej') == 'infix':
                                 return True
         # Check in __main__ module
         if '__main__' in self.module_registry.modules:
             main_mod = self.module_registry.modules['__main__']
             if hasattr(main_mod, 'symbols') and name in main_mod.symbols:
-                symbol = main_mod.symbols[name]
-                if hasattr(symbol, 'is_infix') and symbol.is_infix:
+                if getattr(main_mod.symbols[name], 'kind', 'grej') == 'infix':
                     return True
         return False
 
@@ -1962,9 +1945,8 @@ class Resolver:
         return FunctionDefNode(node.line, node.column, 
             params=node.params,
             body=body,
-            is_infix=getattr(node, 'is_infix', False),
             type_params=getattr(node, 'type_params', []),
-            kind=getattr(node, 'kind', None),
+            kind=getattr(node, 'kind', 'grej'),
             return_type=node.return_type,
         )
 
@@ -2302,9 +2284,9 @@ class Resolver:
         if self._registering:
             # Registration pass: register symbol in module registry
             if isinstance(node.value, FunctionDefNode):
-                is_infix = getattr(node.value, 'is_infix', False)
+                kind = getattr(node.value, 'kind', 'grej')
                 self.module_registry.modules[self._current_module].add_symbol(
-                    node.name, "func", FunctionSignature(params=node.value.params), is_infix=is_infix
+                    node.name, "func", FunctionSignature(params=node.value.params), kind=kind
                 )
             else:
                 self.module_registry.modules[self._current_module].add_symbol(node.name, "var")

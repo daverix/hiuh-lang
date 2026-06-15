@@ -25,7 +25,7 @@ class SymbolEntry:
     module: str
     signature: Optional[FunctionSignature] = None
     target: Optional[str] = None  # For field access or module prefix
-    is_infix: bool = False  # For infix function declarations
+    kind: str = 'grej'  # 'grej', 'infix', 'verb', 'skicka', 'hämta', 'rek'
 
 
 @dataclass
@@ -52,7 +52,7 @@ class ModuleEntry:
         return name in self.symbols
     
     def add_symbol(self, name: str, symbol_type: str, 
-                   signature: FunctionSignature = None, target: str = None, is_infix: bool = False):
+                   signature: FunctionSignature = None, target: str = None, kind: str = 'grej'):
         """Add a symbol to this module."""
         entry = SymbolEntry(
             name=name,
@@ -60,7 +60,7 @@ class ModuleEntry:
             module=self.name,
             signature=signature,
             target=target,
-            is_infix=is_infix
+            kind=kind
         )
         self.symbols[name] = entry
         if name not in self.exports:

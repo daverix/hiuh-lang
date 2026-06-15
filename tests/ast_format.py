@@ -60,7 +60,7 @@ def ast_to_string(node):
     if isinstance(node, FunctionDefNode):
         params = str(node.params)
         body = ast_to_string(node.body)
-        infix = ", infix=True" if getattr(node, 'is_infix', False) else ""
+        infix = ", kind='infix'" if getattr(node, 'kind', 'grej') == 'infix' else ""
         ret = f", return_type={node.return_type!r}" if getattr(node, 'return_type', None) else ""
         return f"{classname}({params}, {body}{infix}{ret})"
     if isinstance(node, ElementAssignNode):
