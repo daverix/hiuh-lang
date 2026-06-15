@@ -48,21 +48,41 @@ skriv x"""
 
     def test_if_else_logic(self):
         """Tests control flow logic with Swedish comparison operators."""
-        source = '\nsätt poäng till 85\nom poäng större än eller lika med 50\n    skriv godkänd\nannars\n    skriv underkänd\n'
+        source = """\
+
+sätt poäng till 85
+om poäng större än eller lika med 50
+    skriv godkänd
+annars
+    skriv underkänd
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "godkänd")
 
     def test_function_definition_and_call(self):
         """Tests function scope and return values."""
-        source = '\nsätt hälsa till grej med namn som sträng ger sträng\n    ge hej plus mellanrum plus namn\n\nsätt meddelande till hälsa med Hiuh\nskriv meddelande\n'
+        source = """\
+
+sätt hälsa till grej med namn som sträng ger sträng
+    ge hej plus mellanrum plus namn
+
+sätt meddelande till hälsa med Hiuh
+skriv meddelande
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "hej Hiuh")
 
     def test_try_catch_blocks(self):
         """Tests the Swedish error handling keywords."""
-        source = '\nförsök\n    kasta ett fel inträffade\nfånga meddelande\n    skriv meddelande\n'
+        source = """\
+
+försök
+    kasta ett fel inträffade
+fånga meddelande
+    skriv meddelande
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "ett fel inträffade")
@@ -79,14 +99,30 @@ skriv rad2"""
 
     def test_custom_type_bil(self):
         """Tests dynamic type definition and field access for a 'bil' type."""
-        source = '\ntyp bil\n    märke som sträng\n    modell som sträng\n    år som heltal\nsätt min bil till bil med Volvo, V60, 2020\nsätt uppdaterad bil till kopia av min bil med år 2024\n\nskriv märke från min bil\nskriv ny rad\nskriv år från uppdaterad bil\n'
+        source = """\
+
+typ bil
+    märke som sträng
+    modell som sträng
+    år som heltal
+sätt min bil till bil med Volvo, V60, 2020
+sätt uppdaterad bil till kopia av min bil med år 2024
+
+skriv märke från min bil
+skriv ny rad
+skriv år från uppdaterad bil
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue(), "Volvo\n2024")
 
     def test_stdin_input_inmatning(self):
         """Tests that 'inmatning' correctly reads from simulated stdin."""
-        source = '\nsätt svar till inmatning\nskriv Hej plus mellanrum plus svar\n'
+        source = """\
+
+sätt svar till inmatning
+skriv Hej plus mellanrum plus svar
+"""
         with patch('sys.stdin', StringIO("Daverix\n")):
             with patch('sys.stdout', new=StringIO()) as fake_out:
                 self.run_source(source)
@@ -100,14 +136,24 @@ skriv rad2"""
             self.assertEqual(fake_out.getvalue().strip(), "ett två tre")
 
     def test_list_set_and_get(self):
-        source = '\nsätt min_lista till lista med röd, grön\nsätt element 0 i min_lista till blå\nskriv element 0 från min_lista\nskriv element 1 från min_lista\n'
+        source = """\
+
+sätt min_lista till lista med röd, grön
+sätt element 0 i min_lista till blå
+skriv element 0 från min_lista
+skriv element 1 från min_lista
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "blågrön")
 
     def test_list_length(self):
         """Verify 'längd från [lista]' syntax."""
-        source = '\nsätt frukter till lista med äpple, banan\nskriv längd från frukter\n'
+        source = """\
+
+sätt frukter till lista med äpple, banan
+skriv längd från frukter
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "2")
@@ -133,21 +179,43 @@ skriv x plus y plus mellanrum plus är ett stort tal"""
 
     def test_list_append_lägg_till(self):
         """Verify adding items to a list using 'lägg till'."""
-        source = '\nsätt frukter till lista med äpple\nlägg till banan i frukter\nskriv element 1 från frukter\nskriv mellanrum\nskriv element 0 från frukter\n'
+        source = """\
+
+sätt frukter till lista med äpple
+lägg till banan i frukter
+skriv element 1 från frukter
+skriv mellanrum
+skriv element 0 från frukter
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "banan äpple")
 
     def test_list_removal_mixed(self):
         """Verify removal by value AND by index."""
-        source = '\nsätt frukter till lista med äpple, banan, citron\nta bort banan från frukter\nta bort element 1 från frukter\nskriv element 0 från frukter\n'
+        source = """\
+
+sätt frukter till lista med äpple, banan, citron
+ta bort banan från frukter
+ta bort element 1 från frukter
+skriv element 0 från frukter
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "äpple")
 
     def test_list_membership_contains(self):
         """Verify 'lista innehåller värde' as a boolean check."""
-        source = '\nanvänd listor\n\nsätt färger till lista med röd, grön\nom färger innehåller röd\n    skriv Japp\nom färger innehåller blå\n    skriv Nej\n'
+        source = """\
+
+använd listor
+
+sätt färger till lista med röd, grön
+om färger innehåller röd
+    skriv Japp
+om färger innehåller blå
+    skriv Nej
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "Japp")
@@ -157,7 +225,12 @@ skriv x plus y plus mellanrum plus är ett stort tal"""
         with open(filename, "w", encoding="utf-8") as f:
             f.write("Första raden\nAndra raden")
         try:
-            source = '\nöppna data.txt som min fil\nskriv nästa rad från min fil\nstäng min fil\n'
+            source = """\
+
+öppna data.txt som min fil
+skriv nästa rad från min fil
+stäng min fil
+"""
             with patch('sys.stdout', new=StringIO()) as fake_out:
                 self.run_source(source)
                 self.assertEqual(fake_out.getvalue().strip(), "Första raden")
@@ -179,20 +252,40 @@ skriv x plus y plus mellanrum plus är ett stort tal"""
                 os.remove(filename)
 
     def test_try_catch_finally(self):
-        source = '\nförsök\n    kasta Ojdå\nfånga fel\n    skriv fel\nslutligen\n    skriv mellanrum plus och hejdå\n'
+        source = """\
+
+försök
+    kasta Ojdå
+fånga fel
+    skriv fel
+slutligen
+    skriv mellanrum plus och hejdå
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "Ojdå och hejdå")
 
     def test_try_finally(self):
-        source = '\nförsök\n    skriv hej\nslutligen\n    skriv mellanrum plus och hejdå\n'
+        source = """\
+
+försök
+    skriv hej
+slutligen
+    skriv mellanrum plus och hejdå
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "hej och hejdå")
 
     def test_for_each_loop(self):
         """Verify that for-each loops iterate correctly with multi-word variable."""
-        source = '\nsätt min lista till lista med äpple, banan, körsbär\nför varje mitt index i min lista\n    skriv mitt index\n    skriv ny rad\n'
+        source = """\
+
+sätt min lista till lista med äpple, banan, körsbär
+för varje mitt index i min lista
+    skriv mitt index
+    skriv ny rad
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue(), "äpple\nbanan\nkörsbär\n")
@@ -202,7 +295,14 @@ skriv x plus y plus mellanrum plus är ett stort tal"""
         with open(module_filename, "w", encoding="utf-8") as f:
             f.write('\nsätt hälsa till grej med namn som sträng ger sträng\n    ge Hej plus mellanrum plus namn\n        ')
         try:
-            source = '\nanvänd hjälpare som h\nsätt meddelande till hälsa från h med David\nskriv meddelande\nskriv ny rad\nskriv hälsa med David\n    '
+            source = """\
+
+använd hjälpare som h
+sätt meddelande till hälsa från h med David
+skriv meddelande
+skriv ny rad
+skriv hälsa med David
+    """
             with patch('sys.stdout', new=StringIO()) as fake_out:
                 self.run_source(source)
                 self.assertEqual(fake_out.getvalue().strip(), "Hej David\nhälsa med David")
@@ -216,7 +316,14 @@ skriv x plus y plus mellanrum plus är ett stort tal"""
         with open(module_filename, "w", encoding="utf-8") as f:
             f.write('\nsätt meddelande till Hej fràn Hiuh\nsätt faktor till 10\nsätt hälsa till grej med namn som sträng ger sträng\n    ge Hej plus mellanrum plus namn\n')
         try:
-            source = '\nanvänd test\nskriv meddelande\nskriv faktor\nsätt hälsning till hälsa med Världen\nskriv hälsning\n'
+            source = """\
+
+använd test
+skriv meddelande
+skriv faktor
+sätt hälsning till hälsa med Världen
+skriv hälsning
+"""
             with patch('sys.stdout', new=StringIO()) as fake_out:
                 self.run_source(source)
                 self.assertEqual(fake_out.getvalue().strip(), "Hej fràn Hiuh10Hej Världen")
@@ -233,7 +340,11 @@ skriv x plus y plus mellanrum plus är ett stort tal"""
         with open(module_b, "w", encoding="utf-8") as f:
             f.write("sätt namn till Beta\n")
         try:
-            source = '\nanvänd modul_a\nanvänd modul_b\n'
+            source = """\
+
+använd modul_a
+använd modul_b
+"""
             with patch('sys.stdout', new=StringIO()) as fake_out:
                 with self.assertRaises(SyntaxError) as cm:
                     self.run_source(source)
@@ -253,7 +364,12 @@ skriv x plus y plus mellanrum plus är ett stort tal"""
         with open(module_filename, "w", encoding="utf-8") as f:
             f.write('\nsätt addera till grej med a som heltal, b som heltal ger heltal\n    ge a plus b\n        ')
         try:
-            source = '\nanvänd verktyg.matematik\nsätt summa till addera med 10, 5\nskriv summa\n            '
+            source = """\
+
+använd verktyg.matematik
+sätt summa till addera med 10, 5
+skriv summa
+            """
             with patch('sys.stdout', new=StringIO()) as fake_out:
                 self.run_source(source)
                 self.assertEqual(fake_out.getvalue().strip(), "15")
@@ -269,7 +385,22 @@ skriv x plus y plus mellanrum plus är ett stort tal"""
         with open(target_file, "w", encoding="utf-8") as f:
             f.write("sätt x till 10\nskriv x\n")
         try:
-            source = '\nöppna källkod_test.hiuh för läsning som fil\nsätt rad_nummer till 1\n\nmedan inte i slutet från fil\n    sätt rad till nästa rad från fil\n    \n    . Inspect the first character of the line to find syntax shapes\n    sätt första_tecken till element 0 från rad\n    \n    skriv rad_nummer plus . plus första_tecken plus mellanrum\n    sätt rad_nummer till rad_nummer plus 1\n\nstäng fil\n'
+            source = """\
+
+öppna källkod_test.hiuh för läsning som fil
+sätt rad_nummer till 1
+
+medan inte i slutet från fil
+    sätt rad till nästa rad från fil
+    
+    . Inspect the first character of the line to find syntax shapes
+    sätt första_tecken till element 0 från rad
+    
+    skriv rad_nummer plus . plus första_tecken plus mellanrum
+    sätt rad_nummer till rad_nummer plus 1
+
+stäng fil
+"""
             with patch('sys.stdout', new=StringIO()) as fake_out:
                 self.run_source(source)
                 self.assertEqual(fake_out.getvalue(), "1.s 2.s ")
@@ -286,7 +417,13 @@ skriv x plus y plus mellanrum plus är ett stort tal"""
         with open(file_spaced, 'w', encoding='utf-8') as f:
             f.write('sätt y till 2')
         try:
-            source = '\nöppna källkod_test.hiuh för läsning som f1\nöppna "mitt projekt.hiuh" för läsning som f2\nstäng f1\nstäng f2\n'
+            source = """\
+
+öppna källkod_test.hiuh för läsning som f1
+öppna "mitt projekt.hiuh" för läsning som f2
+stäng f1
+stäng f2
+"""
             self.run_source(source)
         finally:
             if os.path.exists(file_simple):
@@ -296,7 +433,28 @@ skriv x plus y plus mellanrum plus är ett stort tal"""
 
     def test_ascii_character_casting_symmetry(self):
         """Verify that string characters can be evaluated as ASCII integers and vice versa."""
-        source = '\n. Skapa en textsträng som innehåller citattecken, mellanslag och kommatecken\n. I källkoden kan vi skriva \' och " eftersom de är tillåtna som filnamns-escapes,\n. men vi kan också generera dem via ASCII-koder!\n\nsätt textrad till "A, B"\nsätt första_tecken till element 0 från textrad\nsätt andra_tecken till element 1 från textrad\n\n. 1. Omvandla tecken till ASCII-koder (som tal)\nsätt kod_A till första_tecken som tal\nsätt kod_komma till andra_tecken som tal\n\n. 2. Skapa tecken direkt från ASCII-koder (som tecken)\nsätt genererat_mellanslag till 32 som tecken\nsätt genererat_dubbelcitat till 34 som tecken\n\n. 3. Skriv ut resultaten för verifiering\nskriv kod_A plus mellanrum plus kod_komma plus mellanrum\nskriv genererat_dubbelcitat plus Hej plus genererat_mellanslag plus Världen plus genererat_dubbelcitat\n'
+        source = """\
+
+. Skapa en textsträng som innehåller citattecken, mellanslag och kommatecken
+. I källkoden kan vi skriva \' och " eftersom de är tillåtna som filnamns-escapes,
+. men vi kan också generera dem via ASCII-koder!
+
+sätt textrad till "A, B"
+sätt första_tecken till element 0 från textrad
+sätt andra_tecken till element 1 från textrad
+
+. 1. Omvandla tecken till ASCII-koder (som tal)
+sätt kod_A till första_tecken som tal
+sätt kod_komma till andra_tecken som tal
+
+. 2. Skapa tecken direkt från ASCII-koder (som tecken)
+sätt genererat_mellanslag till 32 som tecken
+sätt genererat_dubbelcitat till 34 som tecken
+
+. 3. Skriv ut resultaten för verifiering
+skriv kod_A plus mellanrum plus kod_komma plus mellanrum
+skriv genererat_dubbelcitat plus Hej plus genererat_mellanslag plus Världen plus genererat_dubbelcitat
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             expected_output = '65 44 "Hej Världen"'
@@ -304,84 +462,220 @@ skriv x plus y plus mellanrum plus är ett stort tal"""
 
     def test_listor_utility_callbacks(self):
         """Verify that listor.hiuh can be imported and executed with high-order callback functions."""
-        source = '\nanvänd listor\n\n. 1. Create a callback utility function to search for a specific name target\nsätt matchar_hiuh till grej med text_stycke som sträng ger boolesk\n    ge text_stycke lika med Hiuh\n\n. 2. Initialize a flat sample list dataset\nsätt namn_lista till lista med Java, Python, Hiuh, Kotlin\n\n. 3. Invoke your high-order lookup functions using the callback\nsätt hittat_index till index på första matchande med namn_lista, matchar_hiuh\nsätt hittat_namn till första matchande med namn_lista, matchar_hiuh\n\nskriv hittat_index plus mellanrum plus hittat_namn\n'
+        source = """\
+
+använd listor
+
+. 1. Create a callback utility function to search for a specific name target
+sätt matchar_hiuh till grej med text_stycke som sträng ger boolesk
+    ge text_stycke lika med Hiuh
+
+. 2. Initialize a flat sample list dataset
+sätt namn_lista till lista med Java, Python, Hiuh, Kotlin
+
+. 3. Invoke your high-order lookup functions using the callback
+sätt hittat_index till index på första matchande med namn_lista, matchar_hiuh
+sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
+
+skriv hittat_index plus mellanrum plus hittat_namn
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "2 Hiuh")
 
     def test_ordlista_builtin(self):
         """Verify built-in ordlista (dict) operations."""
-        source = '\nsätt fruktantal till ordlista av sträng, heltal\nputta äpple, 2 till fruktantal\nputta banan, 1 till fruktantal\n\nrensa banan till fruktantal\n\nskriv hämta med äpple, fruktantal\n'
+        source = """\
+
+sätt fruktantal till ordlista av sträng, heltal
+putta äpple, 2 till fruktantal
+putta banan, 1 till fruktantal
+
+rensa banan till fruktantal
+
+skriv hämta med äpple, fruktantal
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "2")
 
     def test_named_args_typ_constructor(self):
         """Test that typ constructors support named arguments in any order."""
-        source = '\ntyp person\n    namn som sträng\n    ålder som heltal\nsätt p till person med ålder 37, namn David\nskriv namn från p\nskriv ny rad\nskriv ålder från p\n'
+        source = """\
+
+typ person
+    namn som sträng
+    ålder som heltal
+sätt p till person med ålder 37, namn David
+skriv namn från p
+skriv ny rad
+skriv ålder från p
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue(), "David\n37")
 
     def test_named_args_typ_positional_still_works(self):
         """Test that typ constructors still support positional arguments."""
-        source = '\ntyp person\n    namn som sträng\n    ålder som heltal\nsätt p till person med Eva, 25\nskriv namn från p\nskriv ny rad\nskriv ålder från p\n'
+        source = """\
+
+typ person
+    namn som sträng
+    ålder som heltal
+sätt p till person med Eva, 25
+skriv namn från p
+skriv ny rad
+skriv ålder från p
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue(), "Eva\n25")
 
     def test_named_args_kopia_av(self):
         """Test that kopia av supports named arguments."""
-        source = '\ntyp person\n    namn som sträng\n    ålder som heltal\nsätt p till person med David, 37\nsätt äldre till kopia av p med ålder 38\nskriv ålder från p\nskriv ny rad\nskriv ålder från äldre\n'
+        source = """\
+
+typ person
+    namn som sträng
+    ålder som heltal
+sätt p till person med David, 37
+sätt äldre till kopia av p med ålder 38
+skriv ålder från p
+skriv ny rad
+skriv ålder från äldre
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue(), "37\n38")
 
     def test_named_args_grej_function(self):
         """Test that grej functions support named arguments."""
-        source = '\nsätt add till grej med a som heltal, b som heltal ger heltal\n    ge a plus b\n\nsätt resultat till add med a 5, b 3\nskriv resultat\n'
+        source = """\
+
+sätt add till grej med a som heltal, b som heltal ger heltal
+    ge a plus b
+
+sätt resultat till add med a 5, b 3
+skriv resultat
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "8")
 
     def test_named_args_grej_positional_still_works(self):
         """Test that grej functions still support positional arguments."""
-        source = '\nsätt add till grej med x som heltal, y som heltal ger heltal\n    ge x minus y\n\nsätt resultat till add med 10, 3\nskriv resultat\n'
+        source = """\
+
+sätt add till grej med x som heltal, y som heltal ger heltal
+    ge x minus y
+
+sätt resultat till add med 10, 3
+skriv resultat
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "7")
 
     def test_named_args_multiple_updates_kopia_av(self):
         """Test that kopia av supports multiple named argument updates."""
-        source = '\ntyp person\n    namn som sträng\n    ålder som heltal\nsätt p till person med David, 37\nsätt uppdaterad till kopia av p med ålder 40, namn Eva\nskriv namn från uppdaterad\nskriv ny rad\nskriv ålder från uppdaterad\n'
+        source = """\
+
+typ person
+    namn som sträng
+    ålder som heltal
+sätt p till person med David, 37
+sätt uppdaterad till kopia av p med ålder 40, namn Eva
+skriv namn från uppdaterad
+skriv ny rad
+skriv ålder från uppdaterad
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue(), "Eva\n40")
 
     def test_named_args_multiword_property_value(self):
         """Test named args with multi-word property names."""
-        source = '\ntyp bil\n    märke som sträng\n    modell som sträng\nsätt min bil till bil med modell V60, märke Volvo\nskriv märke från min bil\nskriv ny rad\nskriv modell från min bil\n'
+        source = """\
+
+typ bil
+    märke som sträng
+    modell som sträng
+sätt min bil till bil med modell V60, märke Volvo
+skriv märke från min bil
+skriv ny rad
+skriv modell från min bil
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue(), "Volvo\nV60")
 
     def test_tokeniserare_tokenisera_with_indentation(self):
         """Verify that tokenisera correctly handles indentation tokens."""
-        source = '\nanvänd tokeniserare\n\nsätt rader till lista med "sätt x till 1", "  skriv x", "skriv x"\n\nsätt tokens till tokenisera med rader\n\nsätt indent_count till 0\n\nför varje t i tokens\n    om tokentyp från t är lika med 38\n        sätt indent_count till indent_count plus 1\n    om tokentyp från t är lika med 39\n        sätt indent_count till indent_count minus 1\n\nskriv indent_count\n'
+        source = """\
+
+använd tokeniserare
+
+sätt rader till lista med "sätt x till 1", "  skriv x", "skriv x"
+
+sätt tokens till tokenisera med rader
+
+sätt indent_count till 0
+
+för varje t i tokens
+    om tokentyp från t är lika med 38
+        sätt indent_count till indent_count plus 1
+    om tokentyp från t är lika med 39
+        sätt indent_count till indent_count minus 1
+
+skriv indent_count
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "0")
 
     def test_delstrang_function_call(self):
         """Verify that delsträng can be defined and called with text, start, length."""
-        source = '\nsätt delsträng till grej med text som sträng, start som heltal, längd som heltal ger sträng\n    sätt resultat till ""\n    sätt pos till start\n    sätt slut till start plus längd\n    medan pos är mindre än slut och pos är mindre än längd från text\n        sätt resultat till resultat plus element pos från text\n        öka pos med 1\n    ge resultat\n\nsätt rad till hejsan\nsätt res till delsträng med rad, 1, 3\nskriv res\n'
+        source = """\
+
+sätt delsträng till grej med text som sträng, start som heltal, längd som heltal ger sträng
+    sätt resultat till ""
+    sätt pos till start
+    sätt slut till start plus längd
+    medan pos är mindre än slut och pos är mindre än längd från text
+        sätt resultat till resultat plus element pos från text
+        öka pos med 1
+    ge resultat
+
+sätt rad till hejsan
+sätt res till delsträng med rad, 1, 3
+skriv res
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "ejs")
 
     def test_infix_funktion_innehåller(self):
         """Verify that infix functions work correctly with the 'innehåller' function from listor."""
-        source = '\nanvänd listor\n\nsätt frukter till lista med äpple, banan, citron\n\n. Test infix function syntax: lista innehåller värde\nom frukter innehåller banan\n    skriv Ja\n\nom frukter innehåller druva\n    skriv Nej\n\n. Test that the function returns correct boolean values\nsätt finns banan till frukter innehåller banan\nsätt finns druva till frukter innehåller druva\n\nskriv finns banan\nskriv finns druva\n'
+        source = """\
+
+använd listor
+
+sätt frukter till lista med äpple, banan, citron
+
+. Test infix function syntax: lista innehåller värde
+om frukter innehåller banan
+    skriv Ja
+
+om frukter innehåller druva
+    skriv Nej
+
+. Test that the function returns correct boolean values
+sätt finns banan till frukter innehåller banan
+sätt finns druva till frukter innehåller druva
+
+skriv finns banan
+skriv finns druva
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "JaSANTFALSKT")
@@ -417,35 +711,71 @@ skriv resultat
 
     def test_element_assign_int_index(self):
         """Verify that element assignment with integer index works correctly."""
-        source = '\nsätt saker till lista med 10, 20, 30\n\nsätt element 0 i saker till 100\nskriv element 0 från saker\n'
+        source = """\
+
+sätt saker till lista med 10, 20, 30
+
+sätt element 0 i saker till 100
+skriv element 0 från saker
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "100")
 
     def test_element_assign_variable_index(self):
         """Verify that element assignment with variable index works correctly."""
-        source = '\nsätt saker till lista med 10, 20, 30\n\nsätt idx till 1\nsätt element idx i saker till 200\nskriv element 1 från saker\n'
+        source = """\
+
+sätt saker till lista med 10, 20, 30
+
+sätt idx till 1
+sätt element idx i saker till 200
+skriv element 1 från saker
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "200")
 
     def test_element_assign_in_function(self):
         """Verify that element assignment works inside a function."""
-        source = '\nsätt uppdatera till grej med lst som lista av heltal, idx som heltal, värde som heltal ger lista av heltal\n    sätt element idx i lst till värde\n    ge element idx från lst\n\nsätt saker till lista med 10, 20\n\nsätt resultat till uppdatera med saker, 0, 99\nskriv resultat\n'
+        source = """\
+
+sätt uppdatera till grej med lst som lista av heltal, idx som heltal, värde som heltal ger lista av heltal
+    sätt element idx i lst till värde
+    ge element idx från lst
+
+sätt saker till lista med 10, 20
+
+sätt resultat till uppdatera med saker, 0, 99
+skriv resultat
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "99")
 
     def test_increment_decrement_operations(self):
         """Verify that increment and decrement statements work correctly at runtime."""
-        source = '\nsätt x till 10\nöka x med 5\nskriv x\nskriv ny rad\nminska x med 3\nskriv x\n'
+        source = """\
+
+sätt x till 10
+öka x med 5
+skriv x
+skriv ny rad
+minska x med 3
+skriv x
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "15\n12")
 
     def test_increment_string_concatenation(self):
         """Verify that increment works as string concatenation for string values."""
-        source = '\nsätt ord till hej\nöka ord med då\nskriv ord\n'
+        source = """\
+
+sätt ord till hej
+öka ord med då
+skriv ord
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "hejdå")
@@ -474,7 +804,12 @@ skriv resultat
 
     def test_multiply_string_replication(self):
         """Verify that multiplying a string by an integer replicates the string."""
-        source = '\nsätt ord till ja\ngångra ord med 3\nskriv ord\n'
+        source = """\
+
+sätt ord till ja
+gångra ord med 3
+skriv ord
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "jajaja")
@@ -496,7 +831,15 @@ skriv resultat
 
     def test_modulo_operations(self):
         """Verify that modulo expressions are evaluated correctly."""
-        source = '\nsätt x till 10\nsätt y till resten av x delat med 3\nsätt z till resten av x delat på 4\nskriv y\nskriv " "\nskriv z\n'
+        source = """\
+
+sätt x till 10
+sätt y till resten av x delat med 3
+sätt z till resten av x delat på 4
+skriv y
+skriv " "
+skriv z
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip().split(), ["1", "2"])
@@ -516,96 +859,206 @@ skriv resultat
         'my_func med tokens, 1' as a named arg just because 'tokens' matches
         the parameter name 'tokens'.
         """
-        source = '\nsätt my_func till grej med tokens som lista av heltal, pos som heltal ger lista av heltal\n    ge element pos från tokens\n\nsätt tokens till lista med a, b, c\nsätt resultat till my_func med tokens, 1\nskriv resultat\n'
+        source = """\
+
+sätt my_func till grej med tokens som lista av heltal, pos som heltal ger lista av heltal
+    ge element pos från tokens
+
+sätt tokens till lista med a, b, c
+sätt resultat till my_func med tokens, 1
+skriv resultat
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "b")
 
     def test_verb_grej_user_defined(self):
         """User-defined verbgrej function works at runtime."""
-        source = '\nsätt upprepa till verbgrej med ord som sträng, antal som heltal ger sträng\n    sätt resultat till ""\n    sätt i till 0\n    medan i är mindre än antal\n        sätt resultat till resultat plus ord\n        öka i med 1\n    ge resultat\n\nsätt a till hej\nupprepa a med 3\nskriv a\n'
+        source = """\
+
+sätt upprepa till verbgrej med ord som sträng, antal som heltal ger sträng
+    sätt resultat till ""
+    sätt i till 0
+    medan i är mindre än antal
+        sätt resultat till resultat plus ord
+        öka i med 1
+    ge resultat
+
+sätt a till hej
+upprepa a med 3
+skriv a
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "hejhejhej")
 
     def test_skicka_grej_user_defined(self):
         """User-defined skickagrej function works at runtime."""
-        source = '\nsätt skicka till skickagrej med sak som sträng, mål som lista av sträng ger lista av sträng\n    lägg till sak i mål\n    ge mål\n\nsätt min lista till lista av sträng\nskicka hej till min lista\nskicka då till min lista\nskriv element 0 från min lista\nskriv element 1 från min lista\n'
+        source = """\
+
+sätt skicka till skickagrej med sak som sträng, mål som lista av sträng ger lista av sträng
+    lägg till sak i mål
+    ge mål
+
+sätt min lista till lista av sträng
+skicka hej till min lista
+skicka då till min lista
+skriv element 0 från min lista
+skriv element 1 från min lista
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "hejdå")
 
     def test_hämta_grej_user_defined(self):
         """User-defined hämtagrej function works at runtime."""
-        source = '\nsätt plocka till hämtagrej med namn som sträng, källa som lista av sträng ger sträng\n    ge element 0 från källa\n\nsätt frukter till lista av sträng med äpple, banan, citron\nsätt resultat till plocka banan från frukter\nskriv resultat\n'
+        source = """\
+
+sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng ger sträng
+    ge element 0 från källa
+
+sätt frukter till lista av sträng med äpple, banan, citron
+sätt resultat till plocka banan från frukter
+skriv resultat
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "äpple")
 
     def test_typ_av_heltal(self):
         """typ av 42 returns hiuhtyp with namn 'heltal'."""
-        source = '\nsätt ht till typ av 42\nskriv namn från ht\n'
+        source = """\
+
+sätt ht till typ av 42
+skriv namn från ht
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "heltal")
 
     def test_typ_av_sträng(self):
         """typ av returns hiuhtyp with namn 'sträng' for strings."""
-        source = '\nsätt ht till typ av "hej"\nskriv namn från ht\n'
+        source = """\
+
+sätt ht till typ av "hej"
+skriv namn från ht
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "sträng")
 
     def test_typ_av_flyttal(self):
-        source = '\nsätt ht till typ av 3,14\nskriv namn från ht\n'
+        source = """\
+
+sätt ht till typ av 3,14
+skriv namn från ht
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "flyttal")
 
     def test_typ_av_boolesk(self):
-        source = '\nsätt ht till typ av SANT\nskriv namn från ht\n'
+        source = """\
+
+sätt ht till typ av SANT
+skriv namn från ht
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "boolesk")
 
     def test_typ_av_comparison_equal(self):
         """typ av 42 är lika med heltal."""
-        source = '\nsätt x till 42\nom typ av x är lika med heltal\n    skriv "ja"\nannars\n    skriv "nej"\n'
+        source = """\
+
+sätt x till 42
+om typ av x är lika med heltal
+    skriv "ja"
+annars
+    skriv "nej"
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "ja")
 
     def test_typ_av_comparison_not_equal(self):
         """typ av sträng är inte lika med heltal."""
-        source = '\nsätt x till "hej"\nom typ av x är inte lika med heltal\n    skriv "inte heltal"\n'
+        source = """\
+
+sätt x till "hej"
+om typ av x är inte lika med heltal
+    skriv "inte heltal"
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "inte heltal")
 
     def test_typ_av_user_defined_type(self):
         """typ av for user-defined typ returns correct hiuhtyp."""
-        source = '\ntyp person\n    namn som sträng\n    ålder som heltal\n\nsätt p till person med David, 37\nsätt ht till typ av p\nskriv namn från ht\n'
+        source = """\
+
+typ person
+    namn som sträng
+    ålder som heltal
+
+sätt p till person med David, 37
+sätt ht till typ av p
+skriv namn från ht
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "person")
 
     def test_typ_av_same_type_equal(self):
         """Two instances of same type have equal typ av."""
-        source = '\ntyp person\n    namn som sträng\n    ålder som heltal\n\nsätt p1 till person med David, 37\nsätt p2 till person med Eva, 25\nom typ av p1 är lika med typ av p2\n    skriv "samma"\n'
+        source = """\
+
+typ person
+    namn som sträng
+    ålder som heltal
+
+sätt p1 till person med David, 37
+sätt p2 till person med Eva, 25
+om typ av p1 är lika med typ av p2
+    skriv "samma"
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "samma")
 
     def test_typ_av_inheritance_parents(self):
         """typ av includes parent types in föräldrar."""
-        source = '\ntyp fordon\n    hastighet som heltal\n\ntyp bil ärver fordon\n    märke som sträng\n\nsätt b till bil med 120, Volvo\nsätt ht till typ av b\nsätt fl till föräldrar från ht\nskriv längd från fl\nom längd från fl är större än 0\n    sätt förälder till element 0 från fl\n    skriv " "\n    skriv namn från förälder\n'
+        source = """\
+
+typ fordon
+    hastighet som heltal
+
+typ bil ärver fordon
+    märke som sträng
+
+sätt b till bil med 120, Volvo
+sätt ht till typ av b
+sätt fl till föräldrar från ht
+skriv längd från fl
+om längd från fl är större än 0
+    sätt förälder till element 0 från fl
+    skriv " "
+    skriv namn från förälder
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue().strip(), "1 fordon")
 
     def test_texter_trimma_text(self):
         """typ av includes parent types in föräldrar."""
-        source = '\nanvänd texter\nskriv start\nsätt x till "    hejsan    "\nskriv trimma med x\nskriv slut\n'
+        source = """\
+
+använd texter
+skriv start
+sätt x till "    hejsan    "
+skriv trimma med x
+skriv slut
+"""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             self.run_source(source)
             self.assertEqual(fake_out.getvalue(), "starthejsanslut")
