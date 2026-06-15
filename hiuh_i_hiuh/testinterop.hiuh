@@ -327,7 +327,7 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt paramsstr till formatera paramer med pm
         ge "FunctionTypeNode(name='" plus nm plus "', params=" plus paramsstr plus ", return_type='" plus rt plus "')"
 
-    ge "nod"
+    ge "nod(typ=" plus ht plus ")"
 
 sätt formatera block till grej med block som lista av basnod ger sträng
     sätt ut till "["

@@ -614,6 +614,12 @@ class Resolver:
         if result:
             return self.visit(result)
 
+        # Check for function call with "med" separator: "fn med arg1, arg2, ..."
+        # Must try BEFORE property access so "fn med arg från target" splits at "med"
+        result = self._try_function_call(parts, node)
+        if result:
+            return self.visit(result)
+
         # Check for property access: "X från Y" -> VarAccessNode with target
         result = self._try_property_access(parts, node)
         if result:
@@ -621,11 +627,6 @@ class Resolver:
 
         # Check for generic function call/instantiation: "fn av T1, T2, ..."
         result = self._try_generic_call(parts, node)
-        if result:
-            return self.visit(result)
-
-        # Check for function call with "med" separator: "fn med arg1, arg2, ..."
-        result = self._try_function_call(parts, node)
         if result:
             return self.visit(result)
 
@@ -866,10 +867,6 @@ class Resolver:
                 # regular multi-arg function call like "nod med arg1, arg2")
                 if self._part_in(parts, ','):
                     return None
-                # Only match true callback pattern: args must contain 'element'
-                args_parts_check = parts[med_idx + 1:från_idx]
-                if not args_parts_check or not any(p.value == 'element' for p in args_parts_check):
-                    return None  # Not a callback, let _try_function_call handle it
                 fn_name = ' '.join(self._parts_to_strings(parts[:med_idx]))  # full multi-word name
                 args_parts = parts[med_idx + 1:från_idx]  # ['element', 'x']
                 target_name = ' '.join(self._parts_to_strings(parts[från_idx + 1:]))  # 'värden'
