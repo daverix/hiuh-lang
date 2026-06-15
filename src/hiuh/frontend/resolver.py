@@ -1222,7 +1222,7 @@ class Resolver:
             'är större än', 'är mindre än', 'är inte', 'är lika med',
             'större än eller lika med', 'mindre än eller lika med',
             'större än', 'mindre än',
-            'lika med', 'innehåller',
+            'lika med',
         ]
         for op_str in multi_word_ops:
             op_tokens = op_str.split()
