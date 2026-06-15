@@ -54,7 +54,14 @@ skriv längd från frukt"""
         self.assertResolvedEqual(source, expected)
 
     def test_list_membership_contains(self):
-        source = 'använd listor\n\nsätt färger till lista med röd, grön\nom färger innehåller röd\n    skriv Japp\nom färger innehåller blå\n    skriv Nej'
+        source = """\
+använd listor
+
+sätt färger till lista med röd, grön
+om färger innehåller röd
+    skriv Japp
+om färger innehåller blå
+    skriv Nej"""
         expected = [ImportNode(None, None, module_name='listor', import_all=True, resolved=True), AssignNode(None, None, name='färger', value=FunctionCallNode(None, None, name='lista', args=[StringNode(None, None, 'röd'), StringNode(None, None, 'grön')])), IfNode(None, None, conditions=[IfCondition(None, None, test=InfixCallNode(None, None, left=VarAccessNode(None, None, 'färger'), operator='innehåller', right=StringNode(None, None, 'röd')), block=[PrintNode(None, None, StringNode(None, None, 'Japp'))])]), IfNode(None, None, conditions=[IfCondition(None, None, test=InfixCallNode(None, None, left=VarAccessNode(None, None, 'färger'), operator='innehåller', right=StringNode(None, None, 'blå')), block=[PrintNode(None, None, StringNode(None, None, 'Nej'))])])]
         self.assertResolvedEqual(source, expected)
 
@@ -67,7 +74,12 @@ om x är mindre än längd från frukt
         self.assertResolvedEqual(source, expected)
 
     def test_är_comparison_with_defined_variable(self):
-        source = '\nsätt x till 10\nom x är mindre än 5\n    skriv hej\n'
+        source = """\
+
+sätt x till 10
+om x är mindre än 5
+    skriv hej
+"""
         expected = [AssignNode(None, None, name='x', value=IntNode(None, None, '10')), IfNode(None, None, conditions=[IfCondition(None, None, test=LessThanNode(None, None, left=VarAccessNode(None, None, 'x'), right=IntNode(None, None, '5')), block=[PrintNode(None, None, StringNode(None, None, 'hej'))])])]
         self.assertResolvedEqual(source, expected)
 
@@ -77,12 +89,24 @@ om x är mindre än längd från frukt
         self.assertResolvedEqual(source, expected)
 
     def test_not_equal_comparison(self):
-        source = '\nsätt x till 10\nom x är inte 5\n    skriv japp\nom x är inte lika med 3\n    skriv japp2\n'
+        source = """\
+
+sätt x till 10
+om x är inte 5
+    skriv japp
+om x är inte lika med 3
+    skriv japp2
+"""
         expected = [AssignNode(None, None, name='x', value=IntNode(None, None, '10')), IfNode(None, None, conditions=[IfCondition(None, None, test=NotEqualNode(None, None, left=VarAccessNode(None, None, 'x'), right=IntNode(None, None, '5')), block=[PrintNode(None, None, StringNode(None, None, 'japp'))])]), IfNode(None, None, conditions=[IfCondition(None, None, test=NotEqualNode(None, None, left=VarAccessNode(None, None, 'x'), right=IntNode(None, None, '3')), block=[PrintNode(None, None, StringNode(None, None, 'japp2'))])])]
         self.assertResolvedEqual(source, expected)
 
     def test_modulo_resolver(self):
-        source = '\nsätt x till 10\nsätt y till resten av x delat med 3\nsätt z till resten av x delat på 4\n'
+        source = """\
+
+sätt x till 10
+sätt y till resten av x delat med 3
+sätt z till resten av x delat på 4
+"""
         expected = [AssignNode(None, None, name='x', value=IntNode(None, None, '10')), AssignNode(None, None, name='y', value=ModNode(None, None, left=VarAccessNode(None, None, 'x'), right=IntNode(None, None, '3'))), AssignNode(None, None, name='z', value=ModNode(None, None, left=VarAccessNode(None, None, 'x'), right=IntNode(None, None, '4')))]
         self.assertResolvedEqual(source, expected)
 
@@ -133,7 +157,15 @@ sätt resultat till beräkna med a 5, b 3"""
         self.assertResolvedEqual(source, expected)
 
     def test_try_catch_finally(self):
-        source = '\nförsök\n    kasta Ojdå\nfånga fel\n    skriv fel\nslutligen\n    skriv mellanrum plus och hejdå\n'
+        source = """\
+
+försök
+    kasta Ojdå
+fånga fel
+    skriv fel
+slutligen
+    skriv mellanrum plus och hejdå
+"""
         expected = [TryCatchNode(None, None, try_block=[UnaryOpNode(None, None, op='kasta', operand=StringNode(None, None, 'Ojdå'))], error_var='fel', catch_block=[PrintNode(None, None, VarAccessNode(None, None, 'fel'))], finally_block=[PrintNode(None, None, AddNode(None, None, VarAccessNode(None, None, 'mellanrum'), StringNode(None, None, 'och hejdå')))])]
         self.assertResolvedEqual(source, expected)
 
@@ -146,68 +178,156 @@ för varje mitt index i min lista
         self.assertResolvedEqual(source, expected)
 
     def test_try_finally(self):
-        source = '\nförsök\n    skriv hej\nslutligen\n    skriv mellanrum plus och hejdå\n'
+        source = """\
+
+försök
+    skriv hej
+slutligen
+    skriv mellanrum plus och hejdå
+"""
         expected = [TryCatchNode(None, None, try_block=[PrintNode(None, None, StringNode(None, None, 'hej'))], error_var=None, catch_block=[], finally_block=[PrintNode(None, None, AddNode(None, None, VarAccessNode(None, None, 'mellanrum'), StringNode(None, None, 'och hejdå')))])]
         self.assertResolvedEqual(source, expected)
 
     def test_infix_funktion_custom_definition(self):
-        source = '\nsätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk\n    sätt x till 0\n    medan x är mindre än längd från helhet\n        om element x från helhet är lika med del\n            ge SANT\n        sätt x till x plus 1\n    ge FALSKT\n\nsätt färger till lista med röd, grön, blå\nom grön är del av färger\n    skriv Hittat\nom gul är del av färger\n    skriv Saknas\nsätt resultat till blå är del av färger\nskriv resultat'
+        source = """\
+
+sätt är del av till infixgrej med del som heltal, helhet som lista av heltal ger boolesk
+    sätt x till 0
+    medan x är mindre än längd från helhet
+        om element x från helhet är lika med del
+            ge SANT
+        sätt x till x plus 1
+    ge FALSKT
+
+sätt färger till lista med röd, grön, blå
+om grön är del av färger
+    skriv Hittat
+om gul är del av färger
+    skriv Saknas
+sätt resultat till blå är del av färger
+skriv resultat"""
         expected = [AssignNode(None, None, name='är del av', value=FunctionDefNode(None, None, params=[('del', 'heltal'), ('helhet', 'lista av heltal')], body=[AssignNode(None, None, name='x', value=IntNode(None, None, '0')), WhileNode(None, None, condition=LessThanNode(None, None, left=VarAccessNode(None, None, 'x'), right=PropertyAccessNode(None, None, property_name='längd', target=VarAccessNode(None, None, 'helhet'))), body=[IfNode(None, None, conditions=[IfCondition(None, None, test=EqualNode(None, None, left=ElementAccessNode(None, None, index=VarAccessNode(None, None, 'x'), target=VarAccessNode(None, None, 'helhet')), right=VarAccessNode(None, None, 'del')), block=[ReturnNode(None, None, value=BoolNode(None, None, True))])]), AssignNode(None, None, name='x', value=AddNode(None, None, VarAccessNode(None, None, 'x'), IntNode(None, None, '1')))]), ReturnNode(None, None, value=BoolNode(None, None, False))], is_infix=True, return_type='boolesk')), AssignNode(None, None, name='färger', value=FunctionCallNode(None, None, name='lista', args=[StringNode(None, None, 'röd'), StringNode(None, None, 'grön'), StringNode(None, None, 'blå')])), IfNode(None, None, conditions=[IfCondition(None, None, test=InfixCallNode(None, None, left=StringNode(None, None, 'grön'), operator='är del av', right=VarAccessNode(None, None, 'färger')), block=[PrintNode(None, None, StringNode(None, None, 'Hittat'))])]), IfNode(None, None, conditions=[IfCondition(None, None, test=InfixCallNode(None, None, left=StringNode(None, None, 'gul'), operator='är del av', right=VarAccessNode(None, None, 'färger')), block=[PrintNode(None, None, StringNode(None, None, 'Saknas'))])]), AssignNode(None, None, name='resultat', value=InfixCallNode(None, None, left=StringNode(None, None, 'blå'), operator='är del av', right=VarAccessNode(None, None, 'färger'))), PrintNode(None, None, value=VarAccessNode(None, None, 'resultat'))]
         self.assertResolvedEqual(source, expected)
 
     def test_listor_utility_callbacks(self):
-        source = '\nanvänd listor\n\nsätt matchar_hiuh till grej med text_stycke som sträng ger boolesk\n    ge text_stycke lika med Hiuh\n\nsätt namn_lista till lista med Java, Python, Hiuh, Kotlin\n\nsätt hittat_index till index på första matchande med namn_lista, matchar_hiuh\nsätt hittat_namn till första matchande med namn_lista, matchar_hiuh\n'
+        source = """\
+
+använd listor
+
+sätt matchar_hiuh till grej med text_stycke som sträng ger boolesk
+    ge text_stycke lika med Hiuh
+
+sätt namn_lista till lista med Java, Python, Hiuh, Kotlin
+
+sätt hittat_index till index på första matchande med namn_lista, matchar_hiuh
+sätt hittat_namn till första matchande med namn_lista, matchar_hiuh
+"""
         expected = [ImportNode(None, None, module_name='listor', import_all=True, resolved=True), AssignNode(None, None, name='matchar_hiuh', value=FunctionDefNode(None, None, params=[('text_stycke', 'sträng')], body=[ReturnNode(None, None, value=EqualNode(None, None, left=VarAccessNode(None, None, 'text_stycke'), right=StringNode(None, None, 'Hiuh')))], is_infix=False, return_type='boolesk')), AssignNode(None, None, name='namn_lista', value=FunctionCallNode(None, None, name='lista', args=[StringNode(None, None, 'Java'), StringNode(None, None, 'Python'), StringNode(None, None, 'Hiuh'), StringNode(None, None, 'Kotlin')])), AssignNode(None, None, name='hittat_index', value=FunctionCallNode(None, None, name='index på första matchande', args=[VarAccessNode(None, None, 'namn_lista'), VarAccessNode(None, None, 'matchar_hiuh')])), AssignNode(None, None, name='hittat_namn', value=FunctionCallNode(None, None, name='första matchande', args=[VarAccessNode(None, None, 'namn_lista'), VarAccessNode(None, None, 'matchar_hiuh')]))]
         self.assertResolvedEqual(source, expected)
 
     def test_named_args_grej_function(self):
-        source = '\nsätt add till grej med a som heltal, b som heltal ger heltal\n    ge a plus b\n\nsätt resultat till add med a 5, b 3\nskriv resultat\n'
+        source = """\
+
+sätt add till grej med a som heltal, b som heltal ger heltal
+    ge a plus b
+
+sätt resultat till add med a 5, b 3
+skriv resultat
+"""
         expected = [AssignNode(None, None, name='add', value=FunctionDefNode(None, None, params=[('a', 'heltal'), ('b', 'heltal')], body=[ReturnNode(None, None, value=AddNode(None, None, left=VarAccessNode(None, None, 'a'), right=VarAccessNode(None, None, 'b')))], is_infix=False, return_type='heltal')), AssignNode(None, None, name='resultat', value=FunctionCallNode(None, None, name='add', args=[NamedArgNode(None, None, name='a', value=IntNode(None, None, '5')), NamedArgNode(None, None, name='b', value=IntNode(None, None, '3'))])), PrintNode(None, None, value=VarAccessNode(None, None, 'resultat'))]
         self.assertResolvedEqual(source, expected)
 
     def test_element_assign_int_index(self):
-        source = '\nsätt element 0 i lista till 42\n        '
+        source = """\
+
+sätt element 0 i lista till 42
+        """
         expected = [ElementAssignNode(None, None, index=IntNode(None, None, '0'), target=VarAccessNode(None, None, 'lista'), value=IntNode(None, None, '42'))]
         self.assertResolvedEqual(source, expected)
 
     def test_element_assign_variable_index(self):
-        source = '\nsätt x till 2\nsätt element x i lista till hello\n        '
+        source = """\
+
+sätt x till 2
+sätt element x i lista till hello
+        """
         expected = [AssignNode(None, None, 'x', IntNode(None, None, 2)), ElementAssignNode(None, None, index=VarAccessNode(None, None, 'x'), target=VarAccessNode(None, None, 'lista'), value=StringNode(None, None, 'hello'))]
         self.assertResolvedEqual(source, expected)
 
     def test_element_assign_in_function(self):
-        source = '\nsätt uppdatera till grej med lst som lista av heltal ger heltal\n    sätt element 0 i lst till 100\n    ge element 0 från lst\n        '
+        source = """\
+
+sätt uppdatera till grej med lst som lista av heltal ger heltal
+    sätt element 0 i lst till 100
+    ge element 0 från lst
+        """
         expected = [AssignNode(None, None, name='uppdatera', value=FunctionDefNode(None, None, params=[('lst', 'lista av heltal')], body=[ElementAssignNode(None, None, index=IntNode(None, None, '0'), target=VarAccessNode(None, None, 'lst'), value=IntNode(None, None, '100')), ReturnNode(None, None, value=ElementAccessNode(None, None, index=IntNode(None, None, '0'), target=VarAccessNode(None, None, 'lst')))], is_infix=False, return_type='heltal'))]
         self.assertResolvedEqual(source, expected)
 
     def test_längd_från_property_minus_expression(self):
-        source = '\nsätt värden till lista av heltal\nsätt x till längd från värden minus 1\n'
+        source = """\
+
+sätt värden till lista av heltal
+sätt x till längd från värden minus 1
+"""
         expected = [AssignNode(None, None, name='värden', value=FunctionCallNode(None, None, name='lista', args=[])), AssignNode(None, None, name='x', value=SubNode(None, None, left=PropertyAccessNode(None, None, property_name='längd', target=VarAccessNode(None, None, 'värden')), right=IntNode(None, None, '1')))]
         self.assertResolvedEqual(source, expected)
 
     def test_cannot_reassign_builtin_function(self):
-        source = '\nsätt lista till lista med 10, 20\n'
+        source = """\
+
+sätt lista till lista med 10, 20
+"""
         with self.assertRaises(Exception) as context:
             self.resolve(source)
         self.assertIn("Kan inte omdefiniera inbyggd funktion 'lista'", str(context.exception))
 
     def test_resolver_increment_decrement(self):
-        source = '\nsätt poäng till 10\nöka poäng med 5 plus 2\nminska poäng med 1\n'
+        source = """\
+
+sätt poäng till 10
+öka poäng med 5 plus 2
+minska poäng med 1
+"""
         expected = [AssignNode(None, None, name='poäng', value=IntNode(None, None, '10')), AddAssignNode(None, None, target='poäng', value=AddNode(None, None, left=IntNode(None, None, '5'), right=IntNode(None, None, '2'))), SubAssignNode(None, None, target='poäng', value=IntNode(None, None, '1'))]
         self.assertResolvedEqual(source, expected)
 
     def test_resolver_multiply_divide_assign(self):
-        source = '\nsätt poäng till 10\ngångra poäng med 3 plus 1\ndela poäng med 2\n'
+        source = """\
+
+sätt poäng till 10
+gångra poäng med 3 plus 1
+dela poäng med 2
+"""
         expected = [AssignNode(None, None, name='poäng', value=IntNode(None, None, '10')), MultiplyAssignNode(None, None, target='poäng', value=AddNode(None, None, left=IntNode(None, None, '3'), right=IntNode(None, None, '1'))), DivideAssignNode(None, None, target='poäng', value=IntNode(None, None, '2'))]
         self.assertResolvedEqual(source, expected)
 
     def test_delstrang_function_call_ast(self):
-        source = '\nsätt delsträng till grej med text som sträng, start som heltal, längd som heltal ger sträng\n    sätt resultat till ""\n    sätt pos till start\n    sätt slut till start plus längd\n    medan pos är mindre än slut och pos är mindre än längd från text\n        sätt resultat till resultat plus element pos från text\n        öka pos med 1\n    ge resultat\n\nsätt rad till hejsan\nsätt res till delsträng med rad, 1, 3\nskriv res\n'
+        source = """\
+
+sätt delsträng till grej med text som sträng, start som heltal, längd som heltal ger sträng
+    sätt resultat till ""
+    sätt pos till start
+    sätt slut till start plus längd
+    medan pos är mindre än slut och pos är mindre än längd från text
+        sätt resultat till resultat plus element pos från text
+        öka pos med 1
+    ge resultat
+
+sätt rad till hejsan
+sätt res till delsträng med rad, 1, 3
+skriv res
+"""
         expected = [AssignNode(None, None, name='delsträng', value=FunctionDefNode(None, None, params=[('text', 'sträng'), ('start', 'heltal'), ('längd', 'heltal')], body=[AssignNode(None, None, name='resultat', value=StringNode(None, None, '')), AssignNode(None, None, name='pos', value=VarAccessNode(None, None, 'start')), AssignNode(None, None, name='slut', value=AddNode(None, None, left=VarAccessNode(None, None, 'start'), right=VarAccessNode(None, None, 'längd'))), WhileNode(None, None, condition=AndNode(None, None, left=LessThanNode(None, None, left=VarAccessNode(None, None, 'pos'), right=VarAccessNode(None, None, 'slut')), right=LessThanNode(None, None, left=VarAccessNode(None, None, 'pos'), right=PropertyAccessNode(None, None, property_name='längd', target=VarAccessNode(None, None, 'text')))), body=[AssignNode(None, None, name='resultat', value=AddNode(None, None, left=VarAccessNode(None, None, 'resultat'), right=ElementAccessNode(None, None, target=VarAccessNode(None, None, 'text'), index=VarAccessNode(None, None, 'pos')))), AddAssignNode(None, None, target='pos', value=IntNode(None, None, '1'))]), ReturnNode(None, None, value=VarAccessNode(None, None, 'resultat'))], return_type='sträng')), AssignNode(None, None, name='rad', value=StringNode(None, None, 'hejsan')), AssignNode(None, None, name='res', value=FunctionCallNode(None, None, name='delsträng', args=[VarAccessNode(None, None, 'rad'), IntNode(None, None, '1'), IntNode(None, None, '3')])), PrintNode(None, None, value=VarAccessNode(None, None, 'res'))]
         self.assertResolvedEqual(source, expected)
 
     def test_element_access_with_arithmetic_index_ast(self):
-        source = '\nsätt pos till 1\nsätt innehåll till "hejsan"\nsätt nästa_tecken till element pos plus 1 från innehåll\n'
+        source = """\
+
+sätt pos till 1
+sätt innehåll till "hejsan"
+sätt nästa_tecken till element pos plus 1 från innehåll
+"""
         expected = [AssignNode(None, None, name='pos', value=IntNode(None, None, '1')), AssignNode(None, None, name='innehåll', value=StringNode(None, None, 'hejsan')), AssignNode(None, None, name='nästa_tecken', value=ElementAccessNode(None, None, target=VarAccessNode(None, None, 'innehåll'), index=AddNode(None, None, left=VarAccessNode(None, None, 'pos'), right=IntNode(None, None, '1'))))]
         self.assertResolvedEqual(source, expected)
 
@@ -229,22 +349,55 @@ för varje mitt index i min lista
         self.assertResolvedEqual(source, expected)
 
     def test_verb_grej_definition_and_call(self):
-        source = '\nsätt upprepa till verbgrej med ord som sträng, antal som heltal ger sträng\n    sätt resultat till ""\n    sätt i till 0\n    medan i är mindre än antal\n        sätt resultat till resultat plus ord\n        öka i med 1\n    ge resultat\n\nsätt a till hej\nupprepa a med 3\n'
+        source = """\
+
+sätt upprepa till verbgrej med ord som sträng, antal som heltal ger sträng
+    sätt resultat till ""
+    sätt i till 0
+    medan i är mindre än antal
+        sätt resultat till resultat plus ord
+        öka i med 1
+    ge resultat
+
+sätt a till hej
+upprepa a med 3
+"""
         expected = [AssignNode(None, None, name='upprepa', value=FunctionDefNode(None, None, params=[('ord', 'sträng'), ('antal', 'heltal')], body=[AssignNode(None, None, name='resultat', value=StringNode(None, None, '')), AssignNode(None, None, name='i', value=IntNode(None, None, '0')), WhileNode(None, None, condition=LessThanNode(None, None, left=VarAccessNode(None, None, 'i'), right=VarAccessNode(None, None, 'antal')), body=[AssignNode(None, None, name='resultat', value=AddNode(None, None, left=VarAccessNode(None, None, 'resultat'), right=VarAccessNode(None, None, 'ord'))), AddAssignNode(None, None, target='i', value=IntNode(None, None, '1'))]), ReturnNode(None, None, value=VarAccessNode(None, None, 'resultat'))], is_infix=False, return_type='sträng')), AssignNode(None, None, name='a', value=StringNode(None, None, 'hej')), AssignNode(None, None, name='a', value=FunctionCallNode(None, None, name='upprepa', args=[VarAccessNode(None, None, 'a'), IntNode(None, None, '3')]))]
         self.assertResolvedEqual(source, expected)
 
     def test_skicka_grej_definition_and_call(self):
-        source = '\nsätt lägg_till till skickagrej med sak som sträng, mål som lista av sträng ger lista av sträng\n    lägg till sak i mål\n    ge mål\n\nsätt min lista till lista av sträng\nlägg_till hej till min lista\n'
+        source = """\
+
+sätt lägg_till till skickagrej med sak som sträng, mål som lista av sträng ger lista av sträng
+    lägg till sak i mål
+    ge mål
+
+sätt min lista till lista av sträng
+lägg_till hej till min lista
+"""
         expected = [AssignNode(None, None, name='lägg_till', value=FunctionDefNode(None, None, params=[('sak', 'sträng'), ('mål', 'lista av sträng')], body=[AppendNode(None, None, value=VarAccessNode(None, None, 'sak'), target_list='mål'), ReturnNode(None, None, value=VarAccessNode(None, None, 'mål'))], is_infix=False, return_type='lista av sträng')), AssignNode(None, None, name='min lista', value=FunctionCallNode(None, None, name='lista', args=[])), AssignNode(None, None, name='min lista', value=FunctionCallNode(None, None, name='lägg_till', args=[StringNode(None, None, 'hej'), VarAccessNode(None, None, 'min lista')]))]
         self.assertResolvedEqual(source, expected)
 
     def test_hämta_grej_definition_and_call(self):
-        source = '\nsätt plocka till hämtagrej med namn som sträng, källa som lista av sträng ger sträng\n    ge element 0 från källa\n\nsätt frukter till lista av sträng med äpple, banan\nsätt resultat till plocka banan från frukter\n'
+        source = """\
+
+sätt plocka till hämtagrej med namn som sträng, källa som lista av sträng ger sträng
+    ge element 0 från källa
+
+sätt frukter till lista av sträng med äpple, banan
+sätt resultat till plocka banan från frukter
+"""
         expected = [AssignNode(None, None, name='plocka', value=FunctionDefNode(None, None, params=[('namn', 'sträng'), ('källa', 'lista av sträng')], body=[ReturnNode(None, None, value=ElementAccessNode(None, None, index=IntNode(None, None, '0'), target=VarAccessNode(None, None, 'källa')))], is_infix=False, return_type='sträng')), AssignNode(None, None, name='frukter', value=FunctionCallNode(None, None, name='lista', args=[StringNode(None, None, 'äpple'), StringNode(None, None, 'banan')])), AssignNode(None, None, name='resultat', value=FunctionCallNode(None, None, name='plocka', args=[StringNode(None, None, 'banan'), VarAccessNode(None, None, 'frukter')]))]
         self.assertResolvedEqual(source, expected)
 
     def test_nested_function_call_resolves_correctly(self):
-        source = 'sätt yttre till grej med x som heltal ger heltal\n    sätt dubblera till grej med v som heltal ger heltal\n        ge v gånger 2\n    sätt resultat till dubblera med x\n    ge resultat\n'
+        source = """\
+sätt yttre till grej med x som heltal ger heltal
+    sätt dubblera till grej med v som heltal ger heltal
+        ge v gånger 2
+    sätt resultat till dubblera med x
+    ge resultat
+"""
         resolved = self.resolve(source)
         yttre_def = resolved[0]
         self.assertIsInstance(yttre_def, AssignNode)
@@ -253,24 +406,42 @@ för varje mitt index i min lista
         self.assertIsInstance(assign_resultat.value, FunctionCallNode, f"Call to 'dubblera med x' must be FunctionCallNode, got {type(assign_resultat.value).__name__}")
 
     def test_struct_field_wrong_type_raises(self):
-        source = 'typ mittresultat\n    nod som heltal\n    pos som heltal\nsätt foo till grej med x som sträng ger mittresultat\n    ge mittresultat med nod x, pos 0\n'
+        source = """\
+typ mittresultat
+    nod som heltal
+    pos som heltal
+sätt foo till grej med x som sträng ger mittresultat
+    ge mittresultat med nod x, pos 0
+"""
         with self.assertRaises(Exception) as ctx:
             self.resolve(source)
         self.assertIn("Typfel", str(ctx.exception))
         self.assertIn("nod", str(ctx.exception))
 
     def test_struct_field_correct_type_passes(self):
-        source = 'typ mittresultat\n    nod som heltal\n    pos som heltal\nsätt foo till grej med x som heltal ger mittresultat\n    ge mittresultat med nod x, pos 0\n'
+        source = """\
+typ mittresultat
+    nod som heltal
+    pos som heltal
+sätt foo till grej med x som heltal ger mittresultat
+    ge mittresultat med nod x, pos 0
+"""
         self.resolve(source)
 
     def test_list_wrong_element_type_raises(self):
-        source = 'sätt foo till grej med x som heltal ger lista av sträng\n    ge lista med "hej", x\n'
+        source = """\
+sätt foo till grej med x som heltal ger lista av sträng
+    ge lista med "hej", x
+"""
         with self.assertRaises(Exception) as ctx:
             self.resolve(source)
         self.assertIn("Typfel", str(ctx.exception))
 
     def test_list_correct_element_type_passes(self):
-        source = 'sätt foo till grej med x som sträng ger lista av sträng\n    ge lista med "hej", x\n'
+        source = """\
+sätt foo till grej med x som sträng ger lista av sträng
+    ge lista med "hej", x
+"""
         self.resolve(source)
 
     def test_bool_literals_resolve(self):
@@ -281,7 +452,13 @@ skriv FALSKT"""
         self.assertResolvedEqual(source, expected)
 
     def test_grej_allows_self_recursion(self):
-        source = 'sätt nedräkning till grej med n som heltal ger heltal\n    om n är mindre än 1\n        ge 0\n    sätt nästa till n minus 1\n    ge nedräkning med nästa\n'
+        source = """\
+sätt nedräkning till grej med n som heltal ger heltal
+    om n är mindre än 1
+        ge 0
+    sätt nästa till n minus 1
+    ge nedräkning med nästa
+"""
         resolved = self.resolve(source)
         fn_def = resolved[0]
         body = fn_def.value.body
@@ -289,7 +466,14 @@ skriv FALSKT"""
         self.assertIsInstance(return_stmt.value, FunctionCallNode, f'Self-call should be FunctionCallNode, got {type(return_stmt.value).__name__}')
 
     def test_grej_blocks_forward_reference_to_sibling(self):
-        source = 'sätt yttre till grej med x som heltal ger heltal\n    sätt tidig till grej med v som heltal ger heltal\n        ge sen med v\n    sätt sen till grej med v som heltal ger heltal\n        ge v gånger 2\n    ge tidig med x\n'
+        source = """\
+sätt yttre till grej med x som heltal ger heltal
+    sätt tidig till grej med v som heltal ger heltal
+        ge sen med v
+    sätt sen till grej med v som heltal ger heltal
+        ge v gånger 2
+    ge tidig med x
+"""
         resolved = self.resolve(source)
         yttre_body = resolved[0].value.body
         tidig_def = next((s for s in yttre_body if isinstance(s, AssignNode) and s.name == 'tidig'))
@@ -299,18 +483,35 @@ skriv FALSKT"""
 
     def test_return_variable_type_mismatch_raises(self):
         """Returning a variable of wrong type must raise Typfel."""
-        source = 'sätt foo till grej med ger heltal\n    sätt x till lista av sträng\n    ge x\n'
+        source = """\
+sätt foo till grej med ger heltal
+    sätt x till lista av sträng
+    ge x
+"""
         with self.assertRaises(Exception) as ctx:
             self.resolve(source)
         self.assertIn("Typfel", str(ctx.exception))
 
     def test_return_variable_correct_type_passes(self):
         """Returning a variable of correct type must pass."""
-        source = 'sätt foo till grej med ger lista av sträng\n    sätt x till lista av sträng\n    ge x\n'
+        source = """\
+sätt foo till grej med ger lista av sträng
+    sätt x till lista av sträng
+    ge x
+"""
         self.resolve(source)
 
     def test_rekgrej_allows_mutual_recursion_between_siblings(self):
-        source = 'sätt jämn till rekgrej med n som heltal ger boolesk\n    om n är 0\n        ge SANT\n    ge udda med n minus 1\nsätt udda till rekgrej med n som heltal ger boolesk\n    om n är 0\n        ge FALSKT\n    ge jämn med n minus 1\n'
+        source = """\
+sätt jämn till rekgrej med n som heltal ger boolesk
+    om n är 0
+        ge SANT
+    ge udda med n minus 1
+sätt udda till rekgrej med n som heltal ger boolesk
+    om n är 0
+        ge FALSKT
+    ge jämn med n minus 1
+"""
         resolved = self.resolve(source)
         jämn_body = resolved[0].value.body
         jämn_return = jämn_body[-1]
