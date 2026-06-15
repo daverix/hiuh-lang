@@ -1,4 +1,5 @@
 använd ast
+använd tokeniserare
 
 . Shared formatting functions for tests.
 . Formats AST nodes to canonical strings for cross-backend comparison.
@@ -42,11 +43,32 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt ms till mål från n
         ge "AppendNode(" plus vs plus ", '" plus ms plus "')"
 
+    . RemoveValueNode
+    om ht är lika med typ av tabortvärdenod
+        sätt vs till formatera en nod med värde från n
+        sätt ms till mål från n
+        ge "RemoveValueNode(" plus vs plus ", '" plus ms plus "')"
+
+    . RemoveIndexNode
+    om ht är lika med typ av tabortindexnod
+        sätt idx till index från n
+        sätt ms till mål från n
+        . Index may be an ExpressionPartsNode or int — format accordingly
+        sätt idxs till formatera en nod med idx
+        ge "RemoveIndexNode(" plus idxs plus ", '" plus ms plus "')"
+
     om ht är lika med typ av uttrycksdelnod
         ge värde från n
 
     om ht är lika med typ av uttrycksdelarnod
         sätt delar till delar från n
+        . If single part with a numeric value, format as IntNode
+        om längd från delar är lika med 1
+            sätt ep1 till element 0 från delar
+            sätt ep1v till värde från ep1
+            sätt ep1t till tokentyp från ep1
+            om ep1t är lika med heltalstoken
+                ge "IntNode(" plus ep1v plus ")"
         sätt txt till ""
         sätt först till SANT
         för varje d i delar

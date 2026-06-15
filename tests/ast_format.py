@@ -96,6 +96,10 @@ def ast_to_string(node):
         return f"NamedArgNode({node.name!r}, {ast_to_string(node.value)})"
     if isinstance(node, AppendNode):
         return f"AppendNode({ast_to_string(node.value)}, {node.target_list!r})"
+    if isinstance(node, RemoveValueNode):
+        return f"RemoveValueNode({ast_to_string(node.value)}, {node.target_list!r})"
+    if isinstance(node, RemoveIndexNode):
+        return f"RemoveIndexNode({ast_to_string(node.index)}, {node.target_list!r})"
     if isinstance(node, FunctionTypeNode):
         params = str(node.params)
         return f"FunctionTypeNode(name={node.name!r}, params={params}, return_type={node.return_type!r})"
