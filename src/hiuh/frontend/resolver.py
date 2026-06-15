@@ -1617,7 +1617,7 @@ class Resolver:
                     if len(right_parts) == 1:
                         target_name = right_parts[0]
                         if self._is_defined(target_name, self._current_module):
-                            target_node = VarAccessNode(token.line, token.column, target_name, target=None)
+                            target_node = VarAccessNode(token.line, token.column, target_name.value, target=None)
                         else:
                             target_node = self._part_to_node(target_name, token)
                     else:
@@ -1630,7 +1630,7 @@ class Resolver:
                 if len(right_parts) == 1:
                     target_name = right_parts[0]
                     if self._is_defined(target_name, self._current_module):
-                        target_node = VarAccessNode(token.line, token.column, target_name, target=None)
+                        target_node = VarAccessNode(token.line, token.column, target_name.value, target=None)
                     else:
                         target_node = self._part_to_node(target_name, token)
                 else:
