@@ -849,7 +849,7 @@ class Resolver:
                 # regular multi-arg function call like "nod med arg1, arg2")
                 if self._part_in(parts, ','):
                     return None
-                fn_name = parts[:med_idx][0]  # 'anrop'
+                fn_name = parts[:med_idx][0].value  # 'anrop'
                 args_parts = parts[med_idx + 1:från_idx]  # ['element', 'x']
                 target_name = ' '.join(self._parts_to_strings(parts[från_idx + 1:]))  # 'värden'
                 
