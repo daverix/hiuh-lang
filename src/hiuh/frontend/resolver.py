@@ -1055,7 +1055,7 @@ class Resolver:
         från_idx = self._index_of_part(parts, 'från')
         if från_idx < 2:
             return None
-        fn_name = parts[0]
+        fn_name = parts[0].value
         if not self._is_defined(fn_name, self._current_module):
             return None
         # Only match if fn is declared as 'hämtagrej'
