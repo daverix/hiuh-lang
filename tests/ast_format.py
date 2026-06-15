@@ -103,4 +103,7 @@ def ast_to_string(node):
     if isinstance(node, FunctionTypeNode):
         params = str(node.params)
         return f"FunctionTypeNode(name={node.name!r}, params={params}, return_type={node.return_type!r})"
+    if isinstance(node, TypeDefNode):
+        fields = ', '.join(repr(f) for f in node.fields)
+        return f"TypeDefNode({node.name!r}, [{fields}])"
     return f"{classname}(...)"

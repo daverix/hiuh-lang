@@ -377,6 +377,23 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt paramsstr till formatera paramer med pm
         ge "FunctionTypeNode(name='" plus nm plus "', params=" plus paramsstr plus ", return_type='" plus rt plus "')"
 
+    . TypeDefNode
+    om ht är lika med typ av typdefinitionsnod
+        sätt nm till namn från n
+        sätt fl till fält från n
+        sätt fstr till "["
+        sätt först till SANT
+        för varje fnod i fl
+            sätt fnamn till namn från fnod
+            sätt ftyp till fälttyp från fnod
+            om först
+                sätt först till FALSKT
+            annars
+                sätt fstr till fstr plus ", "
+            sätt fstr till fstr plus "('" plus fnamn plus "', '" plus ftyp plus "')"
+        sätt fstr till fstr plus "]"
+        ge "TypeDefNode('" plus nm plus "', " plus fstr plus ")"
+
     ge "nod(typ=" plus ht plus ")"
 
 sätt formatera block till grej med block som lista av basnod ger sträng

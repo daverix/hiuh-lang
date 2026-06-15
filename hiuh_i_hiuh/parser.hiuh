@@ -688,22 +688,55 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
         sätt r till samla namn med pos, nyradstoken
         sätt pos till pos från r
         sätt typnamn till namn från r
-        sätt r till parsa block med pos
-        sätt pos till pos från r
-        sätt block till stmts från r
+
+        . Parse the type body directly (like Python parser's _parse_type_def_body)
+        . Each line is: field_name som field_type
         sätt fält till lista av basnod
-        för varje bn i block
-            sätt bht till typ av bn
-            om bht är lika med typ av tilldelningsnod
-                sätt fnmn till namn från bn
-                sätt fvärde till värde från bn
-                sätt fvht till typ av fvärde
-                om fvht är lika med typ av strängnod
-                    sätt ftyp till värde från fvärde
-                annars
-                    sätt ftyp till "heltal"
-                lägg till fnmn i fält
-                lägg till ftyp i fält
+
+        . Expect INDENT (skip any leading newlines first)
+        medan pos är mindre än längd från tokens
+            sätt t till element pos från tokens
+            om tokentyp från t är lika med nyradstoken
+                öka pos med 1
+            annars
+                bryt
+        om pos är mindre än längd från tokens
+            sätt t till element pos från tokens
+            om tokentyp från t är lika med indenteringstoken
+                öka pos med 1
+
+        . Parse fields until DEDENT
+        medan pos är mindre än längd från tokens
+            sätt t till element pos från tokens
+            om tokentyp från t är lika med avindenteringstoken
+                öka pos med 1
+                bryt
+            om tokentyp från t är lika med nyradstoken
+                öka pos med 1
+                fortsätt
+            . Field name must be an identifier
+            sätt fnamn till värde från t
+            öka pos med 1
+            . Expect 'som' keyword
+            om pos är mindre än längd från tokens
+                sätt t2 till element pos från tokens
+                om tokentyp från t2 är lika med somtoken
+                    öka pos med 1
+            . Collect type tokens until newline or dedent
+            sätt typdelar till lista av sträng
+            medan pos är mindre än längd från tokens
+                sätt t3 till element pos från tokens
+                sätt t3t till tokentyp från t3
+                om t3t är lika med nyradstoken
+                    bryt
+                om t3t är lika med avindenteringstoken
+                    bryt
+                lägg till värde från t3 i typdelar
+                öka pos med 1
+            sätt ftyp till slå ihop med typdelar, " "
+            sätt fnod till typdefinitionsfältnod med rad, kolumn, fnamn, ftyp
+            lägg till fnod i fält
+
         sätt n till typdefinitionsnod med rad, kolumn, typnamn, fält
         ge parsningsresultat med nod n, pos pos
 
