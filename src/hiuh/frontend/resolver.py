@@ -996,7 +996,7 @@ class Resolver:
 
             if all_named and part.value in known_param_names and i + 1 < len(args_parts):
                 value = self._part_to_node(args_parts[i + 1], node)
-                args.append(NamedArgNode(node.line, node.column, part, value))
+                args.append(NamedArgNode(node.line, node.column, part.value, value))
                 i += 2
                 continue
 
