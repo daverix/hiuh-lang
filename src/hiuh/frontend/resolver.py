@@ -2218,7 +2218,15 @@ class Resolver:
 
     def _types_compatible(self, inferred, expected):
         """Check if inferred type is compatible with expected type."""
+        if inferred is None or expected is None:
+            return True  # Can't validate unknown types
         if inferred == expected:
+            return True
+        # basnod is the universal AST base type — any node is compatible
+        if expected == 'basnod':
+            return True
+        # Accept any return when expected type is unknown (not in type registry)
+        if expected not in self._get_all_known_types():
             return True
         # Unparameterized 'lista' is compatible with 'lista av X' for any X
         inferred_parsed = self._parse_type_annotation(inferred)

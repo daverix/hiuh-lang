@@ -1,87 +1,482 @@
 använd ast
+använd tokeniserare
+använd listor
 använd texter
 
-sätt är heltalsträng till grej med s som sträng ger boolesk
-    om längd från s är lika med 0
-        ge FALSKT
+. === Resolver: Expression Resolution ===
+. Transforms raw parser AST (with ExpressionPartsNode) into resolved AST
+. with proper node types (IntNode, VarAccessNode, FunctionCallNode, etc.)
+
+. --- List helpers ---
+
+. Take first N elements from a list
+sätt ta först till grej med värden som lista av basnod, antal som heltal ger lista av basnod
+    sätt ut till lista av basnod
+    sätt i till 0
+    medan i är mindre än antal och i är mindre än längd från värden
+        lägg till element i från värden i ut
+        öka i med 1
+    ge ut
+
+. Drop first N elements from a list
+sätt hoppa över till grej med värden som lista av basnod, antal som heltal ger lista av basnod
+    sätt ut till lista av basnod
+    sätt i till antal
+    medan i är mindre än längd från värden
+        lägg till element i från värden i ut
+        öka i med 1
+    ge ut
+
+. Split a string by spaces into words
+sätt dela upp till grej med text som sträng ger lista av sträng
+    sätt ut till lista av sträng
+    sätt ord till ""
+    sätt i till 0
+    medan i är mindre än längd från text
+        sätt c till element i från text
+        om c är lika med " "
+            om längd från ord är större än 0
+                lägg till ord i ut
+                sätt ord till ""
+            öka i med 1
+            fortsätt
+        sätt ord till ord plus c
+        öka i med 1
+    om längd från ord är större än 0
+        lägg till ord i ut
+    ge ut
+
+. Join strings with separator
+sätt slå ihop med separator till grej med delar som lista av sträng, separator som sträng ger sträng
+    sätt ut till ""
+    sätt först till SANT
+    för varje d i delar
+        om först
+            sätt först till FALSKT
+        annars
+            sätt ut till ut plus separator
+        sätt ut till ut plus d
+    ge ut
+
+. Stringify expression parts (join their values)
+sätt stränga delar till grej med delar som lista av uttrycksdelnod ger lista av sträng
+    sätt ut till lista av sträng
+    för varje d i delar
+        lägg till värde från d i ut
+    ge ut
+
+. Check if expression parts contain a value
+sätt delar innehåller till grej med delar som lista av uttrycksdelnod, sökt som sträng ger boolesk
+    för varje d i delar
+        om värde från d är lika med sökt
+            ge SANT
+    ge FALSKT
+
+. Find index of expression part by value
+sätt hitta delindex till grej med delar som lista av uttrycksdelnod, sökt som sträng ger basnod
     sätt pos till 0
-    sätt t0 till element 0 från s
-    om t0 är lika med "-" och längd från s är större än 1
+    för varje d i delar
+        om värde från d är lika med sökt
+            ge pos
         öka pos med 1
-    medan pos är mindre än längd från s
-        sätt t till element pos från s
-        sätt kod till t som tal
-        om kod är mindre än 48 eller kod är större än 57
-            ge FALSKT
-        öka pos med 1
-    ge SANT
+    ge 0 minus 1
 
-sätt lös till grej med noder som lista av basnod ger lista av basnod
+. --- Single part to node ---
 
-    sätt besök nod till grej med nod som basnod ger basnod
-        om nod är lika med inget av basnod
-            ge nod
-        sätt ht till typ av nod
+. Convert a single ExpressionPart to the appropriate AST node
+sätt gör nod av del till grej med ep som uttrycksdelnod, rad som heltal, kolumn som heltal ger basnod
+    sätt tv till värde från ep
+    sätt tt till tokentyp från ep
 
-        om ht är lika med typ av uttrycksdelarnod
-            sätt delar till delar från nod
-            om längd från delar är lika med 1
-                sätt d till element 0 från delar
-                sätt s till värde från d
-                sätt versal till versaler med s
-                om versal är lika med "SANT"
-                    ge boolesknod med 1, 1, SANT
-                om versal är lika med "FALSKT"
-                    ge boolesknod med 1, 1, FALSKT
-                om är heltalsträng med s
-                    ge heltalsnod med 1, 1, s
-                ge strängnod med 1, 1, s
-            ge nod
+    om tt är lika med heltalstoken
+        ge heltalsnod med rad, kolumn, tv
+    om tt är lika med flyttalstoken
+        ge flyttalsnod med rad, kolumn, tv
+    om tt är lika med santtoken
+        ge boolesknod med rad, kolumn, SANT
+    om tt är lika med falskttoken
+        ge boolesknod med rad, kolumn, FALSKT
+    om tt är lika med strängtoken
+        ge strängnod med rad, kolumn, tv
 
-        om ht är lika med typ av skrivnod
-            sätt vn till värde från nod
-            sätt lv till besök nod med vn
-            ge skrivnod med 1, 1, lv
+    . Also check value-based literals
+    om tv är lika med "sant"
+        ge boolesknod med rad, kolumn, SANT
+    om tv är lika med "falskt"
+        ge boolesknod med rad, kolumn, FALSKT
 
-        om ht är lika med typ av tilldelningsnod
-            sätt nm till namn från nod
-            sätt vn till värde från nod
-            sätt lv till besök nod med vn
-            ge tilldelningsnod med 1, 1, nm, lv, inget av resultat av sträng
+    . Default: treat as variable
+    ge variabelnod med rad, kolumn, tv
 
-        ge nod
+. --- Property / Element Access ---
 
-    sätt definierade till lista av sträng
-    lägg till "SANT" i definierade
-    lägg till "FALSKT" i definierade
-    lägg till "mellanrum" i definierade
-    lägg till "ny" i definierade
-    lägg till "rad" i definierade
-    lägg till "lista" i definierade
-    lägg till "inmatning" i definierade
-    lägg till "heltal" i definierade
-    lägg till "text" i definierade
-    lägg till "sträng" i definierade
-    lägg till "flyttal" i definierade
-    lägg till "boolesk" i definierade
-    lägg till "argument" i definierade
-    lägg till "ordlista" i definierade
-    lägg till "putta" i definierade
-    lägg till "hämta" i definierade
-    lägg till "finns" i definierade
-    lägg till "rensa" i definierade
+. Try to parse "X från Y" -> PropertyAccessNode or ElementAccessNode
+sätt försök egenskapsåtkomst till rekgrej med delar som lista av uttrycksdelnod, rad som heltal, kolumn som heltal ger basnod
+    om inte delar innehåller med delar, "från"
+        ge inget av basnod
 
-    för varje nod i noder
-        sätt ht till typ av nod
-        om ht är lika med typ av tilldelningsnod
-            sätt nm till namn från nod
-            lägg till nm i definierade
-        om ht är lika med typ av typdefinitionsnod
-            sätt nm till namn från nod
-            lägg till nm i definierade
+    sätt frånindex till hitta delindex med delar, "från"
+    sätt vänsterdelar till ta först med delar, frånindex
+    sätt högerdelar till hoppa över med delar, frånindex plus 1
 
-    sätt resultat till lista av basnod
-    för varje nod i noder
-        sätt lvnod till besök nod med nod
-        lägg till lvnod i resultat
-    ge resultat
+    om längd från vänsterdelar är lika med 0 eller längd från högerdelar är lika med 0
+        ge inget av basnod
+
+    . Check for operators that should take precedence over property access
+    sätt operatorer till lista med "plus", "minus", "gånger", "delat", "och", "eller"
+    för varje op i operatorer
+        om delar innehåller med vänsterdelar, op eller delar innehåller med högerdelar, op
+            ge inget av basnod
+
+    . Handle "element X från Y" -> ElementAccessNode
+    sätt v0 till värde från element 0 från vänsterdelar
+    om v0 är lika med "element" eller v0 är lika med "index"
+        om längd från vänsterdelar är större än eller lika med 2
+            sätt idxdelar till hoppa över med vänsterdelar, 1
+            sätt idx till resolera uttryck med idxdelar, rad, kolumn
+
+            . Resolve target recursively
+            sätt mål till resolera uttryck med högerdelar, rad, kolumn
+
+            ge elementåtskomstnod med rad, kolumn, idx, mål
+
+    . Check for comparison operators in right parts
+    sätt ärindex till hitta delindex med högerdelar, "är"
+    om ärindex är större än eller lika med 0
+        ge inget av basnod
+
+    . Handle nested "från" in right_parts recursively
+    om delar innehåller med högerdelar, "från"
+        sätt målnod till resolera uttryck med högerdelar, rad, kolumn
+    annars
+        . Single-part right side: create VarAccessNode
+        om längd från högerdelar är lika med 1
+            sätt hp0 till element 0 från högerdelar
+            sätt målnod till variabelnod med rad, kolumn, värde från hp0
+        annars
+            . Multi-part: join as string (unresolved)
+            sätt målnamn till slå ihop med separator med stränga delar med högerdelar, " "
+            sätt målnod till strängnod med rad, kolumn, målnamn
+
+    . Property name is the joined left parts
+    sätt egenskapsnamn till slå ihop med separator med stränga delar med vänsterdelar, " "
+
+    ge egenskapsåtkomstnod med rad, kolumn, egenskapsnamn, målnod
+
+. --- Function Call ---
+
+. Try to parse "fn med arg1, arg2" -> FunctionCallNode
+sätt försök funktionsanrop till rekgrej med delar som lista av uttrycksdelnod, rad som heltal, kolumn som heltal ger basnod
+    om inte delar innehåller med delar, "med"
+        ge inget av basnod
+
+    sätt medindex till hitta delindex med delar, "med"
+
+    . Don't split if operators appear before 'med'
+    sätt före med till ta först med delar, medindex
+    för varje op i lista med "plus", "minus", "gånger", "delat", "och", "eller"
+        om delar innehåller med före med, op
+            ge inget av basnod
+
+    . Build function name
+    sätt fnnamn till slå ihop med separator med stränga delar med före med, " "
+
+    . Parse arguments (comma-separated, respecting 'med' depth)
+    sätt argdelar till hoppa över med delar, medindex plus 1
+    sätt args till lista av basnod
+    sätt i till 0
+
+    medan i är mindre än längd från argdelar
+        sätt d till element i från argdelar
+        sätt dv till värde från d
+
+        om dv är lika med ","
+            öka i med 1
+            fortsätt
+
+        . Collect argument parts (don't split commas inside nested 'med')
+        sätt argparts till lista av uttrycksdelnod
+        sätt meddjup till 0
+        medan i är mindre än längd från argdelar
+            sätt d2 till element i från argdelar
+            sätt d2v till värde från d2
+            om d2v är lika med "med"
+                öka meddjup med 1
+            om d2v är lika med "," och meddjup är lika med 0
+                öka i med 1
+                bryt
+            lägg till d2 i argparts
+            öka i med 1
+
+        . Resolve the argument expression
+        sätt argnod till resolera uttryck med argparts, rad, kolumn
+        lägg till argnod i args
+
+    sätt fnref till variabelnod med rad, kolumn, fnnamn
+    ge grejanropsnod med rad, kolumn, fnref, args
+
+. --- Generic Call ---
+
+. Try to parse "fn av T1, T2" -> FunctionCallNode (type params are compile-time only)
+sätt försök generiskanrop till rekgrej med delar som lista av uttrycksdelnod, rad som heltal, kolumn som heltal ger basnod
+    om inte delar innehåller med delar, "av"
+        ge inget av basnod
+
+    sätt avindex till hitta delindex med delar, "av"
+
+    . If 'av' followed by comma, not a generic call
+    om avindex plus 1 är mindre än längd från delar
+        sätt nästa till element avindex plus 1 från delar
+        om värde från nästa är lika med ","
+            ge inget av basnod
+
+    . If 'med' after 'av', let function call handler deal with it
+    om delar innehåller med delar, "med"
+        sätt medidx till hitta delindex med delar, "med"
+        om medidx är större än avindex
+            ge inget av basnod
+
+    . Build function name from parts before 'av'
+    sätt fndelar till ta först med delar, avindex
+    sätt fnnamn till slå ihop med separator med stränga delar med fndelar, " "
+
+    . Generic functions called with no runtime args
+    sätt fnref till variabelnod med rad, kolumn, fnnamn
+    sätt tomargs till lista av basnod
+    ge grejanropsnod med rad, kolumn, fnref, tomargs
+
+. --- Operator Resolution ---
+
+. Comparison operator patterns
+sätt jämförelseoperatorer till lista av sträng
+lägg till "är inte lika med" i jämförelseoperatorer
+lägg till "är större än eller lika med" i jämförelseoperatorer
+lägg till "är mindre än eller lika med" i jämförelseoperatorer
+lägg till "är större än" i jämförelseoperatorer
+lägg till "är mindre än" i jämförelseoperatorer
+lägg till "är inte" i jämförelseoperatorer
+lägg till "är lika med" i jämförelseoperatorer
+lägg till "större än eller lika med" i jämförelseoperatorer
+lägg till "mindre än eller lika med" i jämförelseoperatorer
+lägg till "större än" i jämförelseoperatorer
+lägg till "mindre än" i jämförelseoperatorer
+lägg till "lika med" i jämförelseoperatorer
+lägg till "är" i jämförelseoperatorer
+
+. Find a multi-word operator starting at a position in parts
+sätt hitta flerordsoperator till grej med delar som lista av uttrycksdelnod, optext som sträng, startpos som heltal ger basnod
+    sätt optokens till dela upp med optext
+    sätt oplängd till längd från optokens
+    sätt di till startpos
+    medan di plus oplängd minus 1 är mindre än längd från delar
+        sätt matchning till SANT
+        sätt oi till 0
+        medan oi är mindre än oplängd
+            sätt dt till element di plus oi från delar
+            sätt ot till element oi från optokens
+            om värde från dt är inte lika med ot
+                sätt matchning till FALSKT
+                bryt
+            öka oi med 1
+        om matchning
+            ge di
+        öka di med 1
+    ge 0 minus 1
+
+. Resolve expression with operator precedence
+sätt resolera med precedens till rekgrej med delar som lista av uttrycksdelnod, rad som heltal, kolumn som heltal ger basnod
+    om längd från delar är lika med 0
+        ge strängnod med rad, kolumn, ""
+
+    om längd från delar är lika med 1
+        sätt ep0 till element 0 från delar
+        ge del till nod med ep0, rad, kolumn
+
+    . 'eller' (lowest precedence)
+    sätt ellerindex till hitta delindex med delar, "eller"
+    om ellerindex är större än eller lika med 0
+        . Skip if part of "än eller lika med"
+        om ellerindex är större än 0
+            sätt före till element ellerindex minus 1 från delar
+            om värde från före är lika med "än"
+                sätt ellerindex till 0 minus 1
+        om ellerindex är större än eller lika med 0
+            sätt vänster till ta först med delar, ellerindex
+            sätt höger till hoppa över med delar, ellerindex plus 1
+            sätt vn till resolera med precedens med vänster, rad, kolumn
+            sätt hn till resolera med precedens med höger, rad, kolumn
+            ge ellernod med rad, kolumn, vn, hn
+
+    . 'och' (precedence above eller)
+    sätt ochindex till hitta delindex med delar, "och"
+    om ochindex är större än eller lika med 0
+        sätt vänster till ta först med delar, ochindex
+        sätt höger till hoppa över med delar, ochindex plus 1
+        sätt vn till resolera med precedens med vänster, rad, kolumn
+        sätt hn till resolera med precedens med höger, rad, kolumn
+        ge ochnod med rad, kolumn, vn, hn
+
+    . Comparison operators (precedence above boolean)
+    för varje opstr i jämförelseoperatorer
+        sätt opindex till hitta flerordsoperator med delar, opstr, 0
+        om opindex är större än eller lika med 0
+            sätt optokens till dela upp med opstr
+            sätt oplängd till längd från optokens
+            sätt vänster till ta först med delar, opindex
+            sätt höger till hoppa över med delar, opindex plus oplängd
+            sätt vn till resolera med precedens med vänster, rad, kolumn
+            sätt hn till resolera med precedens med höger, rad, kolumn
+
+            om opstr är lika med "är" eller opstr är lika med "lika med" eller opstr är lika med "är lika med"
+                ge likanod med rad, kolumn, vn, hn
+            om opstr är lika med "är inte" eller opstr är lika med "är inte lika med"
+                ge intelikanod med rad, kolumn, vn, hn
+            om opstr är lika med "större än" eller opstr är lika med "är större än"
+                ge störreännod med rad, kolumn, vn, hn
+            om opstr är lika med "mindre än" eller opstr är lika med "är mindre än"
+                ge mindreännod med rad, kolumn, vn, hn
+            om opstr är lika med "större än eller lika med" eller opstr är lika med "är större än eller lika med"
+                ge störrelikanod med rad, kolumn, vn, hn
+            om opstr är lika med "mindre än eller lika med" eller opstr är lika med "är mindre än eller lika med"
+                ge mindrelikanod med rad, kolumn, vn, hn
+
+            . Default: string
+            ge strängnod med rad, kolumn, "jämförelse"
+
+    . Arithmetic: find last occurrence for left-associativity
+    sätt plusindex till 0 minus 1
+    sätt minusindex till 0 minus 1
+    sätt gångerindex till 0 minus 1
+    sätt delatindex till 0 minus 1
+
+    sätt pi till 0
+    medan pi är mindre än längd från delar
+        sätt dp till element pi från delar
+        om värde från dp är lika med "plus"
+            sätt plusindex till pi
+        om värde från dp är lika med "minus"
+            sätt minusindex till pi
+        om värde från dp är lika med "gånger"
+            sätt gångerindex till pi
+        om värde från dp är lika med "delat"
+            sätt delatindex till pi
+        öka pi med 1
+
+    . Multiplication/division first (higher precedence)
+    om gångerindex är större än eller lika med 0 eller delatindex är större än eller lika med 0
+        sätt opindex till gångerindex
+        sätt op till "gånger"
+        om delatindex är större än opindex eller opindex är lika med 0 minus 1
+            sätt opindex till delatindex
+            sätt op till "delat"
+
+        sätt vänster till ta först med delar, opindex
+        sätt höger till hoppa över med delar, opindex plus 1
+        sätt vn till resolera med precedens med vänster, rad, kolumn
+        sätt hn till resolera med precedens med höger, rad, kolumn
+
+        om op är lika med "gånger"
+            ge multipliceranod med rad, kolumn, vn, hn
+        ge divideranod med rad, kolumn, vn, hn
+
+    . Addition/subtraction (lower precedence)
+    om plusindex är större än eller lika med 0 eller minusindex är större än eller lika med 0
+        sätt opindex till plusindex
+        sätt op till "plus"
+        om minusindex är större än opindex eller opindex är lika med 0 minus 1
+            sätt opindex till minusindex
+            sätt op till "minus"
+
+        sätt vänster till ta först med delar, opindex
+        sätt höger till hoppa över med delar, opindex plus 1
+        sätt vn till resolera med precedens med vänster, rad, kolumn
+        sätt hn till resolera med precedens med höger, rad, kolumn
+
+        om op är lika med "plus"
+            ge adderanod med rad, kolumn, vn, hn
+        ge subtraheranod med rad, kolumn, vn, hn
+
+    . No operator found — fall through to string
+    ge strängnod med rad, kolumn, "op"
+
+. --- Main Expression Resolution ---
+
+. Resolve a list of ExpressionParts to the correct AST node type
+sätt resolera uttryck till rekgrej med delar som lista av uttrycksdelnod, rad som heltal, kolumn som heltal ger basnod
+    om längd från delar är lika med 0
+        ge strängnod med rad, kolumn, ""
+
+    . Single part — convert directly
+    om längd från delar är lika med 1
+        sätt ep0 till element 0 från delar
+        ge del till nod med ep0, rad, kolumn
+
+    . Check special patterns
+    . Debug: check delar type
+    sätt dbt till typ av delar
+    sätt ep0 till element 0 från delar
+    sätt ep0t till typ av ep0
+    sätt första ord till värde från ep0
+
+    . "inte X" -> NotNode
+    om första ord är lika med "inte"
+        sätt inredelar till hoppa över med delar, 1
+        sätt inner till resolera uttryck med inredelar, rad, kolumn
+        ge intenod med rad, kolumn, inner
+
+    . "ny rad" -> newline string
+    om längd från delar är lika med 2 och första ord är lika med "ny"
+        sätt andra ord till värde från element 1 från delar
+        om andra ord är lika med "rad"
+            ge strängnod med rad, kolumn, "\n"
+
+    . "typ av X" -> TypeOfNode
+    om första ord är lika med "typ" och längd från delar är större än eller lika med 3
+        sätt andra ord till värde från element 1 från delar
+        om andra ord är lika med "av"
+            sätt inredelar till hoppa över med delar, 2
+            sätt inner till resolera uttryck med inredelar, rad, kolumn
+            ge typavnod med rad, kolumn, inner
+
+    . "X som Y" -> CastNode (skip string literal 'som' tokens)
+    om delar innehåller med delar, "som"
+        sätt somindex till hitta delindex med delar, "som"
+        sätt sompart till element somindex från delar
+        om tokentyp från sompart är inte lika med strängtoken
+            sätt värdedelar till ta först med delar, somindex
+            sätt typdelar till hoppa över med delar, somindex plus 1
+            sätt värdenod till resolera uttryck med värdedelar, rad, kolumn
+            sätt typstr till slå ihop med separator med stränga delar med typdelar, " "
+            ge somnod med rad, kolumn, värdenod, typstr
+
+    . Try property access (handles 'från')
+    sätt panod till försök egenskapsåtkomst med delar, rad, kolumn
+    sätt paht till typ av panod
+    om paht är inte lika med typ av inget av basnod
+        ge panod
+
+    . Try generic call (handles 'av')
+    sätt gcnod till försök generiskanrop med delar, rad, kolumn
+    sätt gcht till typ av gcnod
+    om gcht är inte lika med typ av inget av basnod
+        ge gcnod
+
+    . Try function call (handles 'med')
+    sätt fcnod till försök funktionsanrop med delar, rad, kolumn
+    sätt fcht till typ av fcnod
+    om fcht är inte lika med typ av inget av basnod
+        ge fcnod
+
+    . Try operators (handles plus, minus, är, etc.)
+    sätt opnod till resolera med precedens med delar, rad, kolumn
+    sätt opht till typ av opnod
+    . Only accept if it produced a real node (not the "op" fallback string)
+    om opht är inte lika med typ av strängnod
+        ge opnod
+    sätt opv till värde från opnod
+    om opv är inte lika med "op" och opv är inte lika med ""
+        ge opnod
+
+    . No pattern matched — treat as unresolved string
+    sätt txt till slå ihop med separator med stränga delar med delar, " "
+    ge strängnod med rad, kolumn, txt
