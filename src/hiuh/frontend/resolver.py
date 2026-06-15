@@ -980,15 +980,28 @@ class Resolver:
             # Type constructor: get field names
             for mod_info in self.modules.values():
                 if mod_info.ast:
-                    for n in mod_info.ast:
-                        if hasattr(n, 'name') and n.name == fn_name and hasattr(n, 'fields'):
-                            known_param_names = set()
-                            for f in n.fields:
-                                if isinstance(f, tuple):
-                                    known_param_names.add(f[0])
-                                else:
-                                    known_param_names.add(f)
-                            break
+                    def find_type_def(nodes):
+                        for n in nodes:
+                            if hasattr(n, 'name') and n.name == fn_name and hasattr(n, 'fields'):
+                                return n
+                            # Also search inside function bodies
+                            if hasattr(n, 'value') and isinstance(n.value, FunctionDefNode):
+                                result = find_type_def(n.value.body)
+                                if result:
+                                    return result
+                            if type(n).__name__ == 'AssignNode' and hasattr(getattr(n, 'value', None), 'body'):
+                                result = find_type_def(n.value.body)
+                                if result:
+                                    return result
+                        return None
+                    n = find_type_def(mod_info.ast)
+                    if n:
+                        known_param_names = set()
+                        for f in n.fields:
+                            if isinstance(f, tuple):
+                                known_param_names.add(f[0])
+                            else:
+                                known_param_names.add(f)
                     if known_param_names is not None:
                         break
 
