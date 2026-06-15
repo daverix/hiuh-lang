@@ -542,7 +542,7 @@ class Resolver:
             if value_parts and target_var_parts:
                 target_var = target_var_parts[0]
                 if target_var and target_var.value.isidentifier():
-                    self._print_write_to_file = target_var
+                    self._print_write_to_file = target_var.value
                     if len(value_parts) == 1:
                         return self._part_to_node(value_parts[0], node)
                     return self.visit(ExpressionPartsNode(node.line, node.column, value_parts))
