@@ -122,7 +122,7 @@ class Tokenizer:
         for line_idx, line in enumerate(lines, 1):
             stripped_line = line.strip()
             if not stripped_line or stripped_line.startswith('.'):
-                continue  # Skip empty lines and comments
+                continue  # Skip empty lines and comments (indentation unchanged)
 
             indent = 0
             while indent < len(line) and line[indent] == ' ':
@@ -133,10 +133,9 @@ class Tokenizer:
             if indent > indent_stack[-1]:
                 tokens.append(Token(TOKEN_INDENT, " " * indent, line_idx, 1))
                 indent_stack.append(indent)
-            elif indent < indent_stack[-1]:
-                while indent < indent_stack[-1]:
-                    indent_stack.pop()
-                    tokens.append(Token(TOKEN_DEDENT, "", line_idx, 1))
+            while indent < indent_stack[-1]:
+                indent_stack.pop()
+                tokens.append(Token(TOKEN_DEDENT, "", line_idx, 1))
 
             i = 0
             while i < len(content):

@@ -860,7 +860,7 @@ class Resolver:
                 if len(args_parts) >= 2 and args_parts[0].value == 'element':
                     # "element x från target" -> ElementAccessNode
                     index_name = args_parts[1]
-                    index_node = IntNode(node.line, node.column, index_name) if index_name.value.isdigit() else VarAccessNode(node.line, node.column, index_name, target=None)
+                    index_node = IntNode(node.line, node.column, index_name) if index_name.value.isdigit() else VarAccessNode(node.line, node.column, index_name.value, target=None)
                     target_node = VarAccessNode(node.line, node.column, target_name, target=None)
                     arg = ElementAccessNode(node.line, node.column, index=index_node, target=target_node)
                 elif len(args_parts) == 1 and args_parts[0].value.isdigit():
