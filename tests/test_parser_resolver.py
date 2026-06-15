@@ -117,11 +117,11 @@ sätt z till resten av x delat på 4
 
     def test_infix_function_body_property_access(self):
         source = """\
-sätt innehåller till infixgrej med lista som lista av heltal, värde som heltal ger boolesk
+sätt innehåller till infixgrej med värden som lista av heltal, värde som heltal ger boolesk
     sätt x till 0
-    medan x är mindre än längd från lista
+    medan x är mindre än längd från värden
         ge SANT"""
-        expected = [AssignNode(None, None, name='innehåller', value=FunctionDefNode(None, None, params=[('lista', 'lista av heltal'), ('värde', 'heltal')], body=[AssignNode(None, None, name='x', value=IntNode(None, None, '0')), WhileNode(None, None, condition=LessThanNode(None, None, left=VarAccessNode(None, None, 'x'), right=PropertyAccessNode(None, None, property_name='längd', target=VarAccessNode(None, None, 'lista'))), body=[ReturnNode(None, None, value=BoolNode(None, None, True))])], is_infix=True, return_type='boolesk'))]
+        expected = [AssignNode(None, None, name='innehåller', value=FunctionDefNode(None, None, params=[('värden', 'lista av heltal'), ('värde', 'heltal')], body=[AssignNode(None, None, name='x', value=IntNode(None, None, '0')), WhileNode(None, None, condition=LessThanNode(None, None, left=VarAccessNode(None, None, 'x'), right=PropertyAccessNode(None, None, property_name='längd', target=VarAccessNode(None, None, 'värden'))), body=[ReturnNode(None, None, value=BoolNode(None, None, True))])], is_infix=True, return_type='boolesk'))]
         self.assertResolvedEqual(source, expected)
 
     def test_normal_function_body_property_access(self):
