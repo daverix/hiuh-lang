@@ -85,10 +85,12 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
             sätt t till element pos från tokens
             sätt tt till tokentyp från t
             sätt tv till värde från t
-            . Check for keyword tokens by type (från and till are not idtoken)
+            . Check for keyword tokens by type (från, till, som are not idtoken)
             om stoppord är lika med "från" och tt är lika med fråntoken
                 bryt
             om stoppord är lika med "till" och tt är lika med tilltoken
+                bryt
+            om stoppord är lika med "som" och tt är lika med somtoken
                 bryt
             . Also check regular identifiers (including "i")
             om tt är lika med idtoken och tv är lika med stoppord
@@ -102,7 +104,17 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
             sätt ud till uttrycksdelnod med rad från t, kolumn från t, tv, tt
             lägg till ud i delar
             öka pos med 1
-        sätt nod till uttrycksdelarnod med första rad, första kolumn, delar
+        . Single-part detection: create IntNode for integer values
+        om längd från delar är lika med 1
+            sätt ep till element 0 från delar
+            sätt ept till tokentyp från ep
+            sätt epv till värde från ep
+            om ept är lika med heltalstoken
+                sätt nod till heltalsnod med första rad, första kolumn, epv
+            annars
+                sätt nod till uttrycksdelarnod med första rad, första kolumn, delar
+        annars
+            sätt nod till uttrycksdelarnod med första rad, första kolumn, delar
         ge parsningsresultat med nod nod, pos pos
 
     sätt parsa skriv till grej med startpos som heltal ger parsningsresultat
@@ -701,9 +713,18 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
         sätt rad till rad från t0
         sätt kolumn till kolumn från t0
         öka pos med 1
-        sätt r till samla uttryck med pos
+        . Collect file path until 'som' keyword
+        sätt r till samla tills med pos, "som"
         sätt pos till pos från r
         sätt sökväg till nod från r
+        . Convert single identifier ExpressionPartsNode to VarAccessNode
+        sätt sökvägtyp till typ av sökväg
+        om sökvägtyp är lika med typ av uttrycksdelarnod
+            sätt sökdelar till delar från sökväg
+            om längd från sökdelar är lika med 1
+                sätt ep0 till element 0 från sökdelar
+                om tokentyp från ep0 är lika med idtoken
+                    sätt sökväg till variabelnod med rad, kolumn, värde från ep0
         om pos är mindre än längd från tokens
             sätt t till element pos från tokens
             om tokentyp från t är lika med somtoken

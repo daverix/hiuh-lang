@@ -595,12 +595,14 @@ class Resolver:
         # 2. 'som' is a string literal (not the keyword)
         if self._part_in(parts, 'som') and not self._part_in(parts, ','):
             som_idx = self._index_of_part(parts, 'som')
-            value_parts = parts[:som_idx]
-            target_parts = parts[som_idx + 1:]
-            if value_parts and target_parts:
-                value_node = self.visit(ExpressionPartsNode(node.line, node.column, value_parts))
-                target_type = ' '.join(self._parts_to_strings(target_parts))
-                return CastNode(node.line, node.column, value=value_node, target_type=target_type)
+            # Only match if 'som' is the AS keyword, not a string literal
+            if parts[som_idx].token_type != TOKEN_STRING:
+                value_parts = parts[:som_idx]
+                target_parts = parts[som_idx + 1:]
+                if value_parts and target_parts:
+                    value_node = self.visit(ExpressionPartsNode(node.line, node.column, value_parts))
+                    target_type = ' '.join(self._parts_to_strings(target_parts))
+                    return CastNode(node.line, node.column, value=value_node, target_type=target_type)
 
         # Check for type query: "typ av X" -> TypeOfNode
         if len(parts) >= 3 and parts[0].value == 'typ' and parts[1].value == 'av':
