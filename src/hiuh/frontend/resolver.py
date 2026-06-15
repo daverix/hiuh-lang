@@ -2096,6 +2096,7 @@ class Resolver:
         for arg in value.args:
             if isinstance(arg, NamedArgNode):
                 field_name = arg.name
+                field_name = field_name.value if isinstance(field_name, ExpressionPart) else field_name
                 arg_value = arg.value
                 expected = field_types.get(field_name)
                 if expected:
