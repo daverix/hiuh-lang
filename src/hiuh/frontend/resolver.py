@@ -814,12 +814,17 @@ class Resolver:
                 idx_node = self._resolve_precedence(idx_parts, token=node)
             
             # Create target node - prefer VarAccessNode for property access targets
-            target_name = ' '.join(self._parts_to_strings(target_parts))
-            # If it's a defined local variable, use VarAccessNode (not built-in FunctionCallNode)
-            if self._is_defined(target_name, self._current_module):
-                target_node = VarAccessNode(node.line, node.column, target_name, target=None)
+            # If target_parts contains 'från', recursively resolve as nested property access
+            if self._part_in(target_parts, 'från'):
+                inner_node = ExpressionPartsNode(node.line, node.column, target_parts)
+                target_node = self.visit(inner_node)
             else:
-                target_node = self._part_to_node(target_name, node)
+                target_name = ' '.join(self._parts_to_strings(target_parts))
+                # If it's a defined local variable, use VarAccessNode (not built-in FunctionCallNode)
+                if self._is_defined(target_name, self._current_module):
+                    target_node = VarAccessNode(node.line, node.column, target_name, target=None)
+                else:
+                    target_node = self._part_to_node(target_name, node)
             
             return ElementAccessNode(node.line, node.column, index=idx_node, target=target_node)
 
@@ -898,13 +903,19 @@ class Resolver:
         if 'minus' in right_parts or 'plus' in right_parts or 'gånger' in right_parts or 'delat' in right_parts:
             return None
         
-        # Create target node - prefer VarAccessNode for property access targets
-        target_name = ' '.join(self._parts_to_strings(right_parts))
-        # If it's a defined local variable, use VarAccessNode (not built-in FunctionCallNode)
-        if self._is_defined(target_name, self._current_module):
-            target_node = VarAccessNode(node.line, node.column, target_name, target=None)
+        # If right_parts contains another 'från', recursively resolve as nested property access
+        # Example: "delar från nod från r" -> PropertyAccessNode('delar', PropertyAccessNode('nod', r))
+        if self._part_in(right_parts, 'från'):
+            inner_node = ExpressionPartsNode(node.line, node.column, right_parts)
+            target_node = self.visit(inner_node)
         else:
-            target_node = self._part_to_node(target_name, node)
+            # Create target node - prefer VarAccessNode for property access targets
+            target_name = ' '.join(self._parts_to_strings(right_parts))
+            # If it's a defined local variable, use VarAccessNode (not built-in FunctionCallNode)
+            if self._is_defined(target_name, self._current_module):
+                target_node = VarAccessNode(node.line, node.column, target_name, target=None)
+            else:
+                target_node = self._part_to_node(target_name, node)
 
         return PropertyAccessNode(node.line, node.column, property_name=prop_name, target=target_node)
 
