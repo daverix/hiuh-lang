@@ -85,7 +85,10 @@ class Parser:
             return ContinueNode(token.line, token.column)
         if t.type == TOKEN_IDENTIFIER and t.value == "grejtyp":
             return self.parse_grejtyp()
-        if t.type == TOKEN_TYPE: return self.parse_type_def()
+        if t.type == TOKEN_TYPE:
+            if self.peek(1) and self.peek(1).type == TOKEN_OF:
+                return self.expression()
+            return self.parse_type_def()
         if t.type == TOKEN_TRY: return self.parse_try_catch()
         if t.type == TOKEN_THROW:
             self.consume(); return UnaryOpNode(t.line, t.column, "kasta", self.expression())

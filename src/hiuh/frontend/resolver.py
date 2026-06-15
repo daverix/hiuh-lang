@@ -1687,7 +1687,8 @@ class Resolver:
     def _is_float(self, s):
         """Check if string is a float."""
         try:
-            float(s.value.replace(',', '.'))
+            s = s.value if isinstance(s, ExpressionPart) else s
+            float(s.replace(',', '.'))
             return '.' in s or ',' in s
         except:
             return False
