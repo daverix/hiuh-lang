@@ -835,7 +835,7 @@ class Resolver:
                     # Collect argument parts until comma
                     current_arg = [part]
                     i += 1
-                    while i < len(args_parts) and args_parts[i] != ',':
+                    while i < len(args_parts) and args_parts[i].value != ',':
                         current_arg.append(args_parts[i])
                         i += 1
                     args.append(ExpressionPartsNode(node.line, node.column, current_arg))
@@ -978,9 +978,9 @@ class Resolver:
                     temp_i += 1
                     continue
                 start = temp_i
-                while temp_i < len(args_parts) and args_parts[temp_i] != ',':
+                while temp_i < len(args_parts) and args_parts[temp_i].value != ',':
                     temp_i += 1
-                if temp_i - start != 2 or args_parts[start] not in known_param_names:
+                if temp_i - start != 2 or args_parts[start].value not in known_param_names:
                     all_named = False
                     break
             if not all_named:
@@ -994,7 +994,7 @@ class Resolver:
                 i += 1
                 continue
 
-            if all_named and part in known_param_names and i + 1 < len(args_parts):
+            if all_named and part.value in known_param_names and i + 1 < len(args_parts):
                 value = self._part_to_node(args_parts[i + 1], node)
                 args.append(NamedArgNode(node.line, node.column, part, value))
                 i += 2
@@ -1003,7 +1003,7 @@ class Resolver:
             # Positional argument
             arg_parts = [part]
             i += 1
-            while i < len(args_parts) and args_parts[i] != ',':
+            while i < len(args_parts) and args_parts[i].value != ',':
                 arg_parts.append(args_parts[i])
                 i += 1
             args.append(ExpressionPartsNode(node.line, node.column, arg_parts))
