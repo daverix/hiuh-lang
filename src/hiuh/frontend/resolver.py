@@ -1167,7 +1167,7 @@ class Resolver:
             if left_parts and right_parts and left_parts[0].value in ['element', 'index'] and len(left_parts) >= 2:
                 idx_parts = left_parts[1:]
                 # Check if the index expression contains any operators
-                if any(op in idx_parts for op in ['plus', 'minus', 'gånger', 'delat']):
+                if any(self._part_in(idx_parts, op) for op in ['plus', 'minus', 'gånger', 'delat']):
                     # Resolve the index expression with full operator precedence
                     idx_node = self._resolve_precedence(idx_parts, token=node)
                     # Resolve the target
