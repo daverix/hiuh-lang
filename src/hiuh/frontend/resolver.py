@@ -1031,9 +1031,19 @@ class Resolver:
 
             # Positional argument
             arg_parts = [part]
+            med_depth = 0
+            if part.value == 'med':
+                med_depth += 1
             i += 1
-            while i < len(args_parts) and args_parts[i].value != ',':
-                arg_parts.append(args_parts[i])
+            while i < len(args_parts):
+                p = args_parts[i]
+                # Only split at comma when not inside a 'med' subexpression
+                if p.value == ',' and med_depth == 0:
+                    i += 1
+                    break
+                arg_parts.append(p)
+                if p.value == 'med':
+                    med_depth += 1
                 i += 1
             args.append(ExpressionPartsNode(node.line, node.column, arg_parts))
 
