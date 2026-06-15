@@ -292,22 +292,28 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
             sätt ttvv till värde från t
 
             sätt ärgrej till FALSKT
+            sätt grejsort till "grej"
             om ttv är lika med grejtoken
                 sätt ärgrej till SANT
             om ttv är lika med idtoken
                 om ttvv är lika med "verbgrej"
                     sätt ärgrej till SANT
+                    sätt grejsort till "verb"
                 om ttvv är lika med "skickagrej"
                     sätt ärgrej till SANT
+                    sätt grejsort till "skicka"
                 om ttvv är lika med "hämtagrej"
                     sätt ärgrej till SANT
+                    sätt grejsort till "hämta"
                 om ttvv är lika med "infixgrej"
                     sätt ärgrej till SANT
+                    sätt grejsort till "infix"
                 om ttvv är lika med "rekgrej"
                     sätt ärgrej till SANT
+                    sätt grejsort till "rek"
 
             om ärgrej
-                sätt r till parsa grej med pos
+                sätt r till parsa grej med pos, grejsort
                 sätt pos till pos från r
                 sätt fn till nod från r
                 sätt n till tilldelningsnod med rad, kolumn, namn, fn
@@ -354,7 +360,7 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
         sätt n till tilldelningsnod med rad, kolumn, namn, värde
         ge parsningsresultat med nod n, pos pos
 
-    sätt parsa grej till rekgrej med startpos som heltal ger parsningsresultat
+    sätt parsa grej till rekgrej med startpos som heltal, sort som sträng ger parsningsresultat
         sätt pos till startpos
         sätt t0 till element startpos från tokens
         sätt rad till rad från t0
@@ -454,7 +460,7 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
         sätt pos till pos från r
         sätt blocknoder till stmts från r
 
-        sätt fn till grejdefinitionsnod med rad, kolumn, paramnoder, blocknoder, lista av sträng, "grej", rettyp
+        sätt fn till grejdefinitionsnod med rad, kolumn, paramnoder, blocknoder, lista av sträng, sort, rettyp
         ge parsningsresultat med nod fn, pos pos
 
     sätt parsa om till rekgrej med startpos som heltal ger parsningsresultat

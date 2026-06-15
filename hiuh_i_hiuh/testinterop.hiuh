@@ -315,9 +315,14 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt pm till parametrar från n
         sätt block till block från n
         sätt rt till returtyp från n
+        sätt sort till sort från n
         sätt paramsstr till formatera paramer med pm
         sätt blockstr till formatera block med block
-        ge "FunctionDefNode(" plus paramsstr plus ", " plus blockstr plus ", return_type='" plus rt plus "')"
+        sätt ut till "FunctionDefNode(" plus paramsstr plus ", " plus blockstr
+        om sort är inte lika med "grej"
+            sätt ut till ut plus ", kind='" plus sort plus "'"
+        sätt ut till ut plus ", return_type='" plus rt plus "'"
+        ge ut plus ")"
 
     . FunctionTypeNode
     om ht är lika med typ av grejtypnod

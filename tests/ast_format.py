@@ -60,9 +60,10 @@ def ast_to_string(node):
     if isinstance(node, FunctionDefNode):
         params = str(node.params)
         body = ast_to_string(node.body)
-        infix = ", kind='infix'" if getattr(node, 'kind', 'grej') == 'infix' else ""
+        kind = getattr(node, 'kind', 'grej')
+        kind_str = f", kind={kind!r}" if kind and kind != 'grej' else ""
         ret = f", return_type={node.return_type!r}" if getattr(node, 'return_type', None) else ""
-        return f"{classname}({params}, {body}{infix}{ret})"
+        return f"{classname}({params}, {body}{kind_str}{ret})"
     if isinstance(node, ElementAssignNode):
         return f"{classname}({ast_to_string(node.index)}, {ast_to_string(node.target)}, {ast_to_string(node.value)})"
     if isinstance(node, (AddNode, SubNode, MulNode, DivNode, ModNode, EqualNode, NotEqualNode, LessThanNode, GreaterThanNode, LessThanOrEqualNode, GreaterThanOrEqualNode)):
