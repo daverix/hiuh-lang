@@ -1412,7 +1412,7 @@ class Resolver:
         # For comparison operators, always use VarAccessNode for single identifiers
         # even if they're not defined (let interpreter handle undefined vars)
         if len(left_parts) == 1 and left_parts[0].value.isidentifier():
-            left_expr = VarAccessNode(node.line, node.column, left_parts[0], target=None)
+            left_expr = VarAccessNode(node.line, node.column, left_parts[0].value, target=None)
         else:
             left_expr = self._resolve_precedence(left_parts, token=node) if left_parts else self._part_to_node(left_base, node)
         
