@@ -2526,10 +2526,12 @@ class Resolver:
         """Check if a VarAccessNode cannot be resolved in the current scope."""
         # If it has a target (qualified access), check that target
         if node.target:
-            return not self.module_registry.resolve_symbol(node.target, self._current_module)
+            target = node.target.value if isinstance(node.target, ExpressionPart) else node.target
+            return not self.module_registry.resolve_symbol(target, self._current_module)
 
         # Check if it's a known symbol in the registry (including stdlib)
         name = node.name
+        name = name.value if isinstance(name, ExpressionPart) else name
         # Check local vars first
         if self._is_local_var(name):
             return False
@@ -2563,29 +2565,32 @@ class Resolver:
 
     def _resolve_var_access(self, node: VarAccessNode) -> ASTNode:
         """Resolve a variable/field access - return StringNode if unknown."""
-        if node.target:
-            symbol = self.module_registry.resolve_symbol(node.target, self._current_module)
-            is_local = self._is_local_var(node.target)
+        name = node.name
+        name = name.value if isinstance(name, ExpressionPart) else name
+        target = node.target
+        target = target.value if isinstance(target, ExpressionPart) else target
+        
+        if target:
+            symbol = self.module_registry.resolve_symbol(target, self._current_module)
+            is_local = self._is_local_var(target)
             if symbol or is_local:
                 return node
-            # Check __main__ for built-in variables like 'argument'
-            if '__main__' in self.module_registry.modules and node.target in self.module_registry.modules['__main__'].symbols:
+            if '__main__' in self.module_registry.modules and target in self.module_registry.modules['__main__'].symbols:
                 return node
-            return StringNode(node.line, node.column, f"{node.target}.{node.name}")
+            return StringNode(node.line, node.column, f"{target}.{name}")
 
-        symbol = self.module_registry.resolve_symbol(node.name, self._current_module)
+        symbol = self.module_registry.resolve_symbol(name, self._current_module)
         if symbol:
             return node
 
-        if self._is_local_var(node.name):
+        if self._is_local_var(name):
             return node
 
-        # Check stdlib (__main__) for built-in constants like 'mellanrum'
-        if '__main__' in self.module_registry.modules and node.name in self.module_registry.modules['__main__'].symbols:
+        if '__main__' in self.module_registry.modules and name in self.module_registry.modules['__main__'].symbols:
             return node
 
         # Try individual parts
-        name_parts = node.name.split()
+        name_parts = name.split()
         for part in name_parts:
             if self._is_local_var(part):
                 return node
