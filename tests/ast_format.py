@@ -7,6 +7,8 @@ def ast_to_string(node):
         items = ', '.join((ast_to_string(n) for n in node))
         return "[" + items + "]"
     if isinstance(node, ExpressionPartsNode):
+        if len(node.parts) == 1 and node.parts[0].value.isdigit():
+            return f"IntNode({node.parts[0].value})"
         return "Expr(" + " ".join(p.value for p in node.parts) + ")"
     classname = type(node).__name__
     if isinstance(node, (IntNode, FloatNode)):
@@ -66,6 +68,9 @@ def ast_to_string(node):
         return f"{classname}({params}, {body}{kind_str}{ret})"
     if isinstance(node, ElementAssignNode):
         return f"{classname}({ast_to_string(node.index)}, {ast_to_string(node.target)}, {ast_to_string(node.value)})"
+    if isinstance(node, CopyWithPropNode):
+        updates = ', '.join(f"('{k}', {ast_to_string(v)})" for k, v in node.updates)
+        return f"{classname}({node.name!r}, {node.source!r}, [{updates}])"
     if isinstance(node, (AddNode, SubNode, MulNode, DivNode, ModNode, EqualNode, NotEqualNode, LessThanNode, GreaterThanNode, LessThanOrEqualNode, GreaterThanOrEqualNode)):
         return f"{classname}({ast_to_string(node.left)}, {ast_to_string(node.right)})"
     if isinstance(node, AndNode):

@@ -168,6 +168,29 @@ sätt formatera en nod till grej med n som basnod ger sträng
         sätt vs till formatera en nod med värde från n
         ge "ElementAssignNode(" plus idxs plus ", " plus ms plus ", " plus vs plus ")"
 
+    . CopyWithPropNode
+    om ht är lika med typ av kopiaavnod
+        sätt nm till namn från n
+        sätt src till källa från n
+        sätt uppdlista till mål från n
+        sätt uppdstr till "["
+        sätt pos till 0
+        sätt först till SANT
+        medan pos är mindre än längd från uppdlista
+            . First element is the field name (plain string)
+            sätt fn till element pos från uppdlista
+            öka pos med 1
+            . Second element is the value node (struct with 'värde')
+            sätt fv till formatera en nod med element pos från uppdlista
+            öka pos med 1
+            om först
+                sätt först till FALSKT
+            annars
+                sätt uppdstr till uppdstr plus ", "
+            sätt uppdstr till uppdstr plus "('" plus fn plus "', " plus fv plus ")"
+        sätt uppdstr till uppdstr plus "]"
+        ge "CopyWithPropNode('" plus nm plus "', '" plus src plus "', " plus uppdstr plus ")"
+
     . Infix call
     om ht är lika med typ av infixanropsnod
         sätt vs till formatera en nod med vänster från n

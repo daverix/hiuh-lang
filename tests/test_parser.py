@@ -367,12 +367,6 @@ sätt fakultet till rekgrej med n som heltal ger heltal
         expected = [AssignNode(None, None, name='input', value=FunctionCallNode(None, None, name='öppna', args=[VarAccessNode(None, None, 'fil.txt'), StringNode(None, None, 'läsning')]))]
         self.assertParseEqual(source, expected)
 
-# --- kopia av ---
-    def test_kopia_av(self):
-        source = "sätt uppdaterad till kopia av p med ålder 40"
-        expected = [CopyWithPropNode(None, None, name='uppdaterad', source='p', updates=[('ålder', IntNode(None, None, '40'))])]
-        self.assertParseEqual(source, expected)
-
 class TestPythonParser(_BaseParserTests, unittest.TestCase):
     """Parser tests using the Python Tokenizer+Parser."""
 
@@ -386,6 +380,12 @@ class TestPythonParser(_BaseParserTests, unittest.TestCase):
 
     def assertEqual(self, a, b, msg=None):
         unittest.TestCase.assertEqual(self, a, b, msg)
+
+    # --- kopia av ---
+    def test_kopia_av(self):
+        source = "sätt uppdaterad till kopia av p med ålder 40"
+        expected = [CopyWithPropNode(None, None, name='uppdaterad', source='p', updates=[('ålder', IntNode(None, None, '40'))])]
+        self.assertParseEqual(source, expected)
 
 class TestHiuhParser(_BaseParserTests, unittest.TestCase):
     """Parser tests using the hiuh tokeniserare+parser."""
@@ -423,5 +423,12 @@ class TestHiuhParser(_BaseParserTests, unittest.TestCase):
 
     def assertEqual(self, a, b, msg=None):
         unittest.TestCase.assertEqual(self, a, b, msg)
+
+    # --- kopia av ---
+    def test_kopia_av(self):
+        source = "sätt uppdaterad till kopia av p med ålder 40"
+        expected = [CopyWithPropNode(None, None, name='uppdaterad', source='p', updates=[('ålder', IntNode(None, None, '40'))])]
+        self.assertParseEqual(source, expected)
+
 if __name__ == "__main__":
     unittest.main()

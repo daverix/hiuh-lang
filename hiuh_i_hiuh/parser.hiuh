@@ -60,7 +60,18 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
             sätt ud till uttrycksdelnod med rad från t, kolumn från t, värde från t, tt
             lägg till ud i delar
             öka pos med 1
-        sätt nod till uttrycksdelarnod med första rad, första kolumn, delar
+        . If there is only one part and it's an integer literal,
+        . create IntNode directly (matching Python parser behavior).
+        om längd från delar är lika med 1
+            sätt ep till element 0 från delar
+            sätt ept till tokentyp från ep
+            sätt epv till värde från ep
+            om ept är lika med heltalstoken
+                sätt nod till heltalsnod med första rad, första kolumn, epv
+            annars
+                sätt nod till uttrycksdelarnod med första rad, första kolumn, delar
+        annars
+            sätt nod till uttrycksdelarnod med första rad, första kolumn, delar
         ge parsningsresultat med nod nod, pos pos
 
     . collect tokens until a specific keyword VALUE
@@ -345,11 +356,10 @@ sätt parsa till rekgrej med tokens som lista av token ger lista av basnod
                                     fortsätt
                                 sätt propnamn till värde från t6
                                 öka pos med 1
-                                om pos är mindre än längd från tokens
-                                    sätt vt till element pos från tokens
-                                    lägg till propnamn i uppdateringar
-                                    lägg till strängnod med rad, kolumn, värde från vt i uppdateringar
-                                    öka pos med 1
+                                sätt r2 till samla uttryck med pos
+                                sätt pos till pos från r2
+                                lägg till propnamn i uppdateringar
+                                lägg till nod från r2 i uppdateringar
                     sätt n till kopiaavnod med rad, kolumn, namn, källa, uppdateringar
                     ge parsningsresultat med nod n, pos pos
 
