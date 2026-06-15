@@ -866,7 +866,11 @@ class Resolver:
                 # regular multi-arg function call like "nod med arg1, arg2")
                 if self._part_in(parts, ','):
                     return None
-                fn_name = parts[:med_idx][0].value  # 'anrop'
+                # Only match true callback pattern: args must contain 'element'
+                args_parts_check = parts[med_idx + 1:från_idx]
+                if not args_parts_check or not any(p.value == 'element' for p in args_parts_check):
+                    return None  # Not a callback, let _try_function_call handle it
+                fn_name = ' '.join(self._parts_to_strings(parts[:med_idx]))  # full multi-word name
                 args_parts = parts[med_idx + 1:från_idx]  # ['element', 'x']
                 target_name = ' '.join(self._parts_to_strings(parts[från_idx + 1:]))  # 'värden'
                 
